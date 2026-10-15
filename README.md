@@ -23,6 +23,7 @@ pip install -e .                  # 基础安装
 pip install -e ".[dev]"           # 开发依赖 (pytest, ruff, mypy)
 pip install -e ".[dashboard]"     # Dashboard 支持 (fastapi, uvicorn)
 pip install -e ".[storage]"       # RemoteStorage 服务端支持
+pip install -e ".[all]"           # 全部可选依赖，包含开发工具
 ```
 
 ## 架构概览

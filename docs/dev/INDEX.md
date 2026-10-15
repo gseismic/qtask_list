@@ -68,3 +68,10 @@
 - 结果文件：`PLAN-022-cli-dashboard-operations-OUTCOME.md`
 - 设计文件：`docs/design/cli-dashboard-20260929-operations-review.md`
 - 摘要：从值班巡检、跨队列排查、无人消费、过期重放、故障显示和远程访问审查 CLI 与 Dashboard；新增 CLI 异常/JSON 巡检和远程认证保护，修正采样进度口径、告警、全局筛选、刷新、投递及过期任务操作。隔离 Redis 全量测试 136 passed，ruff、mypy、pnpm build 与浏览器场景验证通过。
+
+## 2026-10-16 07:37
+
+- 计划文件：`PLAN-023-all-extra.md`
+- 结果文件：`PLAN-023-all-extra-OUTCOME.md`
+- 设计文件：`docs/design/install-extras-20261016-all.md`
+- 摘要：增加 `all` 安装 extra，聚合 dev、dashboard、storage 的可选依赖去重并集；README 补充一键安装命令并说明包含开发工具。
