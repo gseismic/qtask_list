@@ -1,35 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAppData } from "../appData";
-import { RateSampler, fmtInt, fmtRate } from "../sampler";
-import { ConfirmDialog, EmptyState, ErrorBanner, OpsMenu, ProgressBar, Skeleton, StateBadge } from "../components/ui";
+import { fmtInt, fmtRate } from "../sampler";
+import { ConfirmDialog, EmptyState, ErrorBanner, OpsMenu, QueueComposition, Skeleton, StateBadge } from "../components/ui";
 import { PushTaskDialog } from "../components/PushTaskDialog";
 import type { QueueInfo } from "../types";
+import { useStoredPreference } from "../preferences";
 
 type FilterKey = "all" | "active" | "abnormal";
 
 export function QueuesPage() {
   const navigate = useNavigate();
-  const { queues, error, loading, reload } = useAppData();
+  const { queues, progress: queueProgress, error, loading, reload } = useAppData();
   const [params] = useSearchParams();
-  const samplerRef = useMemo(() => new RateSampler(), []);
-  const [sampleVersion, setSampleVersion] = useState(0);
-  const [nsFilter, setNsFilter] = useState("全部");
-  const [nameSearch, setNameSearch] = useState("");
+  const [nsFilter, setNsFilter] = useStoredPreference("qtask.queues.namespace.v1", "全部", (value): value is string => typeof value === "string");
+  const [nameSearch, setNameSearch] = useStoredPreference("qtask.queues.search.v1", "", (value): value is string => typeof value === "string");
   const filter = (params.get("filter") as FilterKey) || "all";
 
   const [confirm, setConfirm] = useState<{ kind: "clear" | "delete" | "recover" | "requeueDlq" | "retry"; queue: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [opError, setOpError] = useState<string | null>(null);
   const [pushQueue, setPushQueue] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (queues) {
-      samplerRef.observe(queues);
-      setSampleVersion((value) => value + 1);
-    }
-  }, [queues, samplerRef]);
 
   const namespaces = useMemo(() => {
     const set = new Set<string>();
@@ -45,7 +37,7 @@ export function QueuesPage() {
     const list = queues.map((item: QueueInfo) => {
       const stats = item as unknown as Record<string, number>;
       const name = String(item.name);
-      const progress = samplerRef.progress(name, stats);
+      const progress = queueProgress[name];
       const noWorker = (stats.queue ?? 0) > 0 && (stats.active_workers ?? 0) === 0;
       const scheduledOnly = (stats.queue ?? 0) === 0 && (stats.processing ?? 0) === 0 &&
         (stats.retry ?? 0) === 0 && (stats.delay ?? 0) > 0;
@@ -61,9 +53,10 @@ export function QueuesPage() {
     }
     if (nameSearch) out = out.filter((c) => c.name.toLowerCase().includes(nameSearch.toLowerCase()));
     return out.sort((a, b) => (a.abnormal === b.abnormal ? b.progress.remaining - a.progress.remaining : a.abnormal ? -1 : 1));
-  }, [queues, filter, nsFilter, nameSearch, samplerRef, sampleVersion]);
+  }, [queues, filter, nsFilter, nameSearch, queueProgress]);
 
   const runOp = async (fn: () => Promise<unknown>) => {
+    if (busy) return;
     setBusy(true);
     setOpError(null);
     try {
@@ -80,9 +73,9 @@ export function QueuesPage() {
   return (
     <div className="page">
       <h1 className="page-title">队列</h1>
-      <p className="page-desc">按 namespace 管理队列。图形为浏览器观测期完成与当前待处理的参考比；速率与 ETA 是估计值。</p>
+      <p className="page-desc">按 namespace 管理队列。色条显示当前排队、执行、延迟与旧重试构成；速率与 ETA 为浏览器观测估计。</p>
       {error && <ErrorBanner error={error} onRetry={reload} />}
-      {opError && <ErrorBanner error={opError} onRetry={() => setOpError(null)} />}
+      {opError && !confirm && <ErrorBanner error={opError} onRetry={() => setOpError(null)} />}
 
       {loading && !queues ? (
         <Skeleton lines={6} height={40} />
@@ -125,10 +118,10 @@ export function QueuesPage() {
                   <span style={{ flex: 1 }} />
                   {c.abnormal && <StateBadge state="failed" label="异常" />}
                 </div>
-                <ProgressBar done={c.progress.completedObserved ?? 0} remaining={c.progress.remaining} dlq={c.stats.dlq ?? 0} />
+                <QueueComposition stats={c.stats} />
                 <div className="qc-stats num">
                   待处理 {fmtInt(c.progress.remaining)} · 观测期完成 {fmtInt(c.progress.completedObserved)} · 速率 {fmtRate(c.progress.ratePerMin)} ·{" "}
-                  {c.noWorker ? <span style={{ color: "var(--c-danger)" }}>无 Worker</span> : c.progress.stalled ? <span style={{ color: "var(--c-danger)" }}>疑似停滞 ⚠</span> : c.scheduledOnly ? "等待调度" : c.progress.etaText ?? "ETA —"}
+                  {c.noWorker ? <span style={{ color: "var(--c-danger)" }}>无 Worker</span> : c.progress.stalled ? <span style={{ color: "var(--c-danger)" }}>疑似停滞 ⚠</span> : c.scheduledOnly ? c.stats.retry_wait > 0 ? "等待重试" : "等待调度" : c.progress.etaText ?? "ETA —"}
                   {(c.stats.dlq ?? 0) > 0 && <span style={{ color: "var(--c-danger)" }}> · DLQ {c.stats.dlq}</span>}
                 </div>
                 <div className="qc-actions">
@@ -150,6 +143,9 @@ export function QueuesPage() {
               </div>
             ))}
           </div>
+          {cards.length === 0 && <EmptyState title="当前筛选下没有队列">
+            <button className="btn" onClick={() => { setNsFilter("全部"); setNameSearch(""); navigate("/queues"); }}>清空筛选</button>
+          </EmptyState>}
         </>
       )}
 
@@ -163,6 +159,7 @@ export function QueuesPage() {
       )}
       <ConfirmDialog
         open={confirm?.kind === "clear"}
+        error={opError}
         title={`清空队列 ${confirm?.queue ?? ""}`}
         danger
         confirmKeyword={confirm?.queue}
@@ -174,6 +171,7 @@ export function QueuesPage() {
       />
       <ConfirmDialog
         open={confirm?.kind === "delete"}
+        error={opError}
         title={`删除队列 ${confirm?.queue ?? ""}`}
         danger
         confirmKeyword={confirm?.queue}
@@ -185,6 +183,7 @@ export function QueuesPage() {
       />
       <ConfirmDialog
         open={confirm?.kind === "recover"}
+        error={opError}
         title={`恢复失联 processing ${confirm?.queue ?? ""}`}
         confirmText="恢复"
         busy={busy}
@@ -194,6 +193,7 @@ export function QueuesPage() {
       />
       <ConfirmDialog
         open={confirm?.kind === "requeueDlq"}
+        error={opError}
         title={`重放全部 DLQ ${confirm?.queue ?? ""}`}
         confirmText="重放"
         busy={busy}
@@ -203,6 +203,7 @@ export function QueuesPage() {
       />
       <ConfirmDialog
         open={confirm?.kind === "retry"}
+        error={opError}
         title={`drain 手动重试 ${confirm?.queue ?? ""}`}
         confirmText="执行"
         busy={busy}

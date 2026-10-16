@@ -6,7 +6,7 @@ export const GUIDE_TEXT = {
   states:
     "一句话：还没干 / 正在干 / 干完了（不管好坏）。",
   numbers:
-    "attempt：第几次尝试。max_retry=3 表示总共 3 次机会。待处理：ready+processing+旧 retry+delay，其中 retry_wait 已包含在 delay 内。观测完成：本页面打开后的最近约 1 小时内观察到的完成增量，不是批次进度。速率：至少观测 30 秒后估算的每分钟完成条数。ETA：仅在无延迟任务且有速率样本时粗估。疑似停滞：有 ready 积压和在线 Worker，至少 2 分钟没有观察到完成；无 Worker 单独告警。",
+    "attempt：第几次尝试。max_retry=3 表示总共 3 次机会。待处理：ready+processing+旧 retry+delay，其中 retry_wait 已包含在 delay 内。色条表示当前待处理任务的状态构成。观测完成：本次访问最近约 1 小时内观察到的完成增量，切换页面会保留，完整刷新浏览器后重新采样。速率：至少观测 30 秒后估算每分钟完成条数。ETA：仅在无延迟任务且有速率样本时粗估。疑似停滞：持续有 ready 积压和在线 Worker，连续 2 分钟没有完成；空闲、无 Worker 或观测中断会重新计时。完成/失败等标签的计数为累计值，历史保留期可能使可查记录更少。",
   identity:
     "logical_key 是\"这件事的身份\"。同一个身份的任务在途（未到终态）时不会被重复投递，天然防重。带时间桶的 key（如 quote:AAPL:20260921T1000）让每个时间片天然是\"新的一件事\"。",
   workers:
@@ -17,8 +17,9 @@ export const GUIDE_TEXT = {
 
 export const GUIDE_OPS_ROWS: Array<[string, string, string]> = [
   ["DLQ 涨了", "队列详情 → dlq 标签", "看失败原因 → 单条重放或批量重放"],
-  ["Worker 失联", "Worker 页", "确认机器确实停了 → 点恢复，任务回主队列"],
+  ["Worker 失联", "Worker 页", "确认机器确实停了 → 在对应行恢复，只处理该 Worker 的任务"],
   ["任务过期（deadline_missed）", "队列详情 → 过期 标签", "设置新的截止时间 → 重放"],
+  ["失败 / 跳过 / 取消后需要重跑", "任务详情", "重放时按需更新截止 → 查看新任务 → 核对结果"],
   ["队列不要了", "队列页/详情 → 危险操作", "清空或删除（需输入队列名二次确认）"],
   ["需要手工投递", "队列详情 → 操作 → 投递任务", "填真实 handler action 和 payload；Worker 会执行"],
   ["排查某个任务", "任务页搜索 task_id", "打开详情抽屉看时间线/血缘，按状态操作"],

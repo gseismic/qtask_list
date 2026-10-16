@@ -223,6 +223,79 @@ def test_dashboard_recover_skips_active_worker(client, r):
     assert r.llen(f"{queue}:processing:active") == 1
 
 
+def test_dashboard_recover_one_worker_keeps_other_workers_and_legacy(client, r):
+    """行级恢复只影响用户确认的 Worker，不能顺带恢复同队列其他孤儿。"""
+    queue = "qtask_dash_test:precise-recovery"
+    for worker in ("selected", "other", "online"):
+        r.lpush(f"{queue}:processing:{worker}", make_msg(f"precise-{worker}"))
+    r.lpush(f"{queue}:processing", make_msg("precise-legacy"))
+    r.set(f"{queue}:worker:online", "1", ex=60)
+
+    response = client.post(f"/api/queue/{queue}/recover", json={"worker_id": "selected"})
+
+    assert response.status_code == 200
+    assert response.json() == {"recovered": 1, "skipped_active": 0, "skipped_legacy": 0}
+    assert r.llen(queue) == 1
+    assert r.llen(f"{queue}:processing:selected") == 0
+    for suffix in ("processing", "processing:other", "processing:online"):
+        assert r.llen(f"{queue}:{suffix}") == 1
+
+
+def test_dashboard_precise_recovery_rechecks_resumed_heartbeat(client, r, monkeypatch):
+    """失联 Worker 在点击恢复后恢复心跳时，原子迁移仍必须保护它的任务。"""
+    queue = "qtask_dash_test:precise-heartbeat-race"
+    r.lpush(f"{queue}:processing:selected", make_msg("precise-racing"))
+    original = dashboard_main.admin._drain_list_to_ready
+
+    def resume_before_move(source, destination, **kwargs):
+        r.set(f"{queue}:worker:selected", "1", ex=60)
+        return original(source, destination, **kwargs)
+
+    monkeypatch.setattr(dashboard_main.admin, "_drain_list_to_ready", resume_before_move)
+    response = client.post(f"/api/queue/{queue}/recover", json={"worker_id": "selected"})
+
+    assert response.status_code == 200
+    assert response.json()["recovered"] == 0
+    assert r.llen(f"{queue}:processing:selected") == 1
+    assert r.llen(queue) == 0
+
+
+@pytest.mark.parametrize("worker_id", ["", "bad:worker", "*", "w?", "w[0]", " w", "w\n"])
+def test_dashboard_precise_recovery_rejects_ambiguous_worker_id(client, r, worker_id):
+    """拒绝可扩大 key 范围或无法明确确认的 Worker 标识。"""
+    response = client.post(
+        "/api/queue/qtask_dash_test:invalid-worker/recover", json={"worker_id": worker_id}
+    )
+    assert response.status_code == 422
+
+
+def test_dashboard_precise_recovery_protects_active_worker(client, r):
+    """指定 Worker 不代表允许抢回在线任务，强制恢复仍要求二次确认。"""
+    queue = "qtask_dash_test:precise-active"
+    r.lpush(f"{queue}:processing:online", make_msg("precise-online"))
+    r.set(f"{queue}:worker:online", "1", ex=60)
+    response = client.post(f"/api/queue/{queue}/recover", json={"worker_id": "online"})
+    assert response.status_code == 200
+    assert response.json()["skipped_active"] == 1
+    response = client.post(
+        f"/api/queue/{queue}/recover", json={"worker_id": "online", "include_active": True}
+    )
+    assert response.status_code == 400
+    assert r.llen(f"{queue}:processing:online") == 1
+
+
+def test_dashboard_queue_action_filter_matches_global_semantics(client, r):
+    """从全局切到单队列时，精确 action 筛选仍然生效。"""
+    queue = SmartQueue(redis_client=r, namespace="qtask_dash_test", queue_name="action-filter")
+    accepted = queue.enqueue(TaskSpec(action="fetch_quote", payload={"symbol": "AAPL"}))
+    queue.enqueue(TaskSpec(action="fetch_news", payload={"symbol": "AAPL"}))
+    response = client.get(
+        f"/api/queue/{queue.base}/tasks", params={"state": "ready", "action": "fetch_quote"}
+    )
+    assert response.status_code == 200
+    assert [task["task_id"] for task in response.json()["tasks"]] == [accepted.task_id]
+
+
 def test_dashboard_deletes_task_from_queue_and_history(client, r):
     queue = "qtask_dash_test:fin-sheet-em:fetch"
     r.lpush(queue, make_msg("delete-me", {"action": "scrape_fin_sheet"}))

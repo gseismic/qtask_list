@@ -4,6 +4,7 @@ export interface Sample {
   ts: number;
   completed: number;
   observationIndexed: number;
+  runnable: boolean; // 本次观测有可消费积压，防止把空闲时间算进停滞。
 }
 
 export interface QueueProgress {
@@ -17,6 +18,7 @@ export interface QueueProgress {
 const WINDOW_MS = 60 * 60 * 1000;
 const MIN_RATE_MS = 30 * 1000;
 const STALL_MS = 2 * 60 * 1000;
+const MAX_OBSERVATION_GAP_MS = 60 * 1000;
 
 function remainingOf(stats: Record<string, number>): number {
   return (stats.queue ?? 0) + (stats.processing ?? 0) + (stats.retry ?? 0) + (stats.delay ?? 0);
@@ -34,10 +36,12 @@ export class RateSampler {
       const arr = this.samples.get(name) ?? [];
       const completed = Number(item.completed_total ?? 0);
       const observationIndexed = Number(item.observation_indexed ?? 0);
+      const runnable = Number(item.queue ?? 0) > 0 && Number(item.active_workers ?? 0) > 0;
       if (arr.length && (completed < arr[arr.length - 1].completed ||
         observationIndexed !== arr[arr.length - 1].observationIndexed)) arr.length = 0;
-      if (!arr.length || now - arr[arr.length - 1].ts >= 1000) {
-        arr.push({ ts: now, completed, observationIndexed });
+      if (!arr.length || now - arr[arr.length - 1].ts >= 1000 ||
+        completed !== arr[arr.length - 1].completed || runnable !== arr[arr.length - 1].runnable) {
+        arr.push({ ts: now, completed, observationIndexed, runnable });
       }
       while (arr.length > 0 && now - arr[0].ts > WINDOW_MS + 5 * 60 * 1000) arr.shift();
       this.samples.set(name, arr);
@@ -57,7 +61,7 @@ export class RateSampler {
       etaText: null,
       stalled: false,
     };
-    if (arr.length < 2) return empty;
+    if (arr.length < 2 || Number(stats.observation_indexed ?? 0) === 0) return empty;
 
     const last = arr[arr.length - 1];
     const hourAgo = last.ts - WINDOW_MS;
@@ -70,12 +74,17 @@ export class RateSampler {
     const completedObserved = Math.max(0, last.completed - ref.completed);
     const spanMs = last.ts - ref.ts;
     const ratePerMin = spanMs >= MIN_RATE_MS ? completedObserved / (spanMs / 60000) : null;
-    let lastProgressTs = arr[0].ts;
-    for (let i = 1; i < arr.length; i++) {
-      if (arr[i].completed > arr[i - 1].completed) lastProgressTs = arr[i].ts;
+    let runnableSince: number | null = null;
+    for (let i = 0; i < arr.length; i++) {
+      const previous = arr[i - 1];
+      if (!arr[i].runnable) runnableSince = null;
+      else if (runnableSince === null || (previous &&
+        (arr[i].completed > previous.completed || arr[i].ts - previous.ts > MAX_OBSERVATION_GAP_MS))) {
+        runnableSince = arr[i].ts;
+      }
     }
     const stalled = (stats.queue ?? 0) > 0 && (stats.active_workers ?? 0) > 0 &&
-      last.ts - lastProgressTs >= STALL_MS;
+      runnableSince !== null && last.ts - runnableSince >= STALL_MS;
 
     let etaText: string | null = null;
     if (remaining > 0 && (stats.delay ?? 0) === 0 && ratePerMin !== null && ratePerMin > 0.01) {

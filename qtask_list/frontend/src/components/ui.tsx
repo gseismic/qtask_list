@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { StateKey } from "../types";
 
 export function fmtTime(v: number | string | null | undefined): string {
@@ -77,16 +77,29 @@ export function KpiCard({
   );
 }
 
-export function ProgressBar({ done, remaining, dlq }: { done: number; remaining: number; dlq: number }) {
-  const total = Math.max(done + remaining + dlq, 1);
-  const w = (n: number) => `${Math.max((n / total) * 100, n > 0 ? 2 : 0)}%`;
-  return (
-    <div className="pbar" title={`观测期完成 ${done} · 当前待处理 ${remaining} · DLQ ${dlq}；此比例不是批次完成率`}>
-      {done > 0 && <div className="seg-done" style={{ width: w(done) }} />}
-      {remaining > 0 && <div className="seg-remaining" style={{ width: w(remaining) }} />}
-      {dlq > 0 && <div className="seg-dlq" style={{ width: w(dlq) }} />}
-    </div>
-  );
+export function QueueComposition({ stats }: { stats: Record<string, number> }) {
+  const segments = [
+    ["ready", "排队", stats.queue ?? 0],
+    ["processing", "执行", stats.processing ?? 0],
+    ["delay", "延迟", stats.delay ?? 0],
+    ["retry", "旧重试", stats.retry ?? 0],
+  ] as const;
+  const total = segments.reduce((sum, [, , count]) => sum + count, 0);
+  const description = segments.map(([, label, count]) => `${label} ${count}`).join(" · ");
+  return <div className="pbar" role="img" aria-label={total > 0 ? description : "无待处理任务"} title={description}>
+    {segments.map(([key, , count]) => count > 0 && <div
+      key={key} className={`seg-${key}`} style={{ flex: count, minWidth: 2 }}
+    />)}
+  </div>;
+}
+
+export function DataFreshness({ lastUpdated, automatic, loading, error }: {
+  lastUpdated: number | null; automatic: boolean; loading: boolean; error: string | null;
+}) {
+  return <span className="faint" role="status">
+    {error ? "数据已过时" : loading ? "更新中…" : automatic ? "自动刷新" : "查询快照 · 自动刷新已暂停"}
+    {lastUpdated && ` · 更新于 ${new Date(lastUpdated).toLocaleTimeString("zh-CN")}`}
+  </span>;
 }
 
 export function ErrorBanner({ error, onRetry }: { error: string; onRetry?: () => void }) {
@@ -131,6 +144,8 @@ export function ConfirmDialog({
   confirmKeyword,
   body,
   busy,
+  error,
+  confirmDisabled,
   onConfirm,
   onCancel,
 }: {
@@ -141,20 +156,60 @@ export function ConfirmDialog({
   confirmKeyword?: string;
   body: React.ReactNode;
   busy?: boolean;
+  error?: string | null;
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   const [typed, setTyped] = useState("");
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const cancelRef = useRef({ busy, onCancel });
+  cancelRef.current = { busy, onCancel };
   useEffect(() => {
     if (open) setTyped("");
   }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const target = dialogRef.current?.querySelector<HTMLElement>("input, button");
+    (target ?? dialogRef.current)?.focus();
+    // 提交按钮禁用时浏览器可能把焦点移到 body，仍需让 Escape 只作用于确认层。
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!cancelRef.current.busy) cancelRef.current.onCancel();
+    };
+    document.addEventListener("keydown", onEscape, true);
+    return () => {
+      document.removeEventListener("keydown", onEscape, true);
+      if (previous?.isConnected) previous.focus();
+    };
+  }, [open]);
+  useEffect(() => {
+    if (open && !busy && !dialogRef.current?.contains(document.activeElement)) {
+      dialogRef.current?.querySelector<HTMLElement>("input:not(:disabled), button:not(:disabled)")?.focus();
+    }
+  }, [busy, open]);
   if (!open) return null;
   const needKeyword = !!confirmKeyword;
   const ok = !needKeyword || typed === confirmKeyword;
   return (
-    <div className="dialog-backdrop" onClick={onCancel}>
-      <div className={`dialog${danger ? " danger" : ""}`} onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ marginTop: 0 }}>{title}</h3>
+    <div className="dialog-backdrop" onClick={() => { if (!busy) onCancel(); }}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
+        className={`dialog${danger ? " danger" : ""}`} onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); if (!busy) onCancel(); }
+          if (e.key === "Tab") {
+            const targets = [...(dialogRef.current?.querySelectorAll<HTMLElement>("input:not(:disabled), button:not(:disabled), [tabindex='0']") ?? [])];
+            const first = targets[0]; const last = targets[targets.length - 1];
+            if (!first) { e.preventDefault(); return; }
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+          }
+        }}>
+        <h3 id={titleId} style={{ marginTop: 0 }}>{title}</h3>
         <div className="muted" style={{ marginBottom: 14 }}>
           {body}
         </div>
@@ -163,9 +218,10 @@ export function ConfirmDialog({
             <div className="faint" style={{ marginBottom: 4 }}>
               输入 <code>{confirmKeyword}</code> 确认：
             </div>
-            <input className="input" style={{ width: "100%" }} value={typed} onChange={(e) => setTyped(e.target.value)} />
+            <input className="input" style={{ width: "100%" }} value={typed} disabled={busy} onChange={(e) => setTyped(e.target.value)} />
           </div>
         )}
+        {error && <div className="error-banner" role="alert">{error}</div>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button className="btn" onClick={onCancel} disabled={busy}>
             取消
@@ -173,7 +229,7 @@ export function ConfirmDialog({
           <button
             className={`btn ${danger ? "danger" : "primary"}`}
             onClick={onConfirm}
-            disabled={!ok || busy}
+            disabled={!ok || busy || confirmDisabled}
           >
             {busy ? "执行中…" : confirmText}
           </button>

@@ -76,7 +76,7 @@ function TopBar() {
         {error ? "数据已过时 · " : "更新于 "}{new Date(lastUpdated).toLocaleTimeString("zh-CN")}
       </span>}
       <span className="spacer" />
-      <button className="btn sm" onClick={reload} title="立即刷新监控数据">刷新</button>
+      <button className="btn sm" onClick={reload} title="立即刷新监控数据和当前任务视图">刷新</button>
       <label className="faint" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
         自动刷新
         <select className="input" value={interval} onChange={(e) => setInterval(Number(e.target.value) as RefreshInterval)}>

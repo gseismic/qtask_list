@@ -75,8 +75,8 @@ export function PushTaskDialog({
   };
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()}>
+    <div className="dialog-backdrop" onClick={() => { if (!busy) onClose(); }}>
+      <div className="dialog" role="dialog" aria-modal="true" aria-label="投递任务" onClick={(e) => e.stopPropagation()}>
         <h3 style={{ marginTop: 0 }}>投递任务 → {queue}</h3>
         <p className="faint">任务会进入真实队列，由在线 Worker 执行，并可能产生业务副作用。</p>
         <div style={{ display: "grid", gap: 10 }}>

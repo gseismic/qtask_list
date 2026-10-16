@@ -82,3 +82,10 @@
 - 结果文件：`PLAN-024-core-reliability-OUTCOME.md`
 - 设计文件：`docs/design/core-reliability-20261016-remediation.md`
 - 摘要：修复非 UI 核心审查确认的 11 项问题，并经三轮修复复查补齐响应丢失预算、历史文本与在线格式转换、指标预检、命名边界、owner 迁移与保留、恢复索引及心跳竞争、时钟偏差和外存失败预算。增加临时 Redis 与文件目录隔离、70 项回归；全量 206 passed，ruff、mypy、50 个 Python 源文件编译和 diff 检查通过。README 同步接口与升级边界。
+
+## 2026-10-16 10:22
+
+- 计划文件：`PLAN-025-dashboard-ux-remediation.md`
+- 结果文件：`PLAN-025-dashboard-ux-remediation-OUTCOME.md`
+- 设计文件：`docs/design/dashboard-20261016-ux-remediation.md`
+- 摘要：修复 UI 评审的 11 项刷新、详情字段、恢复范围、重放、分页竞态、停滞、告警反馈与窄屏问题；增加总览 namespace/名称筛选及折叠记忆、应用级采样、当前状态构成、新任务/血缘跳转与统一高级筛选。三轮复查补齐错误期间缓存、失焦 Escape、字面百分号路由、累计计数与存储故障。Python 217 passed、前端 15 passed、27 个隔离浏览器场景、ruff/mypy/构建/diff 检查通过；SPA 产物和使用说明已同步。

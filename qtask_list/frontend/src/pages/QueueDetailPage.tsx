@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import type { DiagnoseInfo, QueueStats, TaskRow } from "../types";
 import { STATE_KEYS, STATE_LABELS, type StateKey, statForState } from "../types";
@@ -16,15 +16,21 @@ const EMPTY_HINTS: Partial<Record<StateKey, string>> = {
   deadline_missed: "没有过期任务。任务超过执行截止时间（expire）会被标记到这里。",
 };
 
+function queueNameFromPath(pathname: string): string {
+  const encoded = pathname.slice("/queues/".length);
+  try { return decodeURIComponent(encoded); }
+  catch { return encoded; }
+}
+
 export function QueueDetailPage() {
-  const { reload } = useAppData();
-  const { name = "" } = useParams();
-  const queueName = decodeURIComponent(name);
+  const { queues, error, reload } = useAppData();
+  // 从原始路径解码一次，保留名称中的字面 %2F，避免路由参数的再次解码。
+  const { pathname } = useLocation();
+  const queueName = queueNameFromPath(pathname);
   const [params, setParams] = useSearchParams();
   const stateParam = (params.get("state") as StateKey) || "all";
 
-  const [stats, setStats] = useState<QueueStats | null>(null);
-  const [statsError, setStatsError] = useState<string | null>(null);
+  const stats = (queues?.find((queue) => queue.name === queueName) as unknown as QueueStats | undefined) ?? null;
   const [filters, setFilters] = useState<TaskFilters>({
     state: STATE_KEYS.includes(stateParam) ? stateParam : "all",
     search: "",
@@ -47,20 +53,15 @@ export function QueueDetailPage() {
     if (STATE_KEYS.includes(stateParam)) setFilters((f) => ({ ...f, state: stateParam }));
   }, [stateParam]);
 
-  const loadStats = async () => {
+  const loadDiagnose = async () => {
+    setOpError(null);
     try {
       const data = await api.diagnose(queueName);
-      setStats(data.stats);
-      setStatsError(null);
+      setDiagnose(data);
     } catch (e) {
-      setStatsError(e instanceof Error ? e.message : String(e));
+      setOpError(e instanceof Error ? e.message : String(e));
     }
   };
-
-  useEffect(() => {
-    loadStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queueName, reloadKey]);
 
   const badges = useMemo(() => {
     if (!stats) return [];
@@ -83,6 +84,7 @@ export function QueueDetailPage() {
   };
 
   const runOp = async (fn: () => Promise<unknown>) => {
+    if (busy) return;
     setBusy(true);
     setOpError(null);
     try {
@@ -98,6 +100,7 @@ export function QueueDetailPage() {
   };
 
   const totalCount = stats && filters.state !== "all" ? statForState(stats, filters.state) : null;
+  const cumulativeCount = ["completed", "failed", "skipped", "cancelled"].includes(filters.state);
 
   return (
     <div className="page">
@@ -120,7 +123,7 @@ export function QueueDetailPage() {
             onClick={() => setFilterState(b.state)}
             title={`查看 ${STATE_LABELS[b.state]}`}
           >
-            {b.state} {b.count}
+            {STATE_LABELS[b.state]} {b.count}
           </button>
         ))}
         {stats && (stats.active_workers > 0 || stats.stale_workers > 0) && (
@@ -130,8 +133,8 @@ export function QueueDetailPage() {
         )}
       </div>
 
-      {statsError && <ErrorBanner error={statsError} onRetry={loadStats} />}
-      {opError && <ErrorBanner error={opError} onRetry={() => setOpError(null)} />}
+      {error && <ErrorBanner error={error} onRetry={reload} />}
+      {opError && !confirm && <ErrorBanner error={opError} onRetry={() => setOpError(null)} />}
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
         <OpsMenu
@@ -141,7 +144,7 @@ export function QueueDetailPage() {
             { label: "drain 手动重试（retry → ready）", onClick: () => setConfirm("retry") },
             { label: "重放全部 DLQ", onClick: () => setConfirm("requeueDlq") },
             { label: "恢复失联 processing", onClick: () => setConfirm("recover") },
-            { label: "诊断", onClick: async () => setDiagnose(await api.diagnose(queueName)) },
+            { label: "诊断", onClick: loadDiagnose },
             { label: "清理 15 天前历史", onClick: () => setConfirm("cleanHistory") },
           ]}
         />
@@ -166,31 +169,37 @@ export function QueueDetailPage() {
               onClick={() => setFilterState(s)}
             >
               {STATE_LABELS[s]}
-              {count !== null && count > 0 && <span className={`cnt${hot ? " hot" : ""}`}>{count}</span>}
+              {count !== null && count > 0 && <span className={`cnt${hot ? " hot" : ""}`}
+                title={["completed", "failed", "skipped", "cancelled"].includes(s) ? "监控累计计数，历史保留期可能使可查询记录更少" : undefined}>{count}</span>}
             </button>
           );
         })}
       </div>
 
       <TaskFilterBar
+        showStateSelect={false}
         state={filters.state}
         onStateChange={setFilterState}
         search={filters.search}
         onSearchChange={(s) => setFilters((f) => ({ ...f, search: s }))}
+        action={filters.action}
+        onActionChange={(action) => setFilters((f) => ({ ...f, action }))}
         timeRange={{
           createdStart: filters.createdAfter ?? "",
           createdEnd: filters.createdBefore ?? "",
-          completedStart: "",
-          completedEnd: "",
+          completedStart: filters.completedAfter ?? "",
+          completedEnd: filters.completedBefore ?? "",
         }}
-        onTimeRangeChange={(t) => setFilters((f) => ({ ...f, createdAfter: t.createdStart, createdBefore: t.createdEnd }))}
+        onTimeRangeChange={(t) => setFilters((f) => ({ ...f, createdAfter: t.createdStart, createdBefore: t.createdEnd,
+          completedAfter: t.completedStart, completedBefore: t.completedEnd }))}
         autoRefresh={autoRefresh}
         onAutoRefreshChange={setAutoRefresh}
       />
 
       {totalCount !== null && (
         <div className="faint" style={{ marginBottom: 6 }}>
-          该状态共 {totalCount.toLocaleString("zh-CN")} 条
+          {cumulativeCount ? "该结果累计" : "当前该状态"} {totalCount.toLocaleString("zh-CN")} 条
+          {cumulativeCount && "；下面显示当前保留的任务记录"}
         </div>
       )}
 
@@ -202,6 +211,7 @@ export function QueueDetailPage() {
         onOpenTask={setOpenTask}
         reloadKey={reloadKey}
         autoRefresh={autoRefresh}
+        onPauseAutoRefresh={() => setAutoRefresh(false)}
         emptyHint={
           <div>
             <p>{EMPTY_HINTS[filters.state] ?? "该筛选下没有任务。"}</p>
@@ -248,15 +258,18 @@ export function QueueDetailPage() {
 
       {openTask?.task_id && (
         <TaskDrawer
+          key={openTask.task_id}
           taskId={openTask.task_id}
           stateHint={String(openTask._state ?? openTask.state ?? "")}
           onClose={() => setOpenTask(null)}
           onChanged={() => { setReloadKey((k) => k + 1); reload(); }}
+          onOpenTask={(taskId) => setOpenTask({ task_id: taskId })}
         />
       )}
 
       <ConfirmDialog
         open={confirm === "retry"}
+        error={opError}
         title="drain 手动重试"
         confirmText="执行"
         busy={busy}
@@ -266,6 +279,7 @@ export function QueueDetailPage() {
       />
       <ConfirmDialog
         open={confirm === "requeueDlq"}
+        error={opError}
         title="重放全部 DLQ"
         confirmText="重放"
         busy={busy}
@@ -275,6 +289,7 @@ export function QueueDetailPage() {
       />
       <ConfirmDialog
         open={confirm === "recover"}
+        error={opError}
         title="恢复失联 processing"
         confirmText="恢复"
         busy={busy}
@@ -284,6 +299,7 @@ export function QueueDetailPage() {
       />
       <ConfirmDialog
         open={confirm === "cleanHistory"}
+        error={opError}
         title="清理 15 天前历史"
         confirmText="清理"
         busy={busy}
@@ -293,6 +309,7 @@ export function QueueDetailPage() {
       />
       <ConfirmDialog
         open={confirm === "clear"}
+        error={opError}
         title={`清空队列 ${queueName}`}
         danger
         confirmKeyword={queueName}
@@ -304,6 +321,7 @@ export function QueueDetailPage() {
       />
       <ConfirmDialog
         open={confirm === "delete"}
+        error={opError}
         title={`删除队列 ${queueName}`}
         danger
         confirmKeyword={queueName}

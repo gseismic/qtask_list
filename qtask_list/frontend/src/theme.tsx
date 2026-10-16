@@ -4,8 +4,10 @@ type Theme = "light" | "dark";
 const KEY = "qtask.theme";
 
 function initialTheme(): Theme {
-  const saved = localStorage.getItem(KEY);
-  if (saved === "light" || saved === "dark") return saved;
+  try {
+    const saved = localStorage.getItem(KEY);
+    if (saved === "light" || saved === "dark") return saved;
+  } catch { /* 存储不可用时仍按系统主题打开后台。 */ }
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -19,7 +21,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem(KEY, theme);
+    try { localStorage.setItem(KEY, theme); } catch { /* 主题切换不依赖存储权限。 */ }
   }, [theme]);
 
   return (

@@ -971,20 +971,36 @@ class QueueAdmin:
                     }
         return None
 
-    def recover(self, queue_name: str, include_active: bool = False) -> Dict[str, int]:
+    def recover(
+        self, queue_name: str, include_active: bool = False, *, worker_id: str | None = None
+    ) -> Dict[str, int]:
+        """恢复队列或指定 Worker；精确范围仍在原子迁移时复核心跳。"""
+        if worker_id is not None and (
+            not isinstance(worker_id, str)
+            or not worker_id
+            or worker_id.strip() != worker_id
+            or len(worker_id.encode("utf-8")) > 256
+            or any(char in worker_id for char in ":*?[]")
+            or any(ord(char) < 32 for char in worker_id)
+        ):
+            raise ValueError("worker_id must be a non-empty identifier without colon or glob characters")
         self._smart_queue(queue_name)._assert_queue_namespace()
         legacy_processing = f"{queue_name}:processing"
-        if include_active:
+        if include_active and worker_id is None:
             recovered = self._drain_list_to_ready(legacy_processing, queue_name)
             skipped_legacy = 0
         else:
             recovered = 0
-            skipped_legacy = int(self.r.llen(legacy_processing))
+            skipped_legacy = int(self.r.llen(legacy_processing)) if worker_id is None else 0
 
         skipped = 0
         heartbeat_prefix = f"{queue_name}:worker:"
 
-        for key in self.processing_keys(queue_name, include_legacy=False):
+        keys = (
+            [f"{queue_name}:processing:{worker_id}"]
+            if worker_id is not None else self.processing_keys(queue_name, include_legacy=False)
+        )
+        for key in keys:
             worker_id = key.rsplit(":", 1)[-1]
             if not include_active and self.r.exists(f"{heartbeat_prefix}{worker_id}"):
                 skipped += int(self.r.llen(key))

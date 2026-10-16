@@ -57,6 +57,16 @@ export interface TaskRow {
   state?: string;
   status?: string;
   outcome?: string;
+  location?: string;
+  delay_reason?: string;
+  last_error?: unknown;
+  last_error_code?: string;
+  reason?: string;
+  reason_code?: string;
+  available_at?: number | string;
+  start_deadline_at?: number | string;
+  expires_at?: number | string;
+  payload_descriptor?: Record<string, unknown>;
   created_at?: number | string;
   updated_at?: number | string;
   started_at?: number | string;
@@ -82,6 +92,12 @@ export interface DiagnoseInfo {
   stats: QueueStats;
   workers: WorkerInfo[];
   suggestions: string[];
+}
+
+export interface TaskPageResult {
+  tasks: TaskRow[];
+  next_cursor?: string | null;
+  scan_limited?: boolean;
 }
 
 export const STATE_KEYS = [

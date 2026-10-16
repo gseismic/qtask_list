@@ -1,24 +1,19 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAppData } from "../appData";
-import { ALERT_RULES_DOC, clearResolved, resolveAlert } from "../alerts";
+import { ALERT_RULES_DOC, loadResolved } from "../alerts";
 import { EmptyState, ErrorBanner, Skeleton } from "../components/ui";
 import { fmtTime } from "../components/ui";
 
 export function AlertsPage() {
-  const { queues, alerts, error, loading, reload } = useAppData();
+  const { queues, alerts, error, loading, reload, resolveAlert, clearResolved } = useAppData();
   const [tab, setTab] = useState<"open" | "resolved">("open");
   const [showRules, setShowRules] = useState(false);
-  const [version, setVersion] = useState(0);
+  const [writeError, setWriteError] = useState<string | null>(null);
 
   const resolvedMap = useMemo(() => {
-    void version;
-    try {
-      return JSON.parse(localStorage.getItem("qtask.alerts.resolved.v1") || "{}") as Record<string, number>;
-    } catch {
-      return {};
-    }
-  }, [version, alerts]);
+    return loadResolved();
+  }, [alerts]);
 
   const resolvedKeys = Object.keys(resolvedMap);
 
@@ -27,6 +22,7 @@ export function AlertsPage() {
       <h1 className="page-title">告警中心</h1>
       <p className="page-desc">DLQ、无人消费、失败率、失联 Worker、积压、过期与 Redis 内存的聚合信号。</p>
       {error && <ErrorBanner error={error} onRetry={reload} />}
+      {writeError && <ErrorBanner error={writeError} />}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
         <div className="seg">
@@ -109,8 +105,8 @@ export function AlertsPage() {
                   <button
                     className="btn sm"
                     onClick={() => {
-                      resolveAlert(a.key);
-                      setVersion((v) => v + 1);
+                      try { resolveAlert(a.key); setWriteError(null); }
+                      catch { setWriteError("无法保存告警确认，请检查浏览器存储设置后重试该操作。"); }
                     }}
                   >
                     标记已处理
@@ -138,8 +134,8 @@ export function AlertsPage() {
             <button
               className="btn sm"
               onClick={() => {
-                clearResolved();
-                setVersion((v) => v + 1);
+                try { clearResolved(); setWriteError(null); }
+                catch { setWriteError("无法清空已处理记录，请检查浏览器存储设置后重试该操作。"); }
               }}
             >
               清空已处理记录

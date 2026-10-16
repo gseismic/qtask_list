@@ -185,6 +185,7 @@ admin.requeue_expired(
     "stockev:fetch", task_id="<id>", start_deadline_at="2026-09-21T16:00:00+00:00"
 )
 admin.recover("stockev:fetch")            # 安全恢复（仅 stale worker）
+admin.recover("stockev:fetch", worker_id="worker-01")  # 只恢复该失联 Worker，仍复核心跳
 admin.recover("stockev:fetch", include_active=True)  # 强制恢复活跃 Worker
 admin.delete_task("<task_id>")
 admin.delete_task("<task_id>", queue_name="stockev:fetch")

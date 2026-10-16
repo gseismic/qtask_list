@@ -8,6 +8,7 @@ export function WorkersPage() {
   const [confirm, setConfirm] = useState<{ queue: string; workerId: string; count: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [opError, setOpError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const online = (workers ?? []).filter((w) => w.active);
   const lost = (workers ?? []).filter((w) => !w.active);
@@ -17,11 +18,13 @@ export function WorkersPage() {
     mem?.used_memory && mem?.maxmemory && mem.maxmemory > 0 ? Math.round((mem.used_memory / mem.maxmemory) * 100) : null;
   const memDanger = mem?.status === "warning";
 
-  const recover = async (queue: string) => {
+  const recover = async (queue: string, workerId: string) => {
+    if (busy) return;
     setBusy(true);
     setOpError(null);
     try {
-      await api.recoverQueue(queue, false);
+      const result = await api.recoverQueue(queue, false, workerId);
+      setNotice(`Worker ${workerId}：已恢复 ${result.recovered} 条任务，跳过活跃任务 ${result.skipped_active} 条。`);
       setConfirm(null);
       reload();
     } catch (e) {
@@ -36,7 +39,8 @@ export function WorkersPage() {
       <h1 className="page-title">Worker 监控</h1>
       <p className="page-desc">Worker 心跳与失联恢复；Redis 内存水位。</p>
       {error && <ErrorBanner error={error} onRetry={reload} />}
-      {opError && <ErrorBanner error={opError} onRetry={() => setOpError(null)} />}
+      {opError && !confirm && <ErrorBanner error={opError} />}
+      {notice && <div className="success-banner" role="status">{notice}</div>}
 
       {workers && <div className="kpi-row">
         <KpiCard label="在线 Worker" value={online.length} />
@@ -133,6 +137,7 @@ export function WorkersPage() {
 
       <ConfirmDialog
         open={confirm !== null}
+        error={opError}
         title={`恢复失联 Worker ${confirm?.workerId ?? ""}`}
         confirmText="恢复"
         busy={busy}
@@ -141,8 +146,8 @@ export function WorkersPage() {
             将把该 Worker processing 中的 <b>{confirm?.count ?? 0}</b> 个任务移回主队列（队列 {confirm?.queue}）。
           </p>
         }
-        onCancel={() => setConfirm(null)}
-        onConfirm={() => confirm && recover(confirm.queue)}
+        onCancel={() => { setConfirm(null); setOpError(null); }}
+        onConfirm={() => confirm && recover(confirm.queue, confirm.workerId)}
       />
     </div>
   );

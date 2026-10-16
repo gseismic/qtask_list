@@ -2,30 +2,34 @@ import { useEffect, useRef, useState } from "react";
 
 export type RefreshInterval = 0 | 5 | 15 | 30;
 
-export function usePolling<T>(fn: () => Promise<T>, interval: RefreshInterval, deps: unknown[] = []) {
+export function usePolling<T>(
+  fn: () => Promise<T>, interval: RefreshInterval, deps: unknown[] = [], onSuccess?: (result: T) => void,
+) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const fnRef = useRef(fn);
   fnRef.current = fn;
+  const successRef = useRef(onSuccess);
+  successRef.current = onSuccess;
   const erroredRef = useRef(false);
-  const tickRef = useRef(0);
 
   useEffect(() => {
     let stopped = false;
     let timer: number | undefined;
+    setLoading(true);
 
     const run = async () => {
       try {
         const result = await fnRef.current();
         if (stopped) return;
+        successRef.current?.(result);
         setData(result);
         setLastUpdated(Date.now());
         setError(null);
         if (erroredRef.current) {
           erroredRef.current = false;
-          tickRef.current = 0;
         }
       } catch (e) {
         if (stopped) return;
@@ -55,7 +59,7 @@ export function usePolling<T>(fn: () => Promise<T>, interval: RefreshInterval, d
       if (timer) window.clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interval, tickRef.current, ...deps]);
+  }, [interval, ...deps]);
 
   return { data, error, loading, lastUpdated };
 }

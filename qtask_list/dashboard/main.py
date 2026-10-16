@@ -79,6 +79,7 @@ class PushTaskRequest(BaseModel):
 class RecoverRequest(BaseModel):
     include_active: bool = False
     confirm_active: bool = False
+    worker_id: Optional[str] = None
 
 
 class ClearQueueRequest(BaseModel):
@@ -222,6 +223,7 @@ def api_queue_tasks(
     name: str,
     state: QueueState = Query(QueueState.all, description="Task state"),
     search: Optional[str] = Query(None, description="Search in task data"),
+    action: Optional[str] = Query(None, description="Exact action filter"),
     limit: int = Query(50, ge=1, le=500),
     cursor: Optional[str] = Query(None, description="Search cursor"),
     created_after: Optional[float] = Query(None, description="Unix timestamp"),
@@ -230,12 +232,12 @@ def api_queue_tasks(
     completed_before: Optional[float] = Query(None, description="Unix timestamp"),
     _auth: None = Depends(require_auth),
 ):
-    if search or state in {QueueState.all, QueueState.history, QueueState.completed,
+    if action or search or state in {QueueState.all, QueueState.history, QueueState.completed,
                  QueueState.failed, QueueState.skipped, QueueState.cancelled,
                  QueueState.retry_wait, QueueState.deadline_missed, QueueState.expired}:
         try:
             page = admin.search_tasks_page(
-                [name], state=state, search=search, limit=limit, cursor=cursor,
+                [name], state=state, action=action, search=search, limit=limit, cursor=cursor,
                 created_after=created_after, created_before=created_before,
                 completed_after=completed_after, completed_before=completed_before,
             )
@@ -349,7 +351,10 @@ def api_recover_queue(
 ):
     if request.include_active and not request.confirm_active:
         raise HTTPException(status_code=400, detail="强制恢复活跃 Worker 需要 confirm_active=true")
-    return admin.recover(name, include_active=request.include_active)
+    try:
+        return admin.recover(name, include_active=request.include_active, worker_id=request.worker_id)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/api/queue/{name}/clear")

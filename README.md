@@ -277,6 +277,7 @@ admin.requeue_expired(
 )
 admin.move_retry("stockev:day-kline:fetch")
 admin.recover("stockev:day-kline:fetch")  # 默认只恢复 stale worker
+admin.recover("stockev:day-kline:fetch", worker_id="worker-01")  # 仅恢复指定失联 Worker
 
 # 清理、删除和诊断
 admin.clear_queue("stockev:day-kline:fetch")  # 默认保留 processing 与历史
@@ -292,6 +293,8 @@ admin.diagnose("stockev:day-kline:fetch")
 `expired` 是 `deadline_missed` 的兼容别名：投递时通过 `TaskSpec.start_deadline_at`（或兼容参数 `expire_seconds`）设定最晚开始时间，任务未完成且超过该时间后会出现在过期视图中；`clean-history` / `clean_expired()` 表示历史记录 TTL 清理，二者不是同一件事。
 
 `skipped` 表示任务在 begin-attempt 时已过 `start_deadline_at`，被跳过未执行；`cancelled` 表示被 supersede 或管理操作取消。
+
+`QueueAdmin.recover(..., worker_id=...)` 只处理该 Worker 的 processing，仍在迁移时原子复核心跳；其他失联 Worker 和 legacy processing 不在该范围内。省略该参数保持队列级恢复行为。请使用 `list_workers()` 返回的标识；指定标识不得为空、包含冒号、Redis glob 字符或控制字符，最长 256 个 UTF-8 字节。
 
 跨队列搜索使用 `QueueAdmin.search_tasks_page(queues=None, search=..., limit=50, cursor=...)`；`queues=None` 在第一页固定当前队列集合，后续游标沿该快照翻页。也可显式传入队列列表。响应包含 `tasks`、`next_cursor`、`has_more`、`scan_limited`；默认每页扫描预算为 5000 条，达到上限时使用游标继续检索。Dashboard 固定使用这个预算。`all` 包含 Redis 中仍保留的终态历史，SQLite 归档不在该搜索范围。`QueueAdmin.list_tasks()` 的筛选扫描最多遍历 5000 条，超过后报错并提示改用分页接口。
 
@@ -557,18 +560,22 @@ Dashboard 是 React 单页应用（构建产物已随包发布，无需 Node 环
 
 | 页面 | 路由 | 用途 |
 |------|------|------|
-| 总览 | `/` | 全局 KPI（活跃队列/总待处理/合计估计速率/异常队列）+ 按 namespace 分组的运行矩阵（待处理/浏览器观测期完成/速率/ETA/异常）+ 最新告警摘要；观测比不是批次完成率 |
+| 总览 | `/` | namespace/名称筛选、当前范围 KPI、分组运行矩阵与告警摘要；色条展示当前排队/执行/延迟/旧重试构成，浏览器观测完成量单列展示；筛选与折叠记忆在本浏览器 |
 | 队列 | `/queues` | 队列卡片、筛选与搜索；进入详情做操作 |
 | 队列详情 | `/queues/:name` | 完整状态 Tabs（ready/processing/retry/retry_wait/delay/dlq/completed/failed/skipped/cancelled/deadline_missed/history）、任务搜索与时间筛选、诊断、手工投递、队列级操作（drain retry/重放 DLQ/恢复 stale/清理历史/清空/删除） |
 | 任务 | `/tasks` | 跨队列搜索 task_id/action/payload，并可按 action 与发布时间/完成时间筛选；task_id 精确命中直接打开详情抽屉 |
-| 任务详情抽屉 | 表格内点击 | 任务时间线、payload/result 懒加载（支持外存/压缩还原）、血缘（replay_of/replayed_by）、按状态显隐的重放/重入队/删除 |
-| Worker | `/workers` | 心跳与失联标记、失联任务一键恢复、Redis 内存水位 |
+| 任务详情抽屉 | 表格内点击 | 最新状态、失败原因、重试时间、payload/result 懒加载、可跳转血缘；failed/skipped/cancelled 可更新已过期截止后重放，成功可直接查看新任务；completed 不提供重放 |
+| Worker | `/workers` | 心跳与失联标记、单个 Worker 的失联任务恢复、Redis 内存水位 |
 | 告警 | `/alerts` | DLQ 堆积、ready 无 Worker、累计失败率偏高、stale worker、ready 积压、任务过期、Worker 失联、Redis 内存超限的聚合列表；可定位跳转、标记已处理 |
 | 教程 | `/guide` | 说人话的概念手册（状态流转、关键数字、去重、操作速查表） |
 
 其他能力：白天/黑夜双主题（记忆在浏览器）、自动刷新（5s/15s/30s/关，出错自动降频 30s）、危险操作（清空/删除）需输入队列名二次确认、未登录自动跳转 `/login`。
 
-总览的完成量和速率由当前浏览器采样，至少观测 30 秒后才显示速率；没有调度器提供的“本轮期望量”时无法计算批次完成百分比。只有 ready 积压、在线 Worker 且连续 2 分钟无完成时才显示“疑似停滞”；纯延迟队列显示“等待调度”。
+总览的完成量和速率由本次访问的浏览器采样，在 SPA 页面间切换会保留，完整重新加载页面后重新采样。至少观测 30 秒后显示速率；没有调度器提供的“本轮期望量”时无法计算批次完成百分比。只有持续 ready 积压、在线 Worker 且连续 2 分钟无完成时才显示“疑似停滞”；空闲、无 Worker、完成进展或超过 60 秒的观测中断会重置停滞计时。未知旧指标显示为未知。
+
+顶栏刷新作用于全局监控和当前任务视图。任务列表默认按顶栏间隔更新第一页，加载更多时自动取消该列表的自动刷新以保留当前位置；手动刷新第一页或重新勾选后可查看最新结果。列表和详情显示各自最近成功更新时间，请求失败时保留当前查询的旧数据并标明过时。全局与单队列任务均支持精确 action 和发布/完成时间筛选。
+
+告警“已处理”只保存在本浏览器，确认后立即更新；完整重新加载页面后持续故障的确认仍有效。监测到故障恢复后再复发时重新提示。未打开后台期间发生的恢复与复发无法由浏览器单独判断，多人共享或后台持久化告警仍需要服务端模型。
 
 远程查看时应启用登录，并显式监听远程地址：
 
@@ -612,6 +619,7 @@ uvicorn qtask_list.dashboard.main:app --host 0.0.0.0 --port 8765
 cd qtask_list/frontend
 pnpm install
 pnpm dev         # 开发模式，代理 /api 到本机 8765 的后端
+pnpm test        # 状态、重放条件、采样与告警的前端逻辑回归
 pnpm build       # 构建并输出到 qtask_list/dashboard/static/spa/，随包提交
 ```
 

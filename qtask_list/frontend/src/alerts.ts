@@ -26,28 +26,44 @@ const READY_THRESHOLD = 10000;
 const READY_SUSTAIN_MS = 10 * 60 * 1000;
 const FAILED_RATIO = 0.05;
 
-const RESOLVED_KEY = "qtask.alerts.resolved.v1";
+const RESOLVED_KEY = "qtask.alerts.resolved.v2";
+const LEGACY_RESOLVED_KEY = "qtask.alerts.resolved.v1";
+interface Resolution { at: number; active: boolean }
 
-function loadResolved(): Record<string, number> {
+function loadResolutions(): Record<string, Resolution> {
   try {
-    return JSON.parse(localStorage.getItem(RESOLVED_KEY) || "{}");
+    const stored = localStorage.getItem(RESOLVED_KEY);
+    const parsed: unknown = JSON.parse(stored ?? localStorage.getItem(LEGACY_RESOLVED_KEY) ?? "{}");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const entries: Array<[string, Resolution]> = [];
+    for (const [key, value] of Object.entries(parsed)) {
+      if (!stored && typeof value === "number" && Number.isFinite(value)) entries.push([key, { at: value, active: true }]);
+      else if (value && typeof value === "object" && typeof value.at === "number" && Number.isFinite(value.at)) {
+        entries.push([key, { at: value.at, active: value.active === true }]);
+      }
+    }
+    return Object.fromEntries(entries);
   } catch {
     return {};
   }
 }
 
-function saveResolved(map: Record<string, number>) {
+function saveResolved(map: Record<string, Resolution>) {
   localStorage.setItem(RESOLVED_KEY, JSON.stringify(map));
 }
 
 export function resolveAlert(key: string) {
-  const map = loadResolved();
-  map[key] = Date.now();
+  const map = loadResolutions();
+  map[key] = { at: Date.now(), active: true };
   saveResolved(map);
 }
 
 export function clearResolved() {
-  localStorage.removeItem(RESOLVED_KEY);
+  saveResolved({});
+}
+
+export function loadResolved(): Record<string, number> {
+  return Object.fromEntries(Object.entries(loadResolutions()).map(([key, value]) => [key, value.at]));
 }
 
 interface FiringState {
@@ -166,16 +182,24 @@ export class AlertEngine {
       });
     }
 
-    const resolved = loadResolved();
+    this.expireStale(queues, workers, health, now);
+    const resolved = loadResolutions();
+    let changed = false;
+    for (const [key, resolution] of Object.entries(resolved)) {
+      if (resolution.active && !this.firing.has(key)) {
+        resolution.active = false;
+        changed = true;
+      }
+    }
+    // 告警恢复不因本地存储不可写而使整页监控失败；手工确认仍显式反馈写入失败。
+    if (changed) { try { saveResolved(resolved); } catch { /* 下次观测重试保存。 */ } }
     const alerts: AlertItem[] = [];
     for (const [key, state] of this.firing.entries()) {
       if (now - state.since < state.delayMs) continue;
-      const resolvedAt = resolved[key];
-      if (resolvedAt && resolvedAt > state.since) continue;
+      if (resolved[key]?.active) continue;
       alerts.push({ ...state.alert, firstSeen: state.since });
     }
 
-    this.expireStale(queues, workers, health, now);
     alerts.sort((a, b) => {
       const rank = (s: Severity) => (s === "danger" ? 0 : 1);
       return rank(a.severity) - rank(b.severity) || a.firstSeen - b.firstSeen;
