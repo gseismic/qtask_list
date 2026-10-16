@@ -39,6 +39,7 @@ from .state import (
     ENQUEUE_V2_LUA,
     FAIL_TASK_LUA,
     MOVE_DUE_DELAY_LUA,
+    REGISTER_PROCESSING_KEY_LUA,
     RELEASE_LEASE_LUA,
     RENEW_LEASE_LUA,
     REPLAY_TASK_LUA,
@@ -134,6 +135,9 @@ class SmartQueue:
         self.supersede_prefix = f"{self.base}:supersede:"
         self.lease_prefix = f"{self.base}:lease:"
         self.registry_key = "qtask:queues"
+        self.worker_registry_key = f"qtask:workers:{self.base}"
+        self.processing_registry_key = f"qtask:processing:{self.base}"
+        self._processing_key_managed_by_worker = False
         self.metrics_key = f"qtask:metrics:{self.base}"
         self.deadline_key = f"qtask:deadline:{self.base}"
         self.storage_gc_key = STORAGE_GC_KEY
@@ -284,6 +288,19 @@ class SmartQueue:
             if "qtask queue namespace conflict:" in str(exc):
                 raise ValueError(str(exc)) from exc
             raise
+
+    def _register_processing_key(self) -> None:
+        """领取前登记自定义 processing key；Worker key 由 Worker 注册表覆盖。"""
+        if self.processing == self.default_processing or self._processing_key_managed_by_worker:
+            return
+        self.r.eval(
+            REGISTER_PROCESSING_KEY_LUA,
+            1,
+            self.processing_registry_key,
+            self.base,
+            self.clock.now(),
+            self.processing,
+        )
 
     # ==================== Enqueue ====================
 
@@ -615,6 +632,7 @@ class SmartQueue:
     ) -> TaskClaim | None:
         """阻塞领取并原子开始一次 attempt。"""
         self._assert_queue_namespace()
+        self._register_processing_key()
         while True:
             if _stop_requested is not None and _stop_requested():
                 return None
@@ -634,6 +652,7 @@ class SmartQueue:
     def pop_claim_no_wait(self) -> TaskClaim | None:
         """非阻塞领取并原子开始一次 attempt。"""
         self._assert_queue_namespace()
+        self._register_processing_key()
         while True:
             try:
                 raw_message = self.r.rpoplpush(self.queue, self.processing)
@@ -1267,7 +1286,13 @@ class SmartQueue:
         return count
 
     def processing_keys(self, include_legacy: bool = True) -> List[str]:
-        keys = set(self.r.scan_iter(f"{self.base}:processing:*"))
+        keys = set(self.r.zrange(self.processing_registry_key, 0, -1))
+        keys.update(
+            f"{self.base}:processing:{worker_id}"
+            for worker_id in self.r.zrange(self.worker_registry_key, 0, -1)
+        )
+        if self.processing != self.default_processing:
+            keys.add(self.processing)
         if include_legacy:
             keys.add(self.default_processing)
         return sorted(str(key) for key in keys)

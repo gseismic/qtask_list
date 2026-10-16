@@ -130,6 +130,7 @@ class Worker:
         pipe.set(self._heartbeat_key, str(now), ex=self.heartbeat_ttl)
         pipe.zadd(self._worker_registry_key, {self.worker_id: now})
         pipe.execute()
+        self.queue._processing_key_managed_by_worker = True
 
     def _cleanup_worker_state(self) -> None:
         if self.queue.r.llen(self.queue.processing) == 0:

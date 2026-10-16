@@ -708,6 +708,107 @@ def test_recovery_restores_deadline_observation(isolated_redis, use_admin):
     assert isolated_redis.zscore(q.deadline_key, task_id) is not None
 
 
+@pytest.mark.parametrize("terminal", ["ack", "fail"])
+def test_custom_processing_key_is_counted_until_terminal(isolated_redis, terminal):
+    q = SmartQueue(
+        redis_client=isolated_redis,
+        queue_name="review",
+        processing_key="review:processing:custom",
+    )
+    task_id = q.enqueue(TaskSpec("x", {})).task_id
+    claim = q.pop_claim_no_wait()
+    assert claim is not None
+
+    admin = QueueAdmin(redis_client=isolated_redis)
+    assert isolated_redis.zrange(q.processing_registry_key, 0, -1) == [q.processing]
+    assert admin.processing_keys(q.base, include_legacy=False) == [q.processing]
+    assert admin.queue_stats(q.base)["processing"] == 1
+    assert [row["task_id"] for row in admin.list_tasks(q.base, state="processing")] == [task_id]
+    assert q.get_stats()["processing"] == 1
+
+    if terminal == "ack":
+        assert q.ack(claim.raw_message)
+    else:
+        assert q.fail(claim.raw_message, "permanent failure", permanent=True)
+
+    stats = admin.queue_stats(q.base)
+    assert stats["processing"] == 0
+    assert stats["dlq"] == (1 if terminal == "fail" else 0)
+    assert q.get_stats()["processing"] == 0
+
+
+def test_admin_recovers_custom_processing_after_consumer_exit_without_scanning(
+    isolated_redis, monkeypatch
+):
+    q = SmartQueue(
+        redis_client=isolated_redis,
+        queue_name="review",
+        processing_key="review:processing:custom",
+    )
+    q.enqueue(TaskSpec("x", {}))
+    assert q.pop_claim_no_wait() is not None
+    admin = QueueAdmin(redis_client=isolated_redis)
+
+    def unexpected_scan(*args, **kwargs):
+        pytest.fail("自定义 processing 管理不应扫描 Redis 键空间")
+
+    monkeypatch.setattr(isolated_redis, "scan_iter", unexpected_scan)
+    monkeypatch.setattr(isolated_redis, "scan", unexpected_scan)
+    assert admin.queue_stats(q.base)["processing"] == 1
+    assert admin.processing_keys(q.base, include_legacy=False) == [q.processing]
+    result = admin.recover(q.base)
+    assert result["recovered"] == 1
+    assert isolated_redis.llen(q.processing) == 0
+    assert isolated_redis.llen(q.queue) == 1
+    assert admin.queue_stats(q.base)["processing"] == 0
+
+
+def test_custom_processing_key_is_registered_before_waiting(isolated_redis, monkeypatch):
+    q = SmartQueue(
+        redis_client=isolated_redis,
+        queue_name="review",
+        processing_key="review:processing:custom",
+    )
+    original = isolated_redis.brpoplpush
+
+    def stop_after_registration(source, destination, timeout):
+        assert isolated_redis.zscore(q.processing_registry_key, q.processing) is not None
+        return None
+
+    monkeypatch.setattr(isolated_redis, "brpoplpush", stop_after_registration)
+    assert q.pop_claim(timeout=0) is None
+    monkeypatch.setattr(isolated_redis, "brpoplpush", original)
+
+
+def test_processing_registry_type_conflict_does_not_move_task(isolated_redis):
+    q = SmartQueue(
+        redis_client=isolated_redis,
+        queue_name="review",
+        processing_key="review:processing:custom",
+    )
+    q.enqueue(TaskSpec("x", {}))
+    isolated_redis.set(q.processing_registry_key, "wrong type")
+    with pytest.raises(redis.ResponseError, match="qtask key type conflict"):
+        q.pop_claim_no_wait()
+    assert isolated_redis.llen(q.queue) == 1
+    assert isolated_redis.llen(q.processing) == 0
+
+
+def test_delete_queue_removes_custom_processing_registry(isolated_redis):
+    q = SmartQueue(
+        redis_client=isolated_redis,
+        queue_name="review",
+        processing_key="review:processing:custom",
+    )
+    q.enqueue(TaskSpec("x", {}))
+    assert q.pop_claim_no_wait() is not None
+    assert isolated_redis.exists(q.processing_registry_key) == 1
+
+    QueueAdmin(redis_client=isolated_redis).delete_queue(q.base)
+    assert isolated_redis.exists(q.processing_registry_key) == 0
+    assert isolated_redis.exists(q.processing) == 0
+
+
 def test_admin_resolves_retry_wait_and_completed_all_view(isolated_redis):
     """派生状态和已经离开容器的历史任务仍能还原 payload。"""
     q = SmartQueue(redis_client=isolated_redis, queue_name="review", retry_backoff_base=0)

@@ -1,0 +1,13 @@
+{
+  "version": "WORKTREE",
+  "baseline": "3ff689706e788264b02839c4e2db9bd8a4644d50",
+  "task_location": "processing",
+  "redis_processing_length": 1,
+  "queue_processing_count": 1,
+  "current_admin_processing_count": 0,
+  "baseline_admin_processing_count": 1,
+  "current_workers": [],
+  "baseline_worker_ids": [
+    "custom"
+  ]
+}

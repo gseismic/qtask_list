@@ -191,7 +191,7 @@ q.get_stats()      # 返回 queue/processing/retry/retry_wait/dlq/delay 等计�
 
 **关键设计决策：**
 
-- `pop()` 使用 `BRPOPLPUSH`（非 `BLPOP`），取任务的同时推入 `processing` 队列。Worker 使用带 heartbeat 的专属 processing key，只自动恢复已失联 Worker 的任务。
+- `pop()` 使用 `BRPOPLPUSH`（非 `BLPOP`），取任务的同时推入 `processing` 队列。Worker 使用带 heartbeat 的专属 processing key，只自动恢复已失联 Worker 的任务。直接使用 `SmartQueue(processing_key=...)` 时，领取路径会登记该 key，管理统计与队列级恢复可找到它；这种消费者没有 Worker heartbeat，执行恢复前应先确认消费者已停止。
 - Lua 只填充运行元数据，业务 JSON 由 Python 保真序列化；inline、压缩和外存模式均保留空数组、64 位整数与浮点值。
 - 领取阶段 Redis 响应丢失后，Worker 会恢复本地未登记消息；handler 尚未准入的 begin 不占用执行预算。handler 完成后的结算暂时失败会持续重试结算并保留续租，不重复运行 handler。已经发生的 payload 读取失败仍消耗 attempt。
 - 重试退避：`fail()` 未耗尽重试次数时按 `retry_backoff_base * 2^(attempt-1)`（±10% 抖动，上限 `retry_backoff_max`）写入 delay ZSET，到点由 `move_delay()` 迁回主队列。`QueueAdmin.queue_stats()` 从状态转换计数读取 `retry_wait`；该值是 `delay` 的子集。V1 retry List 仅由 `move_retry()` 兼容迁移。

@@ -48,7 +48,7 @@ def cleanup(client):
     for key in client.scan_iter("qtask_dash_test:*"):
         client.delete(key)
     for pattern in ("qtask:metrics:qtask_dash_test:*", "qtask:deadline:qtask_dash_test:*",
-                    "qtask:workers:qtask_dash_test:*"):
+                    "qtask:workers:qtask_dash_test:*", "qtask:processing:qtask_dash_test:*"):
         for key in client.scan_iter(pattern):
             client.delete(key)
     for queue in client.zrange("qtask:queues", 0, -1):
@@ -212,6 +212,7 @@ def test_dashboard_recover_skips_active_worker(client, r):
     r.lpush(f"{queue}:processing", make_msg("legacy"))
     r.lpush(f"{queue}:processing:active", make_msg("active"))
     r.lpush(f"{queue}:processing:stale", make_msg("stale"))
+    r.zadd(f"qtask:workers:{queue}", {"active": time.time(), "stale": time.time()})
     r.set(f"{queue}:worker:active", "1", ex=60)
 
     response = client.post(f"/api/queue/{queue}/recover", json={"include_active": False})
@@ -457,6 +458,21 @@ def test_dashboard_queue_stats_includes_completed_failed(client, r):
     assert stats["failed"] == 1
     # pending should not be counted as completed or failed
     assert stats["completed"] + stats["failed"] <= stats["history"]
+
+
+def test_dashboard_queue_stats_includes_custom_processing_key(client, r):
+    queue = "qtask_dash_test:custom-processing"
+    q = SmartQueue(
+        redis_client=r,
+        queue_name=queue,
+        processing_key=f"{queue}:processing:custom",
+    )
+    q.enqueue(TaskSpec("custom", {}))
+    assert q.pop_claim_no_wait() is not None
+
+    response = client.get(f"/api/queue/{queue}")
+    assert response.status_code == 200
+    assert response.json()["stats"]["processing"] == 1
 
 
 def test_dashboard_queue_stats_supports_legacy_string_history(client, r):

@@ -78,6 +78,7 @@ class TestCLI:
         r.lpush("stockev_list:status_bad", make_msg("status-bad"))
         r.lpush("stockev_list:status_ok", make_msg("status-ok"))
         r.set("stockev_list:status_ok:worker:live", str(time.time()), ex=120)
+        r.zadd("qtask:workers:stockev_list:status_ok", {"live": time.time()})
         r.lpush("testns:status_other", make_msg("status-other"))
 
         result = runner.invoke(app, ["status", "--namespace", "stockev_list", "--problems-only", "--json"])
@@ -139,6 +140,7 @@ class TestCLI:
 
     def test_peek_processing_reads_worker_specific_key(self, runner, r):
         queue = "stockev_list:processing_peek"
+        r.zadd(f"qtask:workers:{queue}", {"worker-1": time.time()})
         r.lpush(f"{queue}:processing:worker-1", make_msg("proc-1", {"action": "work"}))
 
         result = runner.invoke(app, ["peek", queue, "--state", "processing", "--json"])
@@ -225,6 +227,7 @@ class TestCLI:
         r.lpush(f"{queue}:processing", make_msg("legacy"))
         r.lpush(f"{queue}:processing:active", make_msg("active"))
         r.lpush(f"{queue}:processing:stale", make_msg("stale"))
+        r.zadd(f"qtask:workers:{queue}", {"active": time.time(), "stale": time.time()})
         r.set(f"{queue}:worker:active", "1", ex=60)
 
         result = runner.invoke(app, ["recover", queue])

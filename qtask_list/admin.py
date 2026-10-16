@@ -24,6 +24,7 @@ from .models import (
     TaskSpec,
 )
 from .queue import SmartQueue
+from .state import PRUNE_WORKER_LUA
 from .storage import RemoteStorage
 
 
@@ -125,6 +126,9 @@ class QueueAdmin:
     ) -> Dict[str, int]:
         workers = self.list_workers(queue_name) if workers is None else workers
         processing_keys = {worker["processing_key"] for worker in workers}
+        processing_keys.update(
+            str(key) for key in self.r.zrange(f"qtask:processing:{queue_name}", 0, -1)
+        )
         processing_keys.add(f"{queue_name}:processing")
         metric_values = self.r.hmget(
             f"qtask:metrics:{queue_name}",
@@ -227,39 +231,36 @@ class QueueAdmin:
         return {"scanned": scanned, "deadlines": len(deadlines), "retry_wait": retry_wait}
 
     def processing_keys(self, queue_name: str, include_legacy: bool = True) -> List[str]:
-        keys = set(self.r.scan_iter(f"{queue_name}:processing:*"))
+        keys = {
+            str(key) for key in self.r.zrange(f"qtask:processing:{queue_name}", 0, -1)
+        }
+        keys.update(
+            f"{queue_name}:processing:{worker_id}"
+            for worker_id in self.r.zrange(f"qtask:workers:{queue_name}", 0, -1)
+        )
         if include_legacy:
             keys.add(f"{queue_name}:processing")
         return sorted(keys)
 
     def list_workers(self, queue_name: Optional[str] = None) -> List[Dict[str, Any]]:
-        if time.monotonic() - self._legacy_worker_discovered_at >= 3600:
-            legacy: set[tuple[str, str]] = set()
-            for key in self.r.scan_iter("*:worker:*"):
-                queue, worker_id = key.rsplit(":worker:", 1)
-                legacy.add((queue, worker_id))
-            for key in self.r.scan_iter("*:processing:*"):
-                queue, worker_id = key.rsplit(":processing:", 1)
-                legacy.add((queue, worker_id))
-            self._legacy_worker_cache = legacy
-            self._legacy_worker_discovered_at = time.monotonic()
-
+        """按注册表读取 Worker，移除既无心跳也无待恢复任务的失效注册项。"""
         names = [queue_name] if queue_name else self.queue_names()
-        identifiers = set(self._legacy_worker_cache)
+        identifiers: set[tuple[str, str]] = set()
         for queue in names:
             for worker_id in self.r.zrange(f"qtask:workers:{queue}", 0, -1):
                 identifiers.add((queue, str(worker_id)))
 
         workers: List[Dict[str, Any]] = []
         for queue, worker_id in sorted(identifiers):
-            if queue_name and queue != queue_name:
-                continue
             heartbeat_key = f"{queue}:worker:{worker_id}"
             processing_key = f"{queue}:processing:{worker_id}"
             raw_seen = self.r.get(heartbeat_key)
             processing = int(self.r.llen(processing_key))
             if raw_seen is None and processing == 0:
-                self.r.zrem(f"qtask:workers:{queue}", worker_id)
+                self.r.eval(
+                    PRUNE_WORKER_LUA, 3,
+                    heartbeat_key, processing_key, f"qtask:workers:{queue}", worker_id,
+                )
                 continue
             workers.append({
                 "queue": queue,
@@ -1171,6 +1172,7 @@ class QueueAdmin:
         keys_to_delete.append(f"qtask:metrics:{queue_name}")
         keys_to_delete.append(f"qtask:deadline:{queue_name}")
         keys_to_delete.append(f"qtask:workers:{queue_name}")
+        keys_to_delete.append(f"qtask:processing:{queue_name}")
 
         if keys_to_delete:
             deleted_keys += int(self.r.delete(*keys_to_delete) or 0)

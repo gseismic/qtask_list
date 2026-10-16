@@ -988,6 +988,26 @@ CHECK_QUEUE_NAMESPACE_LUA = (
 )
 
 
+REGISTER_PROCESSING_KEY_LUA = (
+    _KEY_TYPES_LUA
+    + "assert_key_type('qtask:queues', 'zset')\n"
+    + _QUEUE_NAMESPACE_LUA
+    + r"""
+assert_key_type(KEYS[1], 'zset')
+assert_queue_namespace(ARGV[1])
+redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3])
+return 1
+"""
+)
+
+PRUNE_WORKER_LUA = r"""
+if redis.call('EXISTS', KEYS[1]) == 0 and redis.call('LLEN', KEYS[2]) == 0 then
+    return redis.call('ZREM', KEYS[3], ARGV[1])
+end
+return 0
+"""
+
+
 def _guard_key_types(
     script: str,
     types: dict[int, str],
