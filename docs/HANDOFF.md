@@ -1,121 +1,103 @@
 # 交接文档（HANDOFF）
 
-- 更新时间：2026-09-21 17:10（Asia/Shanghai）
-- 当前基线：PLAN-017 React 管理后台已实施（见 docs/dev/INDEX.md）
-- 交接范围：qtask_list V2 核心、管理后台、前端、测试、文档、stockev 示例，以及
-  管理后台 UI 重设计设计稿（本轮新工作）
-- 工作树保护：`AGENTS.md` 是用户已有未提交修改，始终不修改、不暂存、不提交
+- 更新时间：2026-10-16 12:23（Asia/Shanghai）
+- 文档模型：Codex / model-unknown（环境声明基于 GPT-6，未公开具体模型 ID）
+- 交接依据代码基线：2722fbcfd10f5784fa19b669bba1f5fe21a69535（main，当时与 origin/main 同步）
+- 最近浏览器测试基线：8cea280c9007d4e924d5705632c6685a80d53da1
+- 交接目的：将 Dashboard 浏览器测试确认的两个问题交给后续修复者
+- 工作树保护：AGENTS.md 当前有用户未提交修改；本次未修改、未暂存该文件
 
 ## 1. 项目背景
 
-qtask_list 是只依赖 Redis 的分布式任务队列库，面向股票数据采集的批量回补、7×24
-定时抓取和动态新闻列表。库负责可靠执行、状态转换和重试；调度策略、幂等落库和业务
-持久化由使用方负责。
+qtask_list 是基于 Redis 的分布式任务队列库，当前版本为 0.2.0。队列提供者、Worker 和管理后台共享 Redis 中的队列与任务状态；项目保留 V1 队列/任务的兼容发现和读取路径。
 
-V2（版本 `0.2.0`）将业务 payload 与运行元数据分离：`TaskSpec` 描述 action、payload、
-身份键、调度和截止时间；V2 信封支持 inline/zstd/external；Redis Lua 状态机维护
-attempt、deadline、outcome、location、replay 血缘和 live identity。V1 信封、旧 retry
-List、`expires_at`/`_retry` 仍可双读或安全降级。
+管理后台由 FastAPI 提供 API 和 SPA 托管，前端源码位于 qtask_list/frontend/，使用 React、TypeScript、Vite 和 pnpm；运行时静态资源位于 qtask_list/dashboard/static/spa/。队列发现及管理逻辑集中在 qtask_list/admin.py，页面 API 路由位于 qtask_list/dashboard/main.py。
 
-管理侧由三部分复用同一套 `QueueAdmin` 语义：Typer CLI（`qtask_list/cli/__main__.py`）、
-FastAPI Dashboard（`qtask_list/dashboard/`，React SPA，见 PLAN-017）、Python SDK。
-（PLAN-019 起仓库为单包结构，cli/dashboard/remote_storage/frontend 均在 `qtask_list/` 内，前端用 pnpm。）
+项目目标、开发和提交规则以仓库根目录 AGENTS.md 为准。开始修复前应读取该文件；它在当前工作树中含有尚未提交的用户修改。
 
-## 2. 当前已完成
+## 2. 当前状态
 
-### 2.1 库与后端（截至 PLAN-016，详见旧索引）
+- 最近一次完整浏览器回归已完成，覆盖总览、队列、队列详情、任务列表和详情、Worker、告警、教程及可见条件操作。
+- 测试结束后清理了本轮临时数据；测试记录称 Dashboard 队列列表及本轮 Redis 注册表、历史、任务、Worker 和队列状态键均为空。
+- 本轮没有修改业务代码。当前尚未解决的问题有两项，详情及状态见[已知问题索引](./KNOWN-ISSUES.md)。
+- 测试报告、页面快照和截图位于[测试报告目录](./test/20261016-10-8cea280/)。主页面空状态截图为[主页面.png](./test/20261016-10-8cea280/主页面.png)。
 
-1. V2 核心、入口统一、状态机、Dashboard/前端交付收尾：见
-   `docs/dev/PLAN-015-qtask-v2.md` 与 `-OUTCOME.md`。
-2. 旧 V1 DLQ/历史双读 fallback、`retry_wait` 统一由注入客户端计算、Dashboard 4xx、
-   Worker 优雅 drain、测试迁移 V2 语义：见
-   `docs/dev/PLAN-016-v2-review-remediation.md` 与 `-OUTCOME.md`。
-3. examples 已重组为 `01~09` 分层学习路径并全面 review（提交 `7dfec6b`、`43c3cba`）：
-   - `examples/stockev/scheduler.py`：确定性 5 分钟 slot、早晚 universe、历史分区；
-   - `examples/stockev/news_discover.py`：`TaskResult.emissions` 新闻 fan-out；
-   - `examples/stockev/reconciler.py`：JSONL 期望清单的幂等补齐。
-4. 计划-结果索引：`docs/dev/INDEX.md`（从 PLAN-013 起维护，更早按文件名追溯）。
+## 3. 待修复问题
 
-### 2.2 本轮新工作：管理后台 UI 重设计 V1（设计稿，未动代码）
+建议优先处理 P2，再处理 P3。下面的复现都应使用隔离 Redis 或专用测试前缀，不要对用户队列执行清理。
 
-用户要求重新设计管理后台，目标：方便查看/筛选/看警告/控制；随后补充了两条需求：
-多 namespace、几十到上百条抓取任务（= 队列）同时跑的**进度盯盘**；以及新增
-**教程**栏目。三轮交付均为设计文档 + 单文件 React 原型（提交 `8aa9de3`、`4d4e532`、
-`9c430dd`），**没有修改任何 dashboard/ 生产代码**。
+### P2：外部清空 Redis 后 Dashboard 仍显示旧队列
 
-设计稿位置与结构（全部在 `docs/ui-design/v1/`）：
+问题详情：[KI-20261016-1218-001](./known-issues/KI-20261016-1218-001-queue-discovery-cache.md)。
 
-- `README.md`：设计输入卡、Top 场景（S0 盯盘/S1 巡检/S2 排查/S3 控制/S4 Worker/S5 学习）、
-  页面清单、导航闭环、React 组件树、质量门自查、开放问题。
-- `tokens.md`：白天（默认）/黑夜双主题 tokens，同一组语义变量名。
-- `states.md`：每页状态矩阵（默认/空/加载/错误/极端）、任务时间线设计、
-  §3.1 进度口径、§3.2 告警规则（基于现有 API，阈值标记 `[假设]`）。
-- `pages/01~06-*.md`：逐页设计——总览（进度总览）、队列列表+详情、任务浏览+详情抽屉、
-  Worker 监控/告警中心、教程（说人话概念手册，8 节）。
-- `prototype.html`：单文件高保真原型（CDN React，无构建依赖），已在浏览器逐页验证
-  渲染与交互，含默认/加载/错误/空态切换器。
+代码位置：[QueueAdmin.queue_names](../qtask_list/admin.py)，约第 91–121 行。旧版队列发现结果缓存在进程内；缓存未过期时，queue_names 会把 Redis 当前 qtask:queues 注册表和 _legacy_queue_cache 合并返回。若其他进程在 Dashboard 最近一次扫描后删除旧队列、历史和任务数据，缓存仍可能让 GET /api/queues 返回不存在的队列。本轮观察到注册表已空但界面/API 显示 7 个空队列，重启 Dashboard 后显示恢复。复现截图见[缓存异常复现.png](./test/20261016-10-8cea280/缓存异常复现.png)。
 
-设计要点（与现状差异）：
+注意：Dashboard 自身的删除路径在 qtask_list/admin.py 的 delete_queue 中会从 _legacy_queue_cache 移除对应队列（约第 1194 行）。已确认问题针对外部 Redis 清理，没有经过这条失效路径。修复应同时保留旧版无注册表队列的发现兼容性，避免简单关闭 legacy 扫描造成旧队列漏报。
 
-1. 信息架构从"单页三栏"改为 总览 / 队列列表 / 队列详情 / 全局任务视图 / 告警中心 /
-   Worker / 教程 七块；危险操作收纳 + 二次确认。
-2. **进度总览**（S0 核心需求）：KPI（活跃队列/总剩余/合计速率/异常队列，可下钻）、
-   队列进度矩阵按 namespace 分组折叠，每行三段式进度条（完成/剩余/DLQ）+ 剩余 +
-   完成/1h + 速率 + ETA + 停滞判定。
-3. **告警中心**：DLQ 堆积、失败率、stale worker、Redis 内存等信号聚合，可定位可标记。
-4. **教程页**：说人话概念手册（任务/队列关系、状态流转徽章图、操作速查表）。
-5. **双主题**：默认白天，可切黑夜，localStorage 记忆。
+建议复现步骤：
 
-## 3. 待用户确认的口径问题（实施前必须澄清）
+1. 在隔离 Redis 中创建一个只通过旧版结构可发现的测试队列，并让同一个 QueueAdmin 实例调用 queue_names，确认它已填充 legacy 缓存。
+2. 使用独立 Redis 客户端删除该队列相关的状态键、任务历史及任务记录；不要调用 Dashboard 的 delete_queue。
+3. 仍使用原 Dashboard/QueueAdmin 进程请求 GET /api/queues。
+4. 观察同一进程是否仍返回已删除队列；当前问题会在旧发现缓存的一小时刷新窗口内复现。
 
-1. **进度分母**：V1 百分比是"最近 1h 完成 / (完成+剩余)"的吞吐相对进度。若调度器
-   能提供"本轮应完成总量"（如 scheduler 每轮 universe 数、reconciler 期望清单），
-   应改为"完成/期望"绝对进度，需新增后端接口（见 `states.md` §3.1）。
-2. **速率来源**：速率/ETA 为前端采样估算 `[假设]`；如需精确吞吐与历史曲线，需后端
-   增加 throughput 聚合接口。
-3. 告警阈值（DLQ>0、失败率 5%、ready>10000 持续 10min）均为 `[假设]`，待运行校准。
+验收建议：
 
-## 4. 验证基线
+- 外部删除后，现存 Dashboard 进程能在明确且可接受的刷新窗口内停止返回已不存在的队列，不依赖重启或等待整小时缓存自然过期。
+- 仍能发现真实存在、没有 qtask:queues 注册项的 V1/旧版队列。
+- Dashboard 自身删除队列的行为和既有 legacy 兼容性不回归；为外部删除场景增加同进程回归测试。
 
-```bash
+### P3：普通关键词搜索误触发任务详情请求
+
+问题详情：[KI-20261016-1218-002](./known-issues/KI-20261016-1218-002-task-search-id-heuristic.md)。
+
+代码位置：[TasksPage.tsx](../qtask_list/frontend/src/pages/TasksPage.tsx)，约第 38–45 行。输入框用于按 task_id、action、payload 搜索；同一字符串若符合“至少 8 位且仅含字母、数字、下划线或连字符”的正则，useEffect 就会调用 api.task(id)。因此普通搜索词也会被当作 task_id 请求详情。本轮搜索 browser_test_dlq 时记录到两次 404；列表关键词搜索本身仍有结果，详情请求错误被 catch 忽略。
+
+新任务 ID 在 qtask_list/queue.py 中由 uuid.uuid4() 生成，但修复前需确认旧数据或调用方是否允许其他 ID 格式，避免只按新 ID 格式识别而破坏兼容。
+
+建议复现步骤：
+
+1. 启动 Dashboard 并进入任务列表。
+2. 搜索 browser_test_dlq 或其他至少 8 位、仅含允许字符的普通关键词。
+3. 检查浏览器网络请求：当前会额外请求 /api/task/{keyword} 并得到 404；列表搜索仍正常。
+4. 使用一条真实 task_id 搜索，核对当前自动打开详情的行为是否需要保留。
+
+验收建议：
+
+- 普通 action/payload 关键词可以正常筛选，且不会触发无意义的详情请求或 404。
+- 有效 task_id 的既有查找/打开详情体验仍符合产品约定；无效 ID 不产生无提示的额外请求。
+- 增加覆盖普通关键词与有效 task_id 两种情况的前端回归测试。
+
+## 4. 建议验证
+
+Python Dashboard API 测试：
+
+~~~bash
+python -m pytest tests/test_dashboard_api.py -q
+~~~
+
+前端测试和构建：
+
+~~~bash
+cd qtask_list/frontend
+pnpm test
+pnpm build
+~~~
+
+修复完成后再运行完整 Python 测试：
+
+~~~bash
 python -m pytest tests/ -q
-python -m ruff check .
-python -m mypy qtask_list
-python -m compileall -q examples
-# 前端（PLAN-017 起）：源码 qtask_list/frontend/，构建产物提交在 qtask_list/dashboard/static/spa/（PLAN-019 起用 pnpm）
-cd qtask_list/frontend && pnpm install && pnpm build
-```
+~~~
 
-Redis 默认连接 `redis://localhost:6379/0`。
+当前 tests/test_dashboard_api.py 的 Redis fixture 默认连接 redis://localhost:6379/0，清理范围以 qtask_dash_test 前缀为主；管理后台队列发现会扫描更广的 Redis 键空间。请优先使用隔离 Redis 实例或确认测试数据完全隔离后再运行，避免影响共享队列。
 
-## 5. 后续可选方向（按优先级）
+## 5. 交接资料
 
-1. **评审并定稿 UI 设计稿 V1**：用户确认口径问题（§3）与页面结构后，冻结设计稿
-   （可升版本号 v1.1/v2）。
-2. **实施 React 版管理后台**：按仓库约定新建 `docs/dev/PLAN-017-dashboard-react.md`
-   （编号续 `docs/dev/INDEX.md`），技术选型 `[假设]`：Vite + React + TS；服务端继续用
-   `dashboard/main.py`（FastAPI），按 `states.md` 补少量接口（进度采样/期望总量）。
-   设计稿→计划→实施→OUTCOME→INDEX 追加→提交推送。
-3. 生产 Redis 上压测 `QueueAdmin.queue_names()` SCAN；RemoteStorage orphan cleanup、
-   DLQ 告警回调接入实际部署；scheduler 交易日历/分区完善；consistency report、
-   lease、archive leader 故障注入测试（沿袭旧交接）。
+- [浏览器测试报告](./test/20261016-10-8cea280/测试报告.md)：环境、范围、逐页预期/实际结果、未执行项和最终清理结果。
+- [缓存异常复现截图](./test/20261016-10-8cea280/缓存异常复现.png)：外部清理后 Dashboard 显示缓存队列。
+- [最终主页面截图](./test/20261016-10-8cea280/主页面.png)：测试数据清理后的 Dashboard 空状态。
+- [KNOWN-ISSUES 索引](./KNOWN-ISSUES.md)：当前状态与两个问题详情。
+- [项目说明](../README.md)：安装、组件和运行方式。
 
-## 6. 关键文档索引
-
-- 设计定稿：`docs/design/qtask-overall-20260920-v2.md`（V2 核心）、
-  `docs/design/task-identity-20260920-logical-key.md`（身份去重）、
-  `docs/design/dashboard-ux-20260622-overview.md`（旧 Dashboard UX 改版史）
-- 本轮 UI 设计稿：`docs/ui-design/v1/`（README 为总纲，prototype.html 可直接打开）
-- 计划-结果：`docs/dev/INDEX.md`（PLAN-013~016）
-- API/运维语义：`README.md`、`skills/qtask-list-usage/SKILL.md`
-
-## 7. 给 0 背景 agent 的提示
-
-- 本仓库工作流：读 `AGENTS.md` → 计划文件 `PLAN-{n}-{tag}.md` → 实施 → 结果文件
-  `-OUTCOME.md` → 追加 `docs/dev/INDEX.md` → 中文 commit（列明文件）→ 立刻 push；
-  `AGENTS.md` 永不提交。
-- 现有 Dashboard 是 Jinja + 原生 JS（`dashboard/static/js/{app,components,api,utils}.js`）；
-  UI 重设计 V1 是**新架构设计稿**，不要直接在旧 JS 上续写，实施时按设计稿新起 React 前端，
-  FastAPI 后端可增量复用（新增接口见 `states.md` API 缺口标注）。
-- 原型 `prototype.html` 用 CDN React + babel-standalone，双主题已验证；交互 bug
-  （ctx 漏传 drawer/dialog 字段）已修复，可作为组件行为的参照。
+交接文档引用的代码结论以当前基线 2722fbcfd10f5784fa19b669bba1f5fe21a69535 为准；两个问题的浏览器复现记录来自测试基线 8cea280c9007d4e924d5705632c6685a80d53da1。后续修复者应在其实际工作分支重新核对代码和问题状态。
