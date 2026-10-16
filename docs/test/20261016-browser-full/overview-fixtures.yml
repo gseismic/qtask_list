@@ -1,0 +1,139 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: Q
+      - generic [ref=f1e7]:
+        - generic [ref=f1e8]: qtask_list
+        - generic [ref=f1e9]: 管理后台
+    - navigation [ref=f1e10]:
+      - link "📊 总览" [active] [ref=f1e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f1e12]: 📊
+        - generic [ref=f1e13]: 总览
+      - link "📋 队列" [ref=f1e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f1e15]: 📋
+        - generic [ref=f1e16]: 队列
+      - link "🔍 任务" [ref=f1e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f1e18]: 🔍
+        - generic [ref=f1e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f1e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f1e21]: 🧑‍🏭
+        - generic [ref=f1e22]: Worker
+      - link "🔔 告警 2" [ref=f1e5404] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f1e24]: 🔔
+        - generic [ref=f1e25]: 告警
+        - generic [ref=f1e5405]: "2"
+      - link "📖 教程" [ref=f1e26] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f1e27]: 📖
+        - generic [ref=f1e28]: 教程
+    - generic [ref=f1e29]: v0.2.0 · Redis 任务队列
+  - generic [ref=f1e30]:
+    - banner [ref=f1e31]:
+      - generic "Redis 连接正常" [ref=f1e32]: 已连接
+      - generic "2026/10/16 11:06:17" [ref=f1e5535]: 更新于 11:06:17
+      - button "刷新" [ref=f1e35] [cursor=pointer]
+      - generic [ref=f1e36]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f1e37]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f1e49] [cursor=pointer]
+    - generic [ref=f1e5536]:
+      - heading "总览" [level=1] [ref=f1e5537]
+      - paragraph [ref=f1e5538]: 查看当前待处理量与异常；完成量和速率来自本次访问近一小时的浏览器观测，切换页面会保留采样。
+      - generic [ref=f1e5539]:
+        - combobox "总览 namespace" [ref=f1e5540]:
+          - option "全部 namespace" [selected]
+          - option "codex_browser_20261016"
+        - textbox "搜索队列名" [ref=f1e5541]
+        - generic [ref=f1e5542]: 当前范围 3 / 3 个队列
+      - generic [ref=f1e5543]:
+        - button "活跃队列 2/3 当前范围内有待处理任务的队列" [ref=f1e5544] [cursor=pointer]:
+          - generic [ref=f1e5545]: 活跃队列
+          - generic [ref=f1e5546]: 2/3
+          - generic [ref=f1e5547]: 当前范围内有待处理任务的队列
+        - button "总待处理 60 排队 + 执行 + 延迟 + 旧重试" [ref=f1e5548] [cursor=pointer]:
+          - generic [ref=f1e5549]: 总待处理
+          - generic [ref=f1e5550]: "60"
+          - generic [ref=f1e5551]: 排队 + 执行 + 延迟 + 旧重试
+        - generic [ref=f1e5552]:
+          - generic [ref=f1e5553]: 合计观测速率
+          - generic [ref=f1e5554]: 0.0/min
+          - generic [ref=f1e5555]: 已采样 3/3 个队列 · 条/min
+        - button "异常队列 2 死信 / 无 Worker / 停滞 / 失联 / 过期" [ref=f1e5556] [cursor=pointer]:
+          - generic [ref=f1e5557]: 异常队列
+          - generic [ref=f1e5558]: "2"
+          - generic [ref=f1e5559]: 死信 / 无 Worker / 停滞 / 失联 / 过期
+      - generic [ref=f1e5560]:
+        - generic [ref=f1e5561]:
+          - heading "待处理告警" [level=2] [ref=f1e5562]
+          - link "查看全部 →" [ref=f1e5563] [cursor=pointer]:
+            - /url: /alerts
+        - generic [ref=f1e5564]:
+          - generic [ref=f1e5565]: 无人消费
+          - strong [ref=f1e5566]: codex_browser_20261016:main
+          - generic [ref=f1e5567]: ready 有 57 条任务，但没有在线 Worker
+          - link "定位" [ref=f1e5568] [cursor=pointer]:
+            - /url: /queues/codex_browser_20261016%3Amain?state=ready
+        - generic [ref=f1e5569]:
+          - generic [ref=f1e5570]: 无人消费
+          - strong [ref=f1e5571]: codex_browser_20261016:stale
+          - generic [ref=f1e5572]: ready 有 1 条任务，但没有在线 Worker
+          - link "定位" [ref=f1e5573] [cursor=pointer]:
+            - /url: /queues/codex_browser_20261016%3Astale?state=ready
+      - generic [ref=f1e5574]:
+        - heading "队列运行矩阵" [level=2] [ref=f1e5575]
+        - generic [ref=f1e5576]:
+          - button "全部" [ref=f1e5577] [cursor=pointer]
+          - button "进行中" [ref=f1e5578] [cursor=pointer]
+          - button "仅异常" [ref=f1e5579] [cursor=pointer]
+      - paragraph [ref=f1e5580]: 待处理构成： 排队 执行 延迟 旧重试 · ETA 仅估算无延迟队列
+      - generic "队列运行矩阵，可横向滚动" [ref=f1e5585]:
+        - generic [ref=f1e5586]:
+          - generic [aria-hidden] [ref=f1e5587]:
+            - generic [ref=f1e5588]: 队列
+            - generic [ref=f1e5589]: 待处理构成
+            - generic [ref=f1e5590]: 待处理
+            - generic [ref=f1e5591]: 观测完成
+            - generic [ref=f1e5592]: 条/min
+            - generic [ref=f1e5593]: 预计/状态
+            - generic [ref=f1e5594]: 异常
+          - generic [ref=f1e5595]:
+            - button "▾ codex_browser_20261016 · 3 个队列 · 待处理 60 · 观测完成 0 ⚠ 2" [expanded] [ref=f1e5596] [cursor=pointer]:
+              - generic [ref=f1e5597]: ▾
+              - generic [ref=f1e5598]: codex_browser_20261016
+              - generic [ref=f1e5599]: · 3 个队列
+              - generic [ref=f1e5600]: · 待处理 60
+              - generic [ref=f1e5601]: · 观测完成 0
+              - generic [ref=f1e5602]: ⚠ 2
+            - link "codex_browser_20261016:main 排队 57 · 执行 0 · 延迟 2 · 旧重试 0 59 0 0.0/min 无 Worker 无 Worker" [ref=f1e5603] [cursor=pointer]:
+              - generic "codex_browser_20261016:main" [ref=f1e5604]
+              - img "排队 57 · 执行 0 · 延迟 2 · 旧重试 0" [ref=f1e5605]
+              - generic [ref=f1e5608]: "59"
+              - generic [ref=f1e5609]: "0"
+              - generic [ref=f1e5610]: 0.0/min
+              - generic [ref=f1e5611]: 无 Worker
+              - generic [ref=f1e5612]: 无 Worker
+            - link "codex_browser_20261016:stale 排队 1 · 执行 0 · 延迟 0 · 旧重试 0 1 0 0.0/min 无 Worker 无 Worker" [ref=f1e5614] [cursor=pointer]:
+              - generic "codex_browser_20261016:stale" [ref=f1e5615]
+              - img "排队 1 · 执行 0 · 延迟 0 · 旧重试 0" [ref=f1e5616]
+              - generic [ref=f1e5618]: "1"
+              - generic [ref=f1e5619]: "0"
+              - generic [ref=f1e5620]: 0.0/min
+              - generic [ref=f1e5621]: 无 Worker
+              - generic [ref=f1e5622]: 无 Worker
+            - link "codex_browser_20261016:acktest 无待处理任务 0 0 0.0/min — 空闲" [ref=f1e5624] [cursor=pointer]:
+              - generic "codex_browser_20261016:acktest" [ref=f1e5625]
+              - img "无待处理任务" [ref=f1e5626]
+              - generic [ref=f1e5627]: "0"
+              - generic [ref=f1e5628]: "0"
+              - generic [ref=f1e5629]: 0.0/min
+              - generic [ref=f1e5630]: —
+              - generic [ref=f1e5631]: 空闲

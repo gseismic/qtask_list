@@ -1,0 +1,153 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: Q
+      - generic [ref=f1e7]:
+        - generic [ref=f1e8]: qtask_list
+        - generic [ref=f1e9]: 管理后台
+    - navigation [ref=f1e10]:
+      - link "📊 总览" [ref=f1e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f1e12]: 📊
+        - generic [ref=f1e13]: 总览
+      - link "📋 队列" [ref=f1e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f1e15]: 📋
+        - generic [ref=f1e16]: 队列
+      - link "🔍 任务" [ref=f1e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f1e18]: 🔍
+        - generic [ref=f1e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f1e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f1e21]: 🧑‍🏭
+        - generic [ref=f1e22]: Worker
+      - link "🔔 告警 3" [ref=f1e2130] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f1e24]: 🔔
+        - generic [ref=f1e25]: 告警
+        - generic [ref=f1e58]: "3"
+      - link "📖 教程" [ref=f1e26] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f1e27]: 📖
+        - generic [ref=f1e28]: 教程
+    - generic [ref=f1e29]: v0.2.0 · Redis 任务队列
+  - generic [ref=f1e30]:
+    - banner [ref=f1e31]:
+      - generic "Redis 连接正常" [ref=f1e32]: 已连接
+      - generic "2026/10/16 11:03:10" [ref=f1e2121]: 更新于 11:03:10
+      - button "刷新" [ref=f1e35] [cursor=pointer]
+      - generic [ref=f1e36]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f1e37]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f1e49] [cursor=pointer]
+    - generic [ref=f1e299]:
+      - heading "任务" [level=1] [ref=f1e300]
+      - paragraph [ref=f1e301]: 跨队列排查任务。task_id 精确命中时直接打开详情；高级筛选会保存在地址中。
+      - generic [ref=f1e302]:
+        - combobox "任务队列" [ref=f1e303]:
+          - option "全部队列"
+          - option "codex_browser_20261016:acktest"
+          - option "codex_browser_20261016:main" [selected]
+          - option "codex_browser_20261016:stale"
+        - textbox "搜索任务" [ref=f1e304]:
+          - /placeholder: 搜索 task_id / action / payload
+          - text: browser_test_dlq
+        - combobox "任务状态" [ref=f1e305]:
+          - option "全部"
+          - option "排队中"
+          - option "执行中"
+          - option "手动重试"
+          - option "等待重试"
+          - option "延迟"
+          - option "死信" [selected]
+          - option "完成"
+          - option "失败"
+          - option "跳过"
+          - option "取消"
+          - option "过期"
+          - option "历史"
+        - button "高级筛选" [expanded] [ref=f1e306] [cursor=pointer]
+        - generic "跟随顶栏刷新间隔；加载更多后暂停以保持当前列表" [ref=f1e307]:
+          - checkbox "自动刷新" [ref=f1e308]
+          - text: 自动刷新
+      - generic "高级筛选" [ref=f1e950]:
+        - generic [ref=f1e951]:
+          - text: 精确 action
+          - textbox "精确 action" [ref=f1e952]:
+            - /placeholder: 例如 fetch_stock
+        - generic [ref=f1e953]:
+          - text: 发布起
+          - textbox "发布起" [ref=f1e954]
+        - generic [ref=f1e955]:
+          - text: 发布止
+          - textbox "发布止" [ref=f1e956]
+        - generic [ref=f1e957]:
+          - text: 完成起
+          - textbox "完成起" [ref=f1e958]
+        - generic [ref=f1e959]:
+          - text: 完成止
+          - textbox "完成止" [ref=f1e960]
+      - generic [ref=f1e2046]:
+        - button "刷新第一页" [ref=f1e2047] [cursor=pointer]
+        - status [ref=f1e2048]: 查询快照 · 自动刷新已暂停 · 更新于 11:03:10
+        - generic [ref=f1e2049]: 加载更多后暂停自动刷新
+      - generic [ref=f1e2050]:
+        - table [ref=f1e2051]:
+          - rowgroup [ref=f1e2052]:
+            - row [ref=f1e2053]:
+              - columnheader "task_id" [ref=f1e2054]
+              - columnheader "action" [ref=f1e2055]
+              - columnheader "attempt" [ref=f1e2056]
+              - columnheader "状态" [ref=f1e2057]
+              - columnheader "发布时间" [ref=f1e2058]
+              - columnheader "更新时间" [ref=f1e2059]
+          - rowgroup
+        - generic [ref=f1e2131]: 该筛选下没有任务。
+      - dialog "任务详情" [ref=f1e2071]:
+        - generic [ref=f1e2072]:
+          - strong [ref=f1e2073]: browser_test_dlq
+          - generic "e41fbbc6-3e39-4229-abb1-daeac7998191" [ref=f1e2074]: e41fbbc6…8191
+          - generic [ref=f1e2075]: 失败
+          - button "关闭" [ref=f1e2077] [cursor=pointer]: ✕
+        - paragraph [ref=f1e2078]: 队列 codex_browser_20261016:main · attempt 1/3
+        - generic [ref=f1e2079]:
+          - button "刷新详情" [ref=f1e2080] [cursor=pointer]
+          - status [ref=f1e2081]: 自动刷新 · 更新于 11:03:10
+        - status [ref=f1e2132]:
+          - generic [ref=f1e2133]: 已重放为新任务
+          - button "查看新任务" [ref=f1e2134] [cursor=pointer]
+        - generic [ref=f1e2082]:
+          - strong [ref=f1e2083]: 失败 / 跳过原因
+          - generic [ref=f1e2084]: · handler_error
+          - generic [ref=f1e2085]: browser test DLQ fixture
+        - generic [ref=f1e2086]:
+          - generic [ref=f1e2087]: 时间线
+          - list [ref=f1e2088]:
+            - listitem [ref=f1e2089]:
+              - generic [ref=f1e2091]: 2026-10-16 11:00:46
+              - generic [ref=f1e2092]: 投递
+            - listitem [ref=f1e2093]:
+              - generic [ref=f1e2095]: 2026-10-16 11:00:46
+              - generic [ref=f1e2096]: 最近一次开始执行 attempt=1
+            - listitem [ref=f1e2097]:
+              - generic [ref=f1e2099]: 2026-10-16 11:00:46
+              - generic [ref=f1e2100]: 失败
+        - generic [ref=f1e2101]:
+          - generic [ref=f1e2102]:
+            - heading "Payload / Result" [level=4] [ref=f1e2103]
+            - button "重新加载 payload" [ref=f1e2111] [cursor=pointer]
+          - generic [ref=f1e2112]: "{ \"action\": \"browser_test_dlq\", \"case\": \"task-drawer\" }"
+          - paragraph [ref=f1e2106]: 任务尚无 result 记录。
+        - generic [ref=f1e2135]:
+          - generic [ref=f1e2136]: 任务血缘
+          - paragraph [ref=f1e2137]:
+            - text: 重放任务
+            - button "05995c69…9765" [ref=f1e2138] [cursor=pointer]
+        - generic [ref=f1e2107]:
+          - button "重放为新任务" [active] [ref=f1e2108] [cursor=pointer]
+          - button "删除" [ref=f1e2109] [cursor=pointer]

@@ -1,0 +1,64 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: Q
+      - generic [ref=f1e7]:
+        - generic [ref=f1e8]: qtask_list
+        - generic [ref=f1e9]: 管理后台
+    - navigation [ref=f1e10]:
+      - link "📊 总览" [ref=f1e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f1e12]: 📊
+        - generic [ref=f1e13]: 总览
+      - link "📋 队列" [ref=f1e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f1e15]: 📋
+        - generic [ref=f1e16]: 队列
+      - link "🔍 任务" [ref=f1e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f1e18]: 🔍
+        - generic [ref=f1e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f1e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f1e21]: 🧑‍🏭
+        - generic [ref=f1e22]: Worker
+      - link "🔔 告警" [ref=f1e5383] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f1e24]: 🔔
+        - generic [ref=f1e25]: 告警
+      - link "📖 教程" [ref=f1e26] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f1e27]: 📖
+        - generic [ref=f1e28]: 教程
+    - generic [ref=f1e29]: v0.2.0 · Redis 任务队列
+  - generic [ref=f1e30]:
+    - banner [ref=f1e31]:
+      - generic "Redis 连接正常" [ref=f1e32]: 已连接
+      - generic "2026/10/16 11:05:47" [ref=f1e5390]: 更新于 11:05:47
+      - button "刷新" [ref=f1e35] [cursor=pointer]
+      - generic [ref=f1e36]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f1e37]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f1e49] [cursor=pointer]
+    - generic [ref=f1e5353]:
+      - heading "告警中心" [level=1] [ref=f1e5354]
+      - paragraph [ref=f1e5355]: DLQ、无人消费、失败率、失联 Worker、积压、过期与 Redis 内存的聚合信号。
+      - generic [ref=f1e5356]:
+        - generic [ref=f1e5357]:
+          - button "未处理 (0)" [ref=f1e5384] [cursor=pointer]
+          - button "已处理 (2)" [active] [ref=f1e5385] [cursor=pointer]
+        - button "规则说明 ⓘ" [ref=f1e5360] [cursor=pointer]
+      - generic [ref=f1e5391]:
+        - generic [ref=f1e5393]:
+          - generic [ref=f1e5394]: 已处理
+          - code [ref=f1e5395]: noworker:codex_browser_20261016:main
+          - generic [ref=f1e5396]: 2026-10-16 11:05:45
+        - generic [ref=f1e5398]:
+          - generic [ref=f1e5399]: 已处理
+          - code [ref=f1e5400]: noworker:codex_browser_20261016:stale
+          - generic [ref=f1e5401]: 2026-10-16 11:05:46
+        - button "清空已处理记录" [ref=f1e5403] [cursor=pointer]

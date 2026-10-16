@@ -1,0 +1,153 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: Q
+      - generic [ref=f1e7]:
+        - generic [ref=f1e8]: qtask_list
+        - generic [ref=f1e9]: 管理后台
+    - navigation [ref=f1e10]:
+      - link "📊 总览" [ref=f1e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f1e12]: 📊
+        - generic [ref=f1e13]: 总览
+      - link "📋 队列" [ref=f1e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f1e15]: 📋
+        - generic [ref=f1e16]: 队列
+      - link "🔍 任务" [ref=f1e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f1e18]: 🔍
+        - generic [ref=f1e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f1e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f1e21]: 🧑‍🏭
+        - generic [ref=f1e22]: Worker
+      - link "🔔 告警 3" [ref=f1e2130] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f1e24]: 🔔
+        - generic [ref=f1e25]: 告警
+        - generic [ref=f1e58]: "3"
+      - link "📖 教程" [ref=f1e26] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f1e27]: 📖
+        - generic [ref=f1e28]: 教程
+    - generic [ref=f1e29]: v0.2.0 · Redis 任务队列
+  - generic [ref=f1e30]:
+    - banner [ref=f1e31]:
+      - generic "Redis 连接正常" [ref=f1e32]: 已连接
+      - generic "2026/10/16 11:03:51" [ref=f1e2261]: 更新于 11:03:51
+      - button "刷新" [ref=f1e35] [cursor=pointer]
+      - generic [ref=f1e36]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f1e37]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f1e49] [cursor=pointer]
+    - generic [ref=f1e299]:
+      - heading "任务" [level=1] [ref=f1e300]
+      - paragraph [ref=f1e301]: 跨队列排查任务。task_id 精确命中时直接打开详情；高级筛选会保存在地址中。
+      - generic [ref=f1e302]:
+        - combobox "任务队列" [ref=f1e303]:
+          - option "全部队列"
+          - option "codex_browser_20261016:acktest"
+          - option "codex_browser_20261016:main" [selected]
+          - option "codex_browser_20261016:stale"
+        - textbox "搜索任务" [ref=f1e304]:
+          - /placeholder: 搜索 task_id / action / payload
+        - combobox "任务状态" [ref=f1e305]:
+          - option "全部"
+          - option "排队中"
+          - option "执行中"
+          - option "手动重试"
+          - option "等待重试"
+          - option "延迟"
+          - option "死信"
+          - option "完成"
+          - option "失败"
+          - option "跳过"
+          - option "取消"
+          - option "过期" [selected]
+          - option "历史"
+        - button "高级筛选" [expanded] [ref=f1e306] [cursor=pointer]
+        - generic "跟随顶栏刷新间隔；加载更多后暂停以保持当前列表" [ref=f1e307]:
+          - checkbox "自动刷新" [ref=f1e308]
+          - text: 自动刷新
+      - generic "高级筛选" [ref=f1e950]:
+        - generic [ref=f1e951]:
+          - text: 精确 action
+          - textbox "精确 action" [ref=f1e952]:
+            - /placeholder: 例如 fetch_stock
+        - generic [ref=f1e953]:
+          - text: 发布起
+          - textbox "发布起" [ref=f1e954]
+        - generic [ref=f1e955]:
+          - text: 发布止
+          - textbox "发布止" [ref=f1e956]
+        - generic [ref=f1e957]:
+          - text: 完成起
+          - textbox "完成起" [ref=f1e958]
+        - generic [ref=f1e959]:
+          - text: 完成止
+          - textbox "完成止" [ref=f1e960]
+      - generic [ref=f1e2204]:
+        - button "刷新第一页" [ref=f1e2205] [cursor=pointer]
+        - status [ref=f1e2206]: 查询快照 · 自动刷新已暂停 · 更新于 11:03:38
+        - generic [ref=f1e2207]: 加载更多后暂停自动刷新
+      - table [ref=f1e2209]:
+        - rowgroup [ref=f1e2210]:
+          - row [ref=f1e2211]:
+            - columnheader "task_id" [ref=f1e2212]
+            - columnheader "action" [ref=f1e2213]
+            - columnheader "attempt" [ref=f1e2214]
+            - columnheader "状态" [ref=f1e2215]
+            - columnheader "发布时间" [ref=f1e2216]
+            - columnheader "更新时间" [ref=f1e2217]
+        - rowgroup [ref=f1e2218]:
+          - row [ref=f1e2219] [cursor=pointer]:
+            - cell "074672f0…1d7b" [ref=f1e2220]
+            - cell "browser_test_expired" [ref=f1e2221]
+            - cell "0" [ref=f1e2222]
+            - cell "过期" [ref=f1e2223]
+            - cell "2026-10-16 11:00:57" [ref=f1e2226]
+            - cell "2026-10-16 11:00:57" [ref=f1e2227]
+      - dialog "任务详情" [ref=f1e2230]:
+        - generic [ref=f1e2231]:
+          - strong [ref=f1e2232]: browser_test_expired
+          - generic "074672f0-e81a-458f-ba6f-19a3f88c1d7b" [ref=f1e2233]: 074672f0…1d7b
+          - generic [ref=f1e2234]: 过期
+          - button "关闭" [ref=f1e2236] [cursor=pointer]: ✕
+        - paragraph [ref=f1e2237]: 队列 codex_browser_20261016:main · attempt 0/3
+        - generic [ref=f1e2238]:
+          - button "刷新详情" [ref=f1e2239] [cursor=pointer]
+          - status [ref=f1e2240]: 自动刷新 · 更新于 11:03:49
+        - generic [ref=f1e2241]:
+          - generic [ref=f1e2242]: 时间线
+          - list [ref=f1e2243]:
+            - listitem [ref=f1e2244]:
+              - generic [ref=f1e2246]: 2026-10-16 11:00:57
+              - generic [ref=f1e2247]: 投递
+            - listitem [ref=f1e2248]:
+              - generic [ref=f1e2250]: 2026-10-16 11:00:57
+              - generic [ref=f1e2251]: 记录更新时间
+        - generic [ref=f1e2252]:
+          - generic [ref=f1e2253]:
+            - heading "Payload / Result" [level=4] [ref=f1e2254]
+            - button "加载完整 payload" [ref=f1e2255] [cursor=pointer]
+          - paragraph [ref=f1e2256]: 按需还原完整业务参数，大 payload 可能需要稍等。
+          - paragraph [ref=f1e2257]: 任务尚无 result 记录。
+        - generic [ref=f1e2258]:
+          - button "更新截止并重放" [ref=f1e2259] [cursor=pointer]
+          - button "删除" [ref=f1e2260] [cursor=pointer]
+        - dialog [ref=f1e2263]:
+          - heading "更新截止并重放" [level=3] [ref=f1e2264]
+          - generic [ref=f1e2265]:
+            - paragraph [ref=f1e2266]: 将取消这条已过期的待处理任务，保留审计记录并生成新任务。
+            - generic [ref=f1e2267]:
+              - text: 新的执行截止时间
+              - textbox "新的执行截止时间" [active] [ref=f1e2268]
+              - paragraph [ref=f1e2269]: 原截止时间已过，请选择晚于当前时间的新截止时间。
+          - generic [ref=f1e2270]:
+            - button "取消" [ref=f1e2271] [cursor=pointer]
+            - button "重放" [ref=f1e2272] [cursor=pointer]

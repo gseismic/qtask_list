@@ -1,0 +1,446 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: Q
+      - generic [ref=f1e7]:
+        - generic [ref=f1e8]: qtask_list
+        - generic [ref=f1e9]: 管理后台
+    - navigation [ref=f1e10]:
+      - link "📊 总览" [ref=f1e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f1e12]: 📊
+        - generic [ref=f1e13]: 总览
+      - link "📋 队列" [ref=f1e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f1e15]: 📋
+        - generic [ref=f1e16]: 队列
+      - link "🔍 任务" [ref=f1e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f1e18]: 🔍
+        - generic [ref=f1e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f1e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f1e21]: 🧑‍🏭
+        - generic [ref=f1e22]: Worker
+      - link "🔔 告警 2" [ref=f1e2285] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f1e24]: 🔔
+        - generic [ref=f1e25]: 告警
+        - generic [ref=f1e58]: "2"
+      - link "📖 教程" [ref=f1e26] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f1e27]: 📖
+        - generic [ref=f1e28]: 教程
+    - generic [ref=f1e29]: v0.2.0 · Redis 任务队列
+  - generic [ref=f1e30]:
+    - banner [ref=f1e31]:
+      - generic "Redis 连接正常" [ref=f1e32]: 已连接
+      - generic "2026/10/16 11:05:42" [ref=f1e4851]: 更新于 11:05:42
+      - button "刷新" [ref=f1e35] [cursor=pointer]
+      - generic [ref=f1e36]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f1e37]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f1e49] [cursor=pointer]
+    - generic [ref=f1e4852]:
+      - generic [ref=f1e4853]:
+        - heading "codex_browser_20261016:main" [level=1] [ref=f1e4854]
+        - link "← 队列列表" [ref=f1e4855] [cursor=pointer]:
+          - /url: /queues
+      - generic [ref=f1e4856]:
+        - button "排队中 57" [ref=f1e4857] [cursor=pointer]
+        - button "等待重试 1" [ref=f1e4858] [cursor=pointer]
+        - button "延迟 2" [ref=f1e4859] [cursor=pointer]
+      - generic [ref=f1e4860]:
+        - button "操作 ▾" [ref=f1e4862] [cursor=pointer]
+        - button "⚠ 危险操作 ▾" [ref=f1e4865] [cursor=pointer]
+      - generic [ref=f1e4866]:
+        - button "全部" [ref=f1e4867] [cursor=pointer]
+        - button "排队中57" [ref=f1e4868] [cursor=pointer]
+        - button "执行中" [ref=f1e4869] [cursor=pointer]
+        - button "手动重试" [ref=f1e4870] [cursor=pointer]
+        - button "等待重试1" [ref=f1e4871] [cursor=pointer]
+        - button "延迟2" [ref=f1e4872] [cursor=pointer]
+        - button "死信" [ref=f1e4873] [cursor=pointer]
+        - button "完成" [ref=f1e4874] [cursor=pointer]
+        - button "失败1" [ref=f1e4875] [cursor=pointer]
+        - button "跳过" [ref=f1e4876] [cursor=pointer]
+        - button "取消2" [ref=f1e4877] [cursor=pointer]
+        - button "过期" [ref=f1e4878] [cursor=pointer]
+        - button "历史61" [ref=f1e4879] [cursor=pointer]
+      - generic [ref=f1e4880]:
+        - textbox "搜索任务" [ref=f1e4881]:
+          - /placeholder: 搜索 task_id / action / payload
+        - button "高级筛选" [ref=f1e4882] [cursor=pointer]
+        - generic "跟随顶栏刷新间隔；加载更多后暂停以保持当前列表" [ref=f1e4883]:
+          - checkbox "自动刷新" [checked] [ref=f1e4884]
+          - text: 自动刷新
+      - generic [ref=f1e4885]: 当前该状态 57 条
+      - generic [ref=f1e4886]:
+        - button "刷新第一页" [ref=f1e4887] [cursor=pointer]
+        - status [ref=f1e4888]: 自动刷新 · 更新于 11:05:43
+        - generic [ref=f1e4889]: 加载更多后暂停自动刷新
+      - table [ref=f1e4891]:
+        - rowgroup [ref=f1e4892]:
+          - row [ref=f1e4893]:
+            - columnheader "task_id" [ref=f1e4894]
+            - columnheader "action" [ref=f1e4895]
+            - columnheader "attempt" [ref=f1e4896]
+            - columnheader "状态" [ref=f1e4897]
+            - columnheader "发布时间" [ref=f1e4898]
+            - columnheader "更新时间" [ref=f1e4899]
+        - rowgroup [ref=f1e4900]:
+          - row [ref=f1e4901] [cursor=pointer]:
+            - cell "02bf4643…eb65" [ref=f1e4902]
+            - cell "browser_test_ready" [ref=f1e4903]
+            - cell "0" [ref=f1e4904]
+            - cell "排队中" [ref=f1e4905]
+            - cell "—" [ref=f1e4908]
+            - cell "—" [ref=f1e4909]
+          - row [ref=f1e4910] [cursor=pointer]:
+            - cell "8965a0aa…f563" [ref=f1e4911]
+            - cell "browser_test_ready" [ref=f1e4912]
+            - cell "0" [ref=f1e4913]
+            - cell "排队中" [ref=f1e4914]
+            - cell "—" [ref=f1e4917]
+            - cell "—" [ref=f1e4918]
+          - row [ref=f1e4919] [cursor=pointer]:
+            - cell "8cd3cf6a…c271" [ref=f1e4920]
+            - cell "browser_test_ready" [ref=f1e4921]
+            - cell "0" [ref=f1e4922]
+            - cell "排队中" [ref=f1e4923]
+            - cell "—" [ref=f1e4926]
+            - cell "—" [ref=f1e4927]
+          - row [ref=f1e4928] [cursor=pointer]:
+            - cell "08f1d469…b6f5" [ref=f1e4929]
+            - cell "browser_test_ready" [ref=f1e4930]
+            - cell "0" [ref=f1e4931]
+            - cell "排队中" [ref=f1e4932]
+            - cell "—" [ref=f1e4935]
+            - cell "—" [ref=f1e4936]
+          - row [ref=f1e4937] [cursor=pointer]:
+            - cell "bd17e7e0…c70f" [ref=f1e4938]
+            - cell "browser_test_ready" [ref=f1e4939]
+            - cell "0" [ref=f1e4940]
+            - cell "排队中" [ref=f1e4941]
+            - cell "—" [ref=f1e4944]
+            - cell "—" [ref=f1e4945]
+          - row [ref=f1e4946] [cursor=pointer]:
+            - cell "e4ad6d04…63a9" [ref=f1e4947]
+            - cell "browser_test_ready" [ref=f1e4948]
+            - cell "0" [ref=f1e4949]
+            - cell "排队中" [ref=f1e4950]
+            - cell "—" [ref=f1e4953]
+            - cell "—" [ref=f1e4954]
+          - row [ref=f1e4955] [cursor=pointer]:
+            - cell "200a19c7…0c3d" [ref=f1e4956]
+            - cell "browser_test_ready" [ref=f1e4957]
+            - cell "0" [ref=f1e4958]
+            - cell "排队中" [ref=f1e4959]
+            - cell "—" [ref=f1e4962]
+            - cell "—" [ref=f1e4963]
+          - row [ref=f1e4964] [cursor=pointer]:
+            - cell "ec297ce9…7c7a" [ref=f1e4965]
+            - cell "browser_test_ready" [ref=f1e4966]
+            - cell "0" [ref=f1e4967]
+            - cell "排队中" [ref=f1e4968]
+            - cell "—" [ref=f1e4971]
+            - cell "—" [ref=f1e4972]
+          - row [ref=f1e4973] [cursor=pointer]:
+            - cell "0db3c77e…4052" [ref=f1e4974]
+            - cell "browser_test_ready" [ref=f1e4975]
+            - cell "0" [ref=f1e4976]
+            - cell "排队中" [ref=f1e4977]
+            - cell "—" [ref=f1e4980]
+            - cell "—" [ref=f1e4981]
+          - row [ref=f1e4982] [cursor=pointer]:
+            - cell "7a91d96c…fc8f" [ref=f1e4983]
+            - cell "browser_test_ready" [ref=f1e4984]
+            - cell "0" [ref=f1e4985]
+            - cell "排队中" [ref=f1e4986]
+            - cell "—" [ref=f1e4989]
+            - cell "—" [ref=f1e4990]
+          - row [ref=f1e4991] [cursor=pointer]:
+            - cell "dc69fdc3…3910" [ref=f1e4992]
+            - cell "browser_test_ready" [ref=f1e4993]
+            - cell "0" [ref=f1e4994]
+            - cell "排队中" [ref=f1e4995]
+            - cell "—" [ref=f1e4998]
+            - cell "—" [ref=f1e4999]
+          - row [ref=f1e5000] [cursor=pointer]:
+            - cell "afdfec5e…f15d" [ref=f1e5001]
+            - cell "browser_test_ready" [ref=f1e5002]
+            - cell "0" [ref=f1e5003]
+            - cell "排队中" [ref=f1e5004]
+            - cell "—" [ref=f1e5007]
+            - cell "—" [ref=f1e5008]
+          - row [ref=f1e5009] [cursor=pointer]:
+            - cell "5745dfb2…5462" [ref=f1e5010]
+            - cell "browser_test_ready" [ref=f1e5011]
+            - cell "0" [ref=f1e5012]
+            - cell "排队中" [ref=f1e5013]
+            - cell "—" [ref=f1e5016]
+            - cell "—" [ref=f1e5017]
+          - row [ref=f1e5018] [cursor=pointer]:
+            - cell "d835131c…72ad" [ref=f1e5019]
+            - cell "browser_test_ready" [ref=f1e5020]
+            - cell "0" [ref=f1e5021]
+            - cell "排队中" [ref=f1e5022]
+            - cell "—" [ref=f1e5025]
+            - cell "—" [ref=f1e5026]
+          - row [ref=f1e5027] [cursor=pointer]:
+            - cell "bd6abb34…b214" [ref=f1e5028]
+            - cell "browser_test_ready" [ref=f1e5029]
+            - cell "0" [ref=f1e5030]
+            - cell "排队中" [ref=f1e5031]
+            - cell "—" [ref=f1e5034]
+            - cell "—" [ref=f1e5035]
+          - row [ref=f1e5036] [cursor=pointer]:
+            - cell "af86ed3b…aef0" [ref=f1e5037]
+            - cell "browser_test_ready" [ref=f1e5038]
+            - cell "0" [ref=f1e5039]
+            - cell "排队中" [ref=f1e5040]
+            - cell "—" [ref=f1e5043]
+            - cell "—" [ref=f1e5044]
+          - row [ref=f1e5045] [cursor=pointer]:
+            - cell "109a5d04…a9be" [ref=f1e5046]
+            - cell "browser_test_ready" [ref=f1e5047]
+            - cell "0" [ref=f1e5048]
+            - cell "排队中" [ref=f1e5049]
+            - cell "—" [ref=f1e5052]
+            - cell "—" [ref=f1e5053]
+          - row [ref=f1e5054] [cursor=pointer]:
+            - cell "83303615…a05c" [ref=f1e5055]
+            - cell "browser_test_ready" [ref=f1e5056]
+            - cell "0" [ref=f1e5057]
+            - cell "排队中" [ref=f1e5058]
+            - cell "—" [ref=f1e5061]
+            - cell "—" [ref=f1e5062]
+          - row [ref=f1e5063] [cursor=pointer]:
+            - cell "bcb39479…88f8" [ref=f1e5064]
+            - cell "browser_test_ready" [ref=f1e5065]
+            - cell "0" [ref=f1e5066]
+            - cell "排队中" [ref=f1e5067]
+            - cell "—" [ref=f1e5070]
+            - cell "—" [ref=f1e5071]
+          - row [ref=f1e5072] [cursor=pointer]:
+            - cell "d0725efb…2987" [ref=f1e5073]
+            - cell "browser_test_ready" [ref=f1e5074]
+            - cell "0" [ref=f1e5075]
+            - cell "排队中" [ref=f1e5076]
+            - cell "—" [ref=f1e5079]
+            - cell "—" [ref=f1e5080]
+          - row [ref=f1e5081] [cursor=pointer]:
+            - cell "c71ddb1b…1c78" [ref=f1e5082]
+            - cell "browser_test_ready" [ref=f1e5083]
+            - cell "0" [ref=f1e5084]
+            - cell "排队中" [ref=f1e5085]
+            - cell "—" [ref=f1e5088]
+            - cell "—" [ref=f1e5089]
+          - row [ref=f1e5090] [cursor=pointer]:
+            - cell "33704fb5…0a24" [ref=f1e5091]
+            - cell "browser_test_ready" [ref=f1e5092]
+            - cell "0" [ref=f1e5093]
+            - cell "排队中" [ref=f1e5094]
+            - cell "—" [ref=f1e5097]
+            - cell "—" [ref=f1e5098]
+          - row [ref=f1e5099] [cursor=pointer]:
+            - cell "35eab579…b69a" [ref=f1e5100]
+            - cell "browser_test_ready" [ref=f1e5101]
+            - cell "0" [ref=f1e5102]
+            - cell "排队中" [ref=f1e5103]
+            - cell "—" [ref=f1e5106]
+            - cell "—" [ref=f1e5107]
+          - row [ref=f1e5108] [cursor=pointer]:
+            - cell "7dfe2a80…8a3d" [ref=f1e5109]
+            - cell "browser_test_ready" [ref=f1e5110]
+            - cell "0" [ref=f1e5111]
+            - cell "排队中" [ref=f1e5112]
+            - cell "—" [ref=f1e5115]
+            - cell "—" [ref=f1e5116]
+          - row [ref=f1e5117] [cursor=pointer]:
+            - cell "1b3d5b52…508d" [ref=f1e5118]
+            - cell "browser_test_ready" [ref=f1e5119]
+            - cell "0" [ref=f1e5120]
+            - cell "排队中" [ref=f1e5121]
+            - cell "—" [ref=f1e5124]
+            - cell "—" [ref=f1e5125]
+          - row [ref=f1e5126] [cursor=pointer]:
+            - cell "cf649e41…af6a" [ref=f1e5127]
+            - cell "browser_test_ready" [ref=f1e5128]
+            - cell "0" [ref=f1e5129]
+            - cell "排队中" [ref=f1e5130]
+            - cell "—" [ref=f1e5133]
+            - cell "—" [ref=f1e5134]
+          - row [ref=f1e5135] [cursor=pointer]:
+            - cell "55e5934b…6ef6" [ref=f1e5136]
+            - cell "browser_test_ready" [ref=f1e5137]
+            - cell "0" [ref=f1e5138]
+            - cell "排队中" [ref=f1e5139]
+            - cell "—" [ref=f1e5142]
+            - cell "—" [ref=f1e5143]
+          - row [ref=f1e5144] [cursor=pointer]:
+            - cell "f08cfec5…6b91" [ref=f1e5145]
+            - cell "browser_test_ready" [ref=f1e5146]
+            - cell "0" [ref=f1e5147]
+            - cell "排队中" [ref=f1e5148]
+            - cell "—" [ref=f1e5151]
+            - cell "—" [ref=f1e5152]
+          - row [ref=f1e5153] [cursor=pointer]:
+            - cell "fca26a6c…e322" [ref=f1e5154]
+            - cell "browser_test_ready" [ref=f1e5155]
+            - cell "0" [ref=f1e5156]
+            - cell "排队中" [ref=f1e5157]
+            - cell "—" [ref=f1e5160]
+            - cell "—" [ref=f1e5161]
+          - row [ref=f1e5162] [cursor=pointer]:
+            - cell "c4cc0297…398c" [ref=f1e5163]
+            - cell "browser_test_ready" [ref=f1e5164]
+            - cell "0" [ref=f1e5165]
+            - cell "排队中" [ref=f1e5166]
+            - cell "—" [ref=f1e5169]
+            - cell "—" [ref=f1e5170]
+          - row [ref=f1e5171] [cursor=pointer]:
+            - cell "52072c23…4a08" [ref=f1e5172]
+            - cell "browser_test_ready" [ref=f1e5173]
+            - cell "0" [ref=f1e5174]
+            - cell "排队中" [ref=f1e5175]
+            - cell "—" [ref=f1e5178]
+            - cell "—" [ref=f1e5179]
+          - row [ref=f1e5180] [cursor=pointer]:
+            - cell "a3d16587…b6a1" [ref=f1e5181]
+            - cell "browser_test_ready" [ref=f1e5182]
+            - cell "0" [ref=f1e5183]
+            - cell "排队中" [ref=f1e5184]
+            - cell "—" [ref=f1e5187]
+            - cell "—" [ref=f1e5188]
+          - row [ref=f1e5189] [cursor=pointer]:
+            - cell "b3d54d15…acb6" [ref=f1e5190]
+            - cell "browser_test_ready" [ref=f1e5191]
+            - cell "0" [ref=f1e5192]
+            - cell "排队中" [ref=f1e5193]
+            - cell "—" [ref=f1e5196]
+            - cell "—" [ref=f1e5197]
+          - row [ref=f1e5198] [cursor=pointer]:
+            - cell "1bbd398b…768d" [ref=f1e5199]
+            - cell "browser_test_ready" [ref=f1e5200]
+            - cell "0" [ref=f1e5201]
+            - cell "排队中" [ref=f1e5202]
+            - cell "—" [ref=f1e5205]
+            - cell "—" [ref=f1e5206]
+          - row [ref=f1e5207] [cursor=pointer]:
+            - cell "4fd7ac6e…c58b" [ref=f1e5208]
+            - cell "browser_test_ready" [ref=f1e5209]
+            - cell "0" [ref=f1e5210]
+            - cell "排队中" [ref=f1e5211]
+            - cell "—" [ref=f1e5214]
+            - cell "—" [ref=f1e5215]
+          - row [ref=f1e5216] [cursor=pointer]:
+            - cell "12fdf8ad…09d8" [ref=f1e5217]
+            - cell "browser_test_ready" [ref=f1e5218]
+            - cell "0" [ref=f1e5219]
+            - cell "排队中" [ref=f1e5220]
+            - cell "—" [ref=f1e5223]
+            - cell "—" [ref=f1e5224]
+          - row [ref=f1e5225] [cursor=pointer]:
+            - cell "e2404cff…e194" [ref=f1e5226]
+            - cell "browser_test_ready" [ref=f1e5227]
+            - cell "0" [ref=f1e5228]
+            - cell "排队中" [ref=f1e5229]
+            - cell "—" [ref=f1e5232]
+            - cell "—" [ref=f1e5233]
+          - row [ref=f1e5234] [cursor=pointer]:
+            - cell "030b581b…94b2" [ref=f1e5235]
+            - cell "browser_test_ready" [ref=f1e5236]
+            - cell "0" [ref=f1e5237]
+            - cell "排队中" [ref=f1e5238]
+            - cell "—" [ref=f1e5241]
+            - cell "—" [ref=f1e5242]
+          - row [ref=f1e5243] [cursor=pointer]:
+            - cell "4e32dc9e…fd91" [ref=f1e5244]
+            - cell "browser_test_ready" [ref=f1e5245]
+            - cell "0" [ref=f1e5246]
+            - cell "排队中" [ref=f1e5247]
+            - cell "—" [ref=f1e5250]
+            - cell "—" [ref=f1e5251]
+          - row [ref=f1e5252] [cursor=pointer]:
+            - cell "da305c49…83f0" [ref=f1e5253]
+            - cell "browser_test_ready" [ref=f1e5254]
+            - cell "0" [ref=f1e5255]
+            - cell "排队中" [ref=f1e5256]
+            - cell "—" [ref=f1e5259]
+            - cell "—" [ref=f1e5260]
+          - row [ref=f1e5261] [cursor=pointer]:
+            - cell "09a38797…9393" [ref=f1e5262]
+            - cell "browser_test_ready" [ref=f1e5263]
+            - cell "0" [ref=f1e5264]
+            - cell "排队中" [ref=f1e5265]
+            - cell "—" [ref=f1e5268]
+            - cell "—" [ref=f1e5269]
+          - row [ref=f1e5270] [cursor=pointer]:
+            - cell "567b3070…246d" [ref=f1e5271]
+            - cell "browser_test_ready" [ref=f1e5272]
+            - cell "0" [ref=f1e5273]
+            - cell "排队中" [ref=f1e5274]
+            - cell "—" [ref=f1e5277]
+            - cell "—" [ref=f1e5278]
+          - row [ref=f1e5279] [cursor=pointer]:
+            - cell "6beacd00…be43" [ref=f1e5280]
+            - cell "browser_test_ready" [ref=f1e5281]
+            - cell "0" [ref=f1e5282]
+            - cell "排队中" [ref=f1e5283]
+            - cell "—" [ref=f1e5286]
+            - cell "—" [ref=f1e5287]
+          - row [ref=f1e5288] [cursor=pointer]:
+            - cell "77003170…7c82" [ref=f1e5289]
+            - cell "browser_test_ready" [ref=f1e5290]
+            - cell "0" [ref=f1e5291]
+            - cell "排队中" [ref=f1e5292]
+            - cell "—" [ref=f1e5295]
+            - cell "—" [ref=f1e5296]
+          - row [ref=f1e5297] [cursor=pointer]:
+            - cell "574bb6c3…d0e3" [ref=f1e5298]
+            - cell "browser_test_ready" [ref=f1e5299]
+            - cell "0" [ref=f1e5300]
+            - cell "排队中" [ref=f1e5301]
+            - cell "—" [ref=f1e5304]
+            - cell "—" [ref=f1e5305]
+          - row [ref=f1e5306] [cursor=pointer]:
+            - cell "869de609…0191" [ref=f1e5307]
+            - cell "browser_test_ready" [ref=f1e5308]
+            - cell "0" [ref=f1e5309]
+            - cell "排队中" [ref=f1e5310]
+            - cell "—" [ref=f1e5313]
+            - cell "—" [ref=f1e5314]
+          - row [ref=f1e5315] [cursor=pointer]:
+            - cell "05cb62af…6abb" [ref=f1e5316]
+            - cell "browser_test_ready" [ref=f1e5317]
+            - cell "0" [ref=f1e5318]
+            - cell "排队中" [ref=f1e5319]
+            - cell "—" [ref=f1e5322]
+            - cell "—" [ref=f1e5323]
+          - row [ref=f1e5324] [cursor=pointer]:
+            - cell "8abb50e3…9b15" [ref=f1e5325]
+            - cell "browser_test_ready" [ref=f1e5326]
+            - cell "0" [ref=f1e5327]
+            - cell "排队中" [ref=f1e5328]
+            - cell "—" [ref=f1e5331]
+            - cell "—" [ref=f1e5332]
+          - row [ref=f1e5333] [cursor=pointer]:
+            - cell "501543a7…1e22" [ref=f1e5334]
+            - cell "browser_test_ready" [ref=f1e5335]
+            - cell "0" [ref=f1e5336]
+            - cell "排队中" [ref=f1e5337]
+            - cell "—" [ref=f1e5340]
+            - cell "—" [ref=f1e5341]
+          - row [ref=f1e5342] [cursor=pointer]:
+            - cell "1066cf63…d18b" [ref=f1e5343]
+            - cell "browser_test_ready" [ref=f1e5344]
+            - cell "0" [ref=f1e5345]
+            - cell "排队中" [ref=f1e5346]
+            - cell "—" [ref=f1e5349]
+            - cell "—" [ref=f1e5350]
+      - button "加载更多（已显示 50 条）" [ref=f1e5352] [cursor=pointer]
