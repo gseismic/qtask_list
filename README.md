@@ -73,6 +73,8 @@ pip install -e ".[all]"           # 全部可选依赖，包含开发工具
 | `{ns}:{name}:delay` | Sorted Set | 延迟与 `retry_wait` 队列（按时间戳排序，Lua 脚本原子迁移） |
 | `{ns}:{name}:worker:{worker_id}` | String + TTL | Worker heartbeat，用于判断 processing 是否已失联 |
 
+队列名称可以包含多级 namespace，但不能使用内部前缀 `qtask:`、空路径段或 Redis glob 字符 `*?[]`。两个队列不能同时占用对方的状态路径，例如 `jobs` 与 `jobs:delay`、`jobs:processing:other`；库会在写入前拒绝实际冲突。单独使用 `testns:dedup` 等名称仍然有效。
+
 ### 任务生命周期
 
 ```
@@ -190,10 +192,12 @@ q.get_stats()      # 返回 queue/processing/retry/retry_wait/dlq/delay 等计�
 **关键设计决策：**
 
 - `pop()` 使用 `BRPOPLPUSH`（非 `BLPOP`），取任务的同时推入 `processing` 队列。Worker 使用带 heartbeat 的专属 processing key，只自动恢复已失联 Worker 的任务。
+- Lua 只填充运行元数据，业务 JSON 由 Python 保真序列化；inline、压缩和外存模式均保留空数组、64 位整数与浮点值。
+- 领取阶段 Redis 响应丢失后，Worker 会恢复本地未登记消息；handler 尚未准入的 begin 不占用执行预算。handler 完成后的结算暂时失败会持续重试结算并保留续租，不重复运行 handler。已经发生的 payload 读取失败仍消耗 attempt。
 - 重试退避：`fail()` 未耗尽重试次数时按 `retry_backoff_base * 2^(attempt-1)`（±10% 抖动，上限 `retry_backoff_max`）写入 delay ZSET，到点由 `move_delay()` 迁回主队列。`QueueAdmin.queue_stats()` 从状态转换计数读取 `retry_wait`；该值是 `delay` 的子集。V1 retry List 仅由 `move_retry()` 兼容迁移。
 - 执行截止：`TaskSpec.start_deadline_at`（兼容 `push(expire_seconds=...)`）写入任务记录并同步写入 V2 信封；pop/begin-attempt 强制检查，过期任务标记 `skipped`/`deadline_missed`，不进入 DLQ。旧 V1 `expires_at` 仍可读取。
 - `move_delay()` 使用 Redis **Lua 脚本**，原子地将到期任务从 ZSET 迁移到主队列，单次调用最多迁移 500 条，避免同一秒大量任务到期时阻塞 Redis。
-- 大 payload 自动外存：push 时超过 `large_threshold` 则上传到 `RemoteStorage`，队列中仅存引用。消费端未配置 storage 时显式报错进 DLQ（配置错误）；storage 瞬时不可用时任务移入 delay 稍后重试，不进 DLQ。
+- 大 payload 自动外存：push 时超过 `large_threshold` 则上传到 `RemoteStorage`，队列中仅存引用。消费端未配置 storage 时显式报错进 DLQ（配置错误）；storage 瞬时不可用时按退避重试，耗尽 `max_attempts` 后进入 DLQ。旧 V1 外存引用也在读取前迁移到统一状态机，受同样的预算和 deadline 约束。
 
 ### Worker — 任务处理器
 
@@ -362,6 +366,8 @@ logical_key = 任务类型 : 业务主体 : 数据时间桶
 - **时间桶编进键**：跨期天然是新键，同桶重推被去重。live owner 不设置普通 TTL；终态 owner 按 `dedup_until` 精确保留，过期后 compare-and-delete。
 - **失败自愈**：进 DLQ 的任务是 failed outcome + dlq location；重放会创建新 task_id，原任务不会被重新打开。下一个时间桶仍是新身份，调度下一轮不会被卡住。
 
+新版 owner 键使用独立前缀 `qtask:owner:v2:{sha256(queue)}:{sha256(logical_key)}`，避免旧明文身份与哈希身份互相碰撞。旧 String owner 与旧哈希 owner 在访问时核验身份并迁移，保留终态和保留期。升级时应停止旧生产者与消费者，再统一启动新版；旧版本不能识别新的 owner 键。已有冲突队列应先在维护窗口处理命名，不会自动改名或删除数据。
+
 各场景键模板与执行截止策略：
 
 | 任务类型 | logical_key 示例 | 时间桶 | start_deadline_at（执行截止） |
@@ -380,11 +386,11 @@ logical_key = 任务类型 : 业务主体 : 数据时间桶
 1. **at-least-once 交付**：crash recovery 会重跑"已执行但未 ack"的任务；handler 先推 result_queue 后 ack 的窗口也会造成下游重复。**落库逻辑必须幂等（upsert / 唯一约束）**。
 2. **handler 必须自带超时**：库没有任务级超时，线程无法强杀。所有外部 HTTP 请求必须设置 timeout，否则线程永久占用并发额度，且 heartbeat 持续刷新导致 stale recovery 不会接管。
 3. **重试语义**：`max_retry=3` 表示**总共执行 3 次**（首次 + 2 次重试），不是首次之外再重试 3 次。
-4. **并发注意**：`max_workers>1` 时同一业务对象（如同一 symbol）的两个任务可能并发执行；需要严格串行请用 `max_workers=1` 或按对象分队列。库不做 per-key 串行化，logical_key 只保证"同键至多一个在途任务"。
+4. **并发注意**：`logical_key` 只表达身份去重；同一业务对象需要串行时，可使用独立的 `TaskSpec.concurrency_key`。Worker 按 heartbeat 与 lease 两者较短的周期续租；租约配置须为有限数值且至少 1 毫秒，业务应按实际网络与调度延迟留足余量。
 
 ## 定时抓取部署模式（场景示例）
 
-定时抓取推荐**外置 cron + logical_key 去重**，而不是在 handler 里自我续期（失败进 DLQ 会断链，re-push 与 ack 之间的崩溃会分裂周期链）。可直接运行的确定性 5 分钟 slot 示例见 `examples/stockev/scheduler.py`：
+定时抓取推荐**外置 cron + logical_key 去重**，而不是在 handler 里自我续期（失败进 DLQ 会断链，re-push 与 ack 之间的崩溃会分裂周期链）。可直接运行的确定性 5 分钟 slot 示例见 `examples/07_advanced/scheduler.py`：
 
 ```python
 # scheduler.py — 由 crontab / systemd timer 每 5 分钟调用
@@ -659,3 +665,9 @@ qtask_list/
 ├── pyproject.toml           # 项目配置与依赖
 └── README.md
 ```
+
+## 开发验证
+
+安装开发依赖及本机 `redis-server` 后运行 `python -m pytest tests/ -q`。测试会自动启动仅监听私有 Unix socket 的临时 Redis，并把归档与外存文件写入临时目录，不使用开发或业务 Redis。结束后自动停止实例并清理临时文件。
+
+`SmartQueue.check_consistency(limit=...)` 是抽样诊断；返回 `message_scan_complete` 和 `unverified_tasks` 表示覆盖程度。`repair_safe=True` 修改终态 operational 标记前会额外核验真实容器，不把抽样缺失当作消息已不存在。

@@ -40,7 +40,7 @@ local function supersede_is_newer(candidate, current)
     local candidate_kind = string.sub(candidate, 1, 2)
     local current_kind = string.sub(current, 1, 2)
     if candidate_kind == 'i:' and current_kind == 'i:' then
-        return tonumber(string.sub(candidate, 3)) > tonumber(string.sub(current, 3))
+        return integer_is_newer(string.sub(candidate, 3), string.sub(current, 3))
     end
     if candidate_kind == current_kind then
         return string.sub(candidate, 3) > string.sub(current, 3)
@@ -81,7 +81,9 @@ local generation = 1
 if has_identity then
     local owner_id, owner_outcome, owner_generation = owner_info(KEYS[3])
     if owner_id == '' then
-        owner_id, owner_outcome, owner_generation = owner_info(KEYS[4])
+        if key_type(KEYS[4]) == 'string' then
+            owner_id, owner_outcome, owner_generation = owner_info(KEYS[4])
+        end
     end
     duplicate_of = owner_id
     duplicate_outcome = owner_outcome
@@ -100,7 +102,7 @@ if has_identity then
     if key_type(KEYS[3]) ~= 'none' then
         redis.call('DEL', KEYS[3])
     end
-    if KEYS[4] ~= KEYS[3] and key_type(KEYS[4]) ~= 'none' then
+    if KEYS[4] ~= KEYS[3] and key_type(KEYS[4]) == 'string' then
         redis.call('DEL', KEYS[4])
     end
     redis.call(
@@ -139,7 +141,7 @@ if has_supersede then
 end
 
 local location = 'ready'
-if available_at > now then
+if record['not_before_at'] ~= '' and available_at > now then
     redis.call('ZADD', KEYS[2], available_at, raw_message)
     location = 'delay'
 else
@@ -153,6 +155,7 @@ redis.call('HINCRBY', KEYS[9], 'enqueue.accepted', 1)
 if duplicate_of ~= '' then
     redis.call('HINCRBY', KEYS[9], 'enqueue.override', 1)
 end
+redis.call('HSET', KEYS[5], 'enqueue_confirmed', '1')
 return {'enqueued', task_id, duplicate_of, tostring(generation), location, tostring(now)}
 """
 
@@ -275,15 +278,11 @@ if attempt >= max_attempts then
     return {'failed_budget', tostring(attempt)}
 end
 
-local envelope = cjson.decode(raw_message)
 if ARGV[6] == '1' then
     local acquired = redis.call('SET', KEYS[6], ARGV[7], 'NX', 'PX', tonumber(ARGV[8]))
     if not acquired then
         local run_at = now + tonumber(ARGV[9])
-        envelope['available_at'] = run_at
-        envelope['delay_reason'] = 'concurrency'
-        envelope['lease_token'] = nil
-        local deferred_message = cjson.encode(envelope)
+        local deferred_message = '{"available_at":' .. tostring(run_at) .. ARGV[12]
         local removed = redis.call('LREM', KEYS[1], 1, raw_message)
         if removed == 0 then
             return {'not_found'}
@@ -302,11 +301,7 @@ if ARGV[6] == '1' then
 end
 
 attempt = attempt + 1
-envelope['attempt'] = attempt
-if ARGV[6] == '1' then
-    envelope['lease_token'] = ARGV[7]
-end
-local started_message = cjson.encode(envelope)
+local started_message = '{"attempt":' .. tostring(attempt) .. ARGV[11]
 local removed = redis.call('LREM', KEYS[1], 1, raw_message)
 if removed == 0 then
     release_lease()
@@ -320,7 +315,8 @@ redis.call(
     'last_started_at', tostring(now),
     'updated_at', tostring(now),
     'available_at', tostring(now),
-    'delay_reason', ''
+    'delay_reason', '',
+    'claim_token', ARGV[13]
 )
 redis.call('HSET', KEYS[2], 'location', 'processing')
 if not redis.call('HGET', KEYS[2], 'started_at') then
@@ -788,7 +784,7 @@ local function supersede_is_newer(candidate, current)
     local candidate_kind = string.sub(candidate, 1, 2)
     local current_kind = string.sub(current, 1, 2)
     if candidate_kind == 'i:' and current_kind == 'i:' then
-        return tonumber(string.sub(candidate, 3)) > tonumber(string.sub(current, 3))
+        return integer_is_newer(string.sub(candidate, 3), string.sub(current, 3))
     end
     if candidate_kind == current_kind then
         return string.sub(candidate, 3) > string.sub(current, 3)
@@ -832,7 +828,9 @@ local generation = 1
 if has_identity then
     local owner_id, owner_outcome, owner_generation = owner_info(KEYS[4])
     if owner_id == '' then
-        owner_id, owner_outcome, owner_generation = owner_info(KEYS[5])
+        if key_type(KEYS[5]) == 'string' then
+            owner_id, owner_outcome, owner_generation = owner_info(KEYS[5])
+        end
     end
     if owner_id ~= '' and owner_id ~= old_task_id then
         local reason = 'duplicate_active'
@@ -867,7 +865,7 @@ end
 
 if has_identity then
     if key_type(KEYS[4]) ~= 'none' then redis.call('DEL', KEYS[4]) end
-    if KEYS[5] ~= KEYS[4] and key_type(KEYS[5]) ~= 'none' then redis.call('DEL', KEYS[5]) end
+    if KEYS[5] ~= KEYS[4] and key_type(KEYS[5]) == 'string' then redis.call('DEL', KEYS[5]) end
     redis.call(
         'HSET', KEYS[4],
         'task_id', new_task_id,
@@ -901,7 +899,7 @@ if has_supersede then
 end
 
 local location = 'ready'
-if available_at > now then
+if record['not_before_at'] ~= '' and available_at > now then
     redis.call('ZADD', KEYS[3], available_at, new_message)
     location = 'delay'
 else
@@ -913,5 +911,257 @@ if record['payload_pending'] == '1' then
 end
 redis.call('HINCRBY', KEYS[11], 'replay.accepted', 1)
 redis.call('HINCRBY', KEYS[11], 'enqueue.accepted', 1)
+redis.call('HSET', KEYS[7], 'enqueue_confirmed', '1')
 return {'enqueued', new_task_id, old_task_id, tostring(generation), location}
 """
+
+
+# Redis Lua 使用 double；整数版本按十进制文本比较，保持 64 位版本精确。
+_INTEGER_COMPARE_LUA = r"""
+local function integer_is_newer(candidate, current)
+    local candidate_negative = string.sub(candidate, 1, 1) == '-'
+    local current_negative = string.sub(current, 1, 1) == '-'
+    if candidate_negative ~= current_negative then return not candidate_negative end
+    local a = candidate_negative and string.sub(candidate, 2) or candidate
+    local b = current_negative and string.sub(current, 2) or current
+    if #a ~= #b then
+        if candidate_negative then return #a < #b end
+        return #a > #b
+    end
+    if candidate_negative then return a < b end
+    return a > b
+end
+"""
+
+_KEY_TYPES_LUA = r"""
+local function assert_key_type(key, allowed)
+    local kind = redis.call('TYPE', key)
+    if type(kind) == 'table' then kind = kind['ok'] end
+    if kind == 'none' then return end
+    for expected in string.gmatch(allowed, '[^,]+') do
+        if kind == expected then return end
+    end
+    error('qtask key type conflict: ' .. key .. ' expected ' .. allowed .. ' got ' .. kind)
+end
+local function assert_counter(key, field, floating)
+    local raw = redis.call('HGET', key, field)
+    if not raw then return end
+    local value = tonumber(raw)
+    if not value or value ~= value or value == math.huge or value == -math.huge then
+        error('qtask invalid metric counter: ' .. field)
+    end
+    if not floating then
+        if not string.match(raw, '^%-?%d+$') then error('qtask invalid integer counter: ' .. field) end
+        local digits = string.sub(raw, 1, 1) == '-' and string.sub(raw, 2) or raw
+        if #digits > 19 or (#digits == 19 and digits > '9223372036854775806') then
+            error('qtask metric counter overflow: ' .. field)
+        end
+    end
+end
+"""
+
+# 仅拒绝实际队列之间的状态路径重叠，独立的 retry/dedup 等业务名称继续可用。
+_QUEUE_NAMESPACE_LUA = r"""
+local function state_path_overlaps(parent, child)
+    for _, segment in ipairs({'processing', 'retry', 'dlq', 'delay', 'worker', 'dedup',
+                              'supersede', 'lease', 'maintenance', '__qtask_dummy__'}) do
+        local prefix = parent .. ':' .. segment
+        if child == prefix or string.sub(child, 1, #prefix + 1) == prefix .. ':' then return true end
+    end
+    return false
+end
+local function assert_queue_namespace(candidate)
+    for _, existing in ipairs(redis.call('ZRANGE', 'qtask:queues', 0, -1)) do
+        if existing ~= candidate and (state_path_overlaps(existing, candidate) or
+                                     state_path_overlaps(candidate, existing)) then
+            error('qtask queue namespace conflict: ' .. candidate .. ' and ' .. existing)
+        end
+    end
+end
+"""
+
+CHECK_QUEUE_NAMESPACE_LUA = (
+    _KEY_TYPES_LUA
+    + "assert_key_type('qtask:queues', 'zset')\n"
+    + _QUEUE_NAMESPACE_LUA
+    + "assert_queue_namespace(ARGV[1])\nreturn 1"
+)
+
+
+def _guard_key_types(
+    script: str,
+    types: dict[int, str],
+    *,
+    gc: tuple[int, int] | None = None,
+    metrics: tuple[int, list[str]] | None = None,
+    floating_metrics: tuple[int, list[str]] | None = None,
+) -> str:
+    """写入前检查键类型，避免 Lua 运行错误留下部分状态。"""
+    checks = "\n".join(f"assert_key_type(KEYS[{index}], '{kind}')" for index, kind in types.items())
+    if gc is not None:
+        prefix, record = gc
+        checks += f"""
+local storage_id = redis.call('HGET', KEYS[{record}], 'payload_storage_id') or ''
+if storage_id ~= '' then assert_key_type(KEYS[{prefix}] .. ':' .. storage_id, 'zset') end
+"""
+    for floating, counters in ((False, metrics), (True, floating_metrics)):
+        if counters is None:
+            continue
+        key, expressions = counters
+        checks += "\n" + "\n".join(
+            f"assert_counter(KEYS[{key}], {expression}, {'true' if floating else 'false'})"
+            for expression in expressions
+        )
+    return _KEY_TYPES_LUA + checks + "\n" + script
+
+
+ENQUEUE_V2_LUA = _guard_key_types(
+    _QUEUE_NAMESPACE_LUA
+    + "assert_queue_namespace(ARGV[9])\n"
+    + _INTEGER_COMPARE_LUA
+    + ENQUEUE_V2_LUA,
+    {
+        1: "list",
+        2: "zset",
+        3: "hash",
+        4: "string,hash",
+        5: "hash",
+        6: "zset",
+        7: "zset",
+        8: "string",
+        9: "hash",
+        10: "zset",
+    },
+    metrics=(
+        9,
+        [
+            "'enqueue.accepted'",
+            "'enqueue.override'",
+            "'enqueue.duplicate_active'",
+            "'enqueue.duplicate_retained'",
+        ],
+    ),
+)
+BEGIN_ATTEMPT_LUA = _guard_key_types(
+    BEGIN_ATTEMPT_LUA,
+    {
+        1: "list",
+        2: "hash",
+        3: "list",
+        4: "hash",
+        5: "string",
+        6: "string",
+        7: "zset",
+        8: "hash",
+        10: "zset",
+    },
+    gc=(9, 2),
+    metrics=(
+        8,
+        [
+            "'outcome.skipped'",
+            "'outcome.cancelled'",
+            "'outcome.failed'",
+            "'deadline_missed'",
+            "'superseded'",
+            "'concurrency.deferred'",
+            "'attempt.started'",
+            "'attempt.' .. tostring(tonumber(redis.call('HGET', KEYS[2], 'attempt') or '0') + 1)",
+            "'queue_wait_seconds.count'",
+        ],
+    ),
+    floating_metrics=(8, ["'queue_wait_seconds.total'"]),
+)
+COMPLETE_TASK_LUA = _guard_key_types(
+    COMPLETE_TASK_LUA,
+    {
+        1: "list",
+        2: "hash",
+        3: "hash",
+        4: "string",
+        5: "hash",
+        7: "zset",
+    },
+    gc=(6, 2),
+    metrics=(5, ["'outcome.completed'"]),
+)
+RETRY_TASK_LUA = _guard_key_types(
+    RETRY_TASK_LUA,
+    {
+        1: "list",
+        2: "hash",
+        3: "zset",
+        4: "hash",
+        5: "string",
+        6: "hash",
+        8: "zset",
+    },
+    gc=(7, 2),
+    metrics=(
+        6,
+        [
+            "'outcome.skipped'",
+            "'deadline_missed'",
+            "'retry_wait.current'",
+            "'retry.scheduled'",
+            "'retry.code.' .. ARGV[5]",
+        ],
+    ),
+)
+FAIL_TASK_LUA = _guard_key_types(
+    FAIL_TASK_LUA,
+    {
+        1: "list",
+        2: "hash",
+        3: "list",
+        4: "hash",
+        5: "string",
+        6: "hash",
+        7: "zset",
+    },
+    metrics=(6, ["'outcome.failed'", "'failure.code.' .. ARGV[4]"]),
+)
+REPLAY_TASK_LUA = _guard_key_types(
+    _QUEUE_NAMESPACE_LUA
+    + "assert_queue_namespace(ARGV[11])\n"
+    + _INTEGER_COMPARE_LUA
+    + REPLAY_TASK_LUA,
+    {
+        1: "list",
+        2: "list",
+        3: "zset",
+        4: "hash",
+        5: "string,hash",
+        6: "hash",
+        7: "hash",
+        8: "zset",
+        9: "zset",
+        10: "string",
+        11: "hash",
+        13: "zset",
+    },
+    gc=(12, 6),
+    metrics=(
+        11,
+        [
+            "'replay.accepted'",
+            "'enqueue.accepted'",
+            "'replay.duplicate_active'",
+            "'replay.duplicate_retained'",
+        ],
+    ),
+)
+CANCEL_OR_PURGE_LUA = _guard_key_types(
+    CANCEL_OR_PURGE_LUA,
+    {
+        1: "list,zset",
+        2: "hash",
+        3: "hash",
+        4: "string",
+        5: "hash",
+        7: "string",
+        8: "zset",
+    },
+    gc=(6, 2),
+    metrics=(5, ["'retry_wait.current'", "'admin.purged'", "'outcome.cancelled'"]),
+)

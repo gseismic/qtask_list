@@ -14,6 +14,7 @@ import redis
 import zstandard
 
 from .clock import Clock, SystemClock
+from .history import READ_TASK_RECORD_LUA, decode_task_record, read_task_record
 from .models import (
     DuplicateAction,
     EnqueueResult,
@@ -516,25 +517,15 @@ class QueueAdmin:
         return result
 
     def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
-        key = f"qtask:task:{task_id}"
-        redis_type = self.r.type(key)
-        if redis_type == "hash":
-            raw = self.r.hgetall(key)
-            if not raw:
-                return None
-            return {field: self._parse_json(value) for field, value in raw.items()}
-
-        raw_value = self.r.get(key)
-        if not raw_value:
-            return None
-        parsed = self._parse_json(raw_value)
-        if isinstance(parsed, dict):
-            return cast(Dict[str, Any], parsed)
-        return {"task_id": task_id, "_raw": raw_value}
+        return read_task_record(self.r, task_id)
 
     def resolve_payload(self, task_id: str, queue_name: str, state: str) -> Dict[str, Any]:
         """从队列中查找任务消息并还原完整 payload（解压 / 拉取外存）。"""
         selected_state = QueueState(state) if state in QueueState._value2member_map_ else QueueState.all
+        if selected_state == QueueState.retry_wait:
+            selected_state = QueueState.delay
+        elif selected_state in {QueueState.expired, QueueState.deadline_missed}:
+            selected_state = QueueState.all
 
         if selected_state in (
             QueueState.history,
@@ -590,6 +581,8 @@ class QueueAdmin:
             if raw_msg:
                 return self._resolve_payload_from_msg(raw_msg, task_id)
 
+        if self.get_task(task_id):
+            return self.resolve_payload(task_id, queue_name, QueueState.history.value)
         return {"task_id": task_id, "payload": None, "_note": "未在队列中找到此任务"}
 
     def _supplement_action_from_history(self, rows: List[Dict[str, Any]]) -> None:
@@ -598,12 +591,11 @@ class QueueAdmin:
         if not missing:
             return
 
-        pipe = self.r.pipeline()
+        records = {str(item.get("task_id")): item for item in self._read_history_records(
+            [str(row["task_id"]) for row in missing]
+        )}
         for row in missing:
-            pipe.hget(f"qtask:task:{row['task_id']}", "action")
-        actions = pipe.execute()
-
-        for row, action in zip(missing, actions):
+            action = records.get(str(row["task_id"]), {}).get("action")
             if action:
                 row["action"] = action
 
@@ -887,6 +879,7 @@ class QueueAdmin:
         reset_retry: bool = True,
     ) -> Dict[str, Any]:
         state = QueueState(from_state)
+        self._smart_queue(queue_name)._assert_queue_namespace()
         if state in {QueueState.ready, QueueState.history, QueueState.all}:
             return {"moved": 0, "task_id": task_id, "queue": queue_name, "from_state": state.value}
 
@@ -937,7 +930,13 @@ class QueueAdmin:
                         new_msg = (
                             self._reset_message_retry(raw_msg) if reset_retry and state == QueueState.dlq else raw_msg
                         )
-                        moved = self._move_list_message(key, queue_name, raw_msg, new_msg)
+                        heartbeat_key = None
+                        if state == QueueState.processing and ":processing:" in key:
+                            worker_id = key.rsplit(":processing:", 1)[1]
+                            heartbeat_key = f"{queue_name}:worker:{worker_id}"
+                        moved = self._move_list_message(
+                            key, queue_name, raw_msg, new_msg, heartbeat_key=heartbeat_key,
+                        )
                         if moved:
                             self._update_history(task_id, {"operational_message": 1})
                             # 只有没有不可变 V2 outcome 的旧记录才恢复为 pending；
@@ -973,6 +972,7 @@ class QueueAdmin:
         return None
 
     def recover(self, queue_name: str, include_active: bool = False) -> Dict[str, int]:
+        self._smart_queue(queue_name)._assert_queue_namespace()
         legacy_processing = f"{queue_name}:processing"
         if include_active:
             recovered = self._drain_list_to_ready(legacy_processing, queue_name)
@@ -989,7 +989,10 @@ class QueueAdmin:
             if not include_active and self.r.exists(f"{heartbeat_prefix}{worker_id}"):
                 skipped += int(self.r.llen(key))
                 continue
-            recovered += self._drain_list_to_ready(key, queue_name)
+            recovered += self._drain_list_to_ready(
+                key, queue_name,
+                heartbeat_key=None if include_active else f"{heartbeat_prefix}{worker_id}",
+            )
         return {"recovered": recovered, "skipped_active": skipped, "skipped_legacy": skipped_legacy}
 
     def delete_task(
@@ -1144,6 +1147,7 @@ class QueueAdmin:
             keys_to_delete.append(key)
         for pattern in (
             f"{queue_name}:dedup:*",
+            f"{queue.owner_prefix}*",
             f"{queue_name}:supersede:*",
             f"{queue_name}:lease:*",
         ):
@@ -1272,38 +1276,15 @@ class QueueAdmin:
 
         pipe = self.r.pipeline()
         for task_id in task_ids:
-            pipe.type(f"qtask:task:{task_id}")
-        redis_types = pipe.execute()
-
-        pipe = self.r.pipeline()
-        for task_id, redis_type in zip(task_ids, redis_types):
-            key = f"qtask:task:{task_id}"
-            if redis_type == "hash":
-                pipe.hgetall(key)
-            else:
-                pipe.get(key)
-        raw_records = pipe.execute()
+            pipe.eval(READ_TASK_RECORD_LUA, 1, f"qtask:task:{task_id}")
+        snapshots = pipe.execute()
 
         records: List[Dict[str, Any]] = []
-        for task_id, raw_record in zip(task_ids, raw_records):
-            record = self._parse_history_record(task_id, raw_record)
+        for task_id, snapshot in zip(task_ids, snapshots):
+            record = decode_task_record(task_id, snapshot)
             if record:
                 records.append(record)
         return records
-
-    def _parse_history_record(self, task_id: str, raw_record: Any) -> Optional[Dict[str, Any]]:
-        if not raw_record:
-            return None
-        if isinstance(raw_record, dict):
-            return {
-                field: self._parse_json(value)
-                for field, value in raw_record.items()
-            }
-
-        parsed = self._parse_json(raw_record)
-        if isinstance(parsed, dict):
-            return cast(Dict[str, Any], parsed)
-        return {"task_id": task_id, "_raw": raw_record}
 
     def _read_deadline_missed(
         self,
@@ -1584,6 +1565,7 @@ class QueueAdmin:
         queue_name: str,
         update_status: bool = False,
         reset_retry: bool = False,
+        heartbeat_key: str | None = None,
     ) -> int:
         count = 0
         collected_task_ids: List[str] = []
@@ -1592,7 +1574,7 @@ class QueueAdmin:
             if not msg:
                 break
             new_msg = self._reset_message_retry(msg) if reset_retry else msg
-            moved = self._move_list_message(source, queue_name, msg, new_msg)
+            moved = self._move_list_message(source, queue_name, msg, new_msg, heartbeat_key=heartbeat_key)
             if not moved:
                 break
             count += 1
@@ -1604,8 +1586,18 @@ class QueueAdmin:
             self._batch_update_status(collected_task_ids, queue_name)
         return count
 
-    def _move_list_message(self, source: str, destination: str, raw_msg: str, new_msg: Optional[str] = None) -> bool:
+    def _move_list_message(
+        self, source: str, destination: str, raw_msg: str, new_msg: Optional[str] = None,
+        *, heartbeat_key: str | None = None,
+    ) -> bool:
         lua_script = """
+        for _, key in ipairs({KEYS[1], KEYS[2]}) do
+            local kind = redis.call('TYPE', key)['ok']
+            if kind ~= 'none' and kind ~= 'list' then error('admin move key type conflict') end
+        end
+        local deadline_kind = redis.call('TYPE', KEYS[4])['ok']
+        if deadline_kind ~= 'none' and deadline_kind ~= 'zset' then error('deadline index type conflict') end
+        if ARGV[3] == '1' and redis.call('EXISTS', KEYS[3]) == 1 then return 0 end
         local removed = redis.call('LREM', KEYS[1], 1, ARGV[1])
         if removed == 0 then
             return 0
@@ -1616,11 +1608,19 @@ class QueueAdmin:
             local record_key = 'qtask:task:' .. tostring(envelope['task_id'])
             local kind = redis.call('TYPE', record_key)
             if type(kind) == 'table' then kind = kind['ok'] end
-            if kind == 'hash' then redis.call('HSET', record_key, 'location', 'ready') end
+            if kind == 'hash' then
+                redis.call('HSET', record_key, 'location', 'ready')
+                local deadline = redis.call('HGET', record_key, 'start_deadline_at') or ''
+                if deadline ~= '' then redis.call('ZADD', KEYS[4], deadline, tostring(envelope['task_id'])) end
+            end
         end
         return removed
         """
-        return bool(self.r.eval(lua_script, 2, source, destination, raw_msg, new_msg or raw_msg))
+        return bool(self.r.eval(
+            lua_script, 4, source, destination, heartbeat_key or f"{destination}:__qtask_dummy__:heartbeat",
+            f"qtask:deadline:{destination}",
+            raw_msg, new_msg or raw_msg, "1" if heartbeat_key else "0",
+        ))
 
     def _reset_message_retry(self, raw_msg: str) -> str:
         """剥离 DLQ 消息中的 _retry 计数（人工重放视为全新尝试）。解码失败原样返回。"""
@@ -1639,6 +1639,12 @@ class QueueAdmin:
 
     def _move_delay_message(self, source: str, destination: str, raw_msg: str) -> bool:
         lua_script = """
+        for index, expected in ipairs({'zset', 'list', 'hash'}) do
+            local kind = redis.call('TYPE', KEYS[index])['ok']
+            if kind ~= 'none' and kind ~= expected then error('admin delay move key type conflict') end
+        end
+        local raw_counter = redis.call('HGET', KEYS[3], 'retry_wait.current')
+        if raw_counter and not string.match(raw_counter, '^%-?%d+$') then error('invalid retry counter') end
         local removed = redis.call('ZREM', KEYS[1], ARGV[1])
         if removed == 0 then
             return 0

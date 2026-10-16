@@ -170,6 +170,14 @@ class EnvelopeCodec:
         """把信封编码成 Redis 消息。"""
         return orjson.dumps(envelope).decode("utf-8")
 
+    @staticmethod
+    def runtime_tail(envelope: Mapping[str, Any], field: str, **changes: Any) -> str:
+        """由 Python 保真序列化 JSON，供 Lua 只在最前面填一个运行字段。"""
+        data = dict(envelope)
+        data.update(changes)
+        data.pop(field, None)
+        return "," + EnvelopeCodec.encode(data)[1:]
+
     def build(
         self,
         *,
@@ -191,7 +199,7 @@ class EnvelopeCodec:
             "max_attempts": max_attempts,
             "created_at": created_at,
             "available_at": available_at,
-            "delay_reason": "schedule" if available_at > created_at else "enqueue",
+            "delay_reason": "schedule" if spec.not_before_at is not None else "enqueue",
             "payload": prepared.descriptor,
         }
         optional = {
@@ -284,7 +292,7 @@ class EnvelopeCodec:
             payload = descriptor.get("data")
             if not isinstance(payload, dict):
                 raise PayloadDecodeError("invalid_payload", "inline payload must be an object")
-            return cast(dict[str, JsonValue], payload)
+            return self._business_payload(cast(dict[str, JsonValue], payload), descriptor)
 
         if kind == "zstd":
             try:
@@ -293,7 +301,7 @@ class EnvelopeCodec:
             except Exception as exc:
                 raise PayloadDecodeError("payload_decompress", f"payload 解压失败: {exc}") from exc
             self._verify_payload(raw, descriptor)
-            return self._decode_json_object(raw)
+            return self._business_payload(self._decode_json_object(raw), descriptor)
 
         if kind == "external":
             if self.storage is None:
@@ -316,9 +324,17 @@ class EnvelopeCodec:
                     f"RemoteStorage 连接失败: {exc}",
                 ) from exc
             self._verify_payload(raw, descriptor)
-            return self._decode_json_object(raw)
+            return self._business_payload(self._decode_json_object(raw), descriptor)
 
         raise PayloadDecodeError("invalid_payload_kind", f"未知 payload kind: {kind!r}")
+
+    @staticmethod
+    def _business_payload(payload: dict[str, JsonValue], descriptor: Mapping[str, Any]) -> dict[str, JsonValue]:
+        """仅旧格式迁移消息剥离运行字段，V2 业务同名字段保持原样。"""
+        if descriptor.get("legacy"):
+            payload = dict(payload)
+            payload.pop("_retry", None)
+        return payload
 
     def _decode_v1_payload(self, payload_raw: Any) -> dict[str, JsonValue]:
         payload = json.loads(payload_raw) if isinstance(payload_raw, str) else payload_raw

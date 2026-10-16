@@ -75,3 +75,10 @@
 - 结果文件：`PLAN-023-all-extra-OUTCOME.md`
 - 设计文件：`docs/design/install-extras-20261016-all.md`
 - 摘要：增加 `all` 安装 extra，聚合 dev、dashboard、storage 的可选依赖去重并集；README 补充一键安装命令并说明包含开发工具。
+
+## 2026-10-16 08:25
+
+- 计划文件：`PLAN-024-core-reliability.md`
+- 结果文件：`PLAN-024-core-reliability-OUTCOME.md`
+- 设计文件：`docs/design/core-reliability-20261016-remediation.md`
+- 摘要：修复非 UI 核心审查确认的 11 项问题，并经三轮修复复查补齐响应丢失预算、历史文本与在线格式转换、指标预检、命名边界、owner 迁移与保留、恢复索引及心跳竞争、时钟偏差和外存失败预算。增加临时 Redis 与文件目录隔离、70 项回归；全量 206 passed，ruff、mypy、50 个 Python 源文件编译和 diff 检查通过。README 同步接口与升级边界。

@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional
 import redis
 from loguru import logger
 
+from .history import READ_TASK_RECORD_LUA, decode_task_record
+
 
 class Monitor:
     """Redis 内存监控器"""
@@ -106,52 +108,22 @@ class ArchiveManager:
             # 为简化，直接按当前归档执行日期分包，或根据任务 created_at 分包
             # 这里选择根据任务 created_at 时间戳决定写入哪个 SQLite 文件
 
-            # 修正：支持获取 Hash 或 String 类型的任务数据
-            # 1. 第一阶段：批量获取类型
+            # 单键的类型与内容原子读取，批量 pipeline 不受在线格式转换影响。
             pipe = self.r.pipeline()
             for tid in task_ids:
-                pipe.type(f"{task_key_prefix}{tid}")
-            types = pipe.execute()
-            
-            # 2. 第二阶段：根据类型批量获取内容
-            pipe = self.r.pipeline()
-            for tid, rtype in zip(task_ids, types):
-                key = f"{task_key_prefix}{tid}"
-                if rtype == "hash":
-                    pipe.hgetall(key)
-                elif rtype == "string":
-                    pipe.get(key)
-                else:
-                    pipe.echo("")  # 占位符
-
-            raw_responses = pipe.execute()
+                pipe.eval(READ_TASK_RECORD_LUA, 1, f"{task_key_prefix}{tid}")
+            snapshots = pipe.execute()
             raw_tasks: List[Optional[Dict[str, Any]]] = []
             stale_task_ids = []
 
-            for j, rtype in enumerate(types):
-                data = raw_responses[j]
+            for j, snapshot in enumerate(snapshots):
+                data = decode_task_record(str(task_ids[j]), snapshot)
                 if not data:
                     raw_tasks.append(None)
                     stale_task_ids.append(task_ids[j])
                     continue
 
-                if rtype == "hash":
-                    # 将 Hash 数据各字段反序列化（如果是 JSON 字符串）
-                    decoded: Dict[str, Any] = {}
-                    for k, v in data.items():
-                        try:
-                            decoded[k] = json.loads(v)
-                        except (json.JSONDecodeError, TypeError):
-                            decoded[k] = v
-                    raw_tasks.append(decoded)
-                elif rtype == "string":
-                    try:
-                        raw_tasks.append(json.loads(data))
-                    except (json.JSONDecodeError, TypeError):
-                        raw_tasks.append({"payload": data})
-                else:
-                    raw_tasks.append(None)
-                    stale_task_ids.append(task_ids[j])
+                raw_tasks.append(data)
 
             # 合并写入
             db_sessions: Dict[str, list] = {}  # date_str -> rows
@@ -189,8 +161,8 @@ class ArchiveManager:
                         queue_full_name,
                         raw.get("action", ""),
                         outcome,
-                        raw.get("payload", "{}"),
-                        raw.get("result", "{}"),
+                        self._sqlite_json(raw.get("payload", "{}")),
+                        self._sqlite_json(raw.get("result", "{}")),
                         created_at,
                         float(raw.get("updated_at", created_at)),
                         json.dumps(raw),
@@ -239,6 +211,13 @@ class ArchiveManager:
                 break
 
         return total_archived
+
+    @staticmethod
+    def _sqlite_json(value: Any) -> str | None:
+        """将结构化历史转为 SQLite 可绑定的 JSON 文本，保留旧文本字段。"""
+        if value is None or isinstance(value, str):
+            return value
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
     def _has_operational_message(self, queue_name: str, task_id: str) -> bool:
         """兼容旧记录：归档前以容器再次确认消息已不存在。"""

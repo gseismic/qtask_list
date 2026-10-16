@@ -9,8 +9,10 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from typing import Any, Callable, Dict, Optional
 
+import redis
 from loguru import logger
 
 from .clock import Clock
@@ -60,7 +62,7 @@ class Worker:
         self.redis_url = redis_url
         self.worker_id = (worker_id or f"{os.getpid()}-{uuid.uuid4().hex}").replace(":", "_")
         self.heartbeat_ttl = max(heartbeat_ttl, 2)
-        self.heartbeat_interval = max(1, min(30, self.heartbeat_ttl // 3))
+        self.heartbeat_interval: float = max(1, min(30, self.heartbeat_ttl // 3))
 
         base = f"{namespace}:{queue_name}" if namespace else queue_name
         processing_key = f"{base}:processing:{self.worker_id}"
@@ -82,6 +84,7 @@ class Worker:
             concurrency_lease_seconds=concurrency_lease_seconds,
             concurrency_retry_seconds=concurrency_retry_seconds,
         )
+        self.heartbeat_interval = min(self.heartbeat_interval, concurrency_lease_seconds / 3)
         self.result_queue = result_queue
         self._heartbeat_prefix = f"{self.queue.base}:worker:"
         self._heartbeat_key = f"{self._heartbeat_prefix}{self.worker_id}"
@@ -107,6 +110,8 @@ class Worker:
         self._heartbeat_wakeup = threading.Event()
         self._draining = False
         self._active_claims: dict[str, TaskClaim] = {}
+        # 异常退出的 handler 已用过预算，区别于领取响应丢失造成的未准入消息。
+        self._abandoned_attempts: set[str] = set()
         self._active_claims_lock = threading.Lock()
         self.maintenance_interval = max(maintenance_interval, 1)
         self.archive_dir = archive_dir or os.environ.get("QTASK_ARCHIVE_DIR") or os.path.abspath(
@@ -119,6 +124,7 @@ class Worker:
         self.alert_callback = alert_callback
 
     def _refresh_heartbeat(self) -> None:
+        self.queue._assert_queue_namespace()
         now = self.queue.clock.now()
         pipe = self.queue.r.pipeline(transaction=True)
         pipe.set(self._heartbeat_key, str(now), ex=self.heartbeat_ttl)
@@ -178,11 +184,17 @@ class Worker:
         return decorator
 
     def _process_task_with_semaphore(self, claim: TaskClaim) -> None:
+        interrupted = False
         try:
             self._process_task(claim)
+        except BaseException:
+            interrupted = True
+            raise
         finally:
             with self._active_claims_lock:
                 self._active_claims.pop(claim.context.task_id, None)
+                if interrupted:
+                    self._abandoned_attempts.add(claim.context.task_id)
             if self._semaphore:
                 self._semaphore.release()
 
@@ -200,12 +212,10 @@ class Worker:
         started_monotonic = time.monotonic()
         if handler is None:
             logger.warning(f"No handler for action: {action}")
-            self.queue.fail(
-                claim.raw_message,
-                f"unknown action: {action}",
-                code="unknown_action",
-                permanent=True,
-            )
+            self._settle_claim(partial(self.queue.fail,
+                claim.raw_message, f"unknown action: {action}",
+                code="unknown_action", permanent=True,
+            ), claim)
             return
 
         try:
@@ -239,37 +249,51 @@ class Worker:
                 # 兼容旧 handler：裸 dict 仍投递一个无自动 identity 的下游任务。
                 self.result_queue.push(result)
 
-            if not self.queue.ack(claim.raw_message, result=audit_result):
+            if not self._settle_claim(partial(self.queue.ack, claim.raw_message, result=audit_result), claim):
                 logger.warning(f"Ack lost ownership task={claim.context.task_id}")
         except RetryableTaskError as exc:
             logger.warning(f"Retryable handler error action={action} code={exc.code}: {exc}")
-            self.queue.fail(
+            self._settle_claim(partial(self.queue.fail,
                 claim.raw_message,
                 str(exc),
                 code=exc.code,
                 retry_after=exc.retry_after,
-            )
+            ), claim)
         except PermanentTaskError as exc:
             logger.error(f"Permanent handler error action={action} code={exc.code}: {exc}")
-            self.queue.fail(
+            self._settle_claim(partial(self.queue.fail,
                 claim.raw_message,
                 str(exc),
                 code=exc.code,
                 permanent=True,
-            )
+            ), claim)
         except Exception as exc:
             logger.exception(f"Handler error for {action}: {exc}")
-            self.queue.fail(
+            self._settle_claim(partial(self.queue.fail,
                 claim.raw_message,
                 str(exc),
                 code="handler_unclassified",
-            )
+            ), claim)
         finally:
             duration = max(time.monotonic() - started_monotonic, 0.0)
-            pipe = self.queue.r.pipeline()
-            pipe.hincrbyfloat(self.queue.metrics_key, "handler_duration_seconds.total", duration)
-            pipe.hincrby(self.queue.metrics_key, "handler_duration_seconds.count", 1)
-            pipe.execute()
+            try:
+                pipe = self.queue.r.pipeline()
+                pipe.hincrbyfloat(self.queue.metrics_key, "handler_duration_seconds.total", duration)
+                pipe.hincrby(self.queue.metrics_key, "handler_duration_seconds.count", 1)
+                pipe.execute()
+            except redis.RedisError as exc:
+                logger.warning(f"Handler metrics unavailable: {exc}")
+
+    def _settle_claim(self, operation: Callable[[], bool], claim: TaskClaim) -> bool:
+        """Redis 暂时不可用时保留 claim 并重试结算，避免重复执行 handler。"""
+        while True:
+            try:
+                return operation()
+            except redis.RedisError as exc:
+                logger.warning(f"Task settlement pending task={claim.context.task_id}: {exc}")
+                if self._shutdown_event.wait(0.1):
+                    # 停止后交由下一 Worker 的 stale recovery 接管未确认消息。
+                    return False
 
     def _renew_active_leases(self) -> None:
         with self._active_claims_lock:
@@ -285,6 +309,8 @@ class Worker:
     def _discard_claim(self, claim: TaskClaim) -> None:
         with self._active_claims_lock:
             self._active_claims.pop(claim.context.task_id, None)
+            if claim.settlement_pending:
+                self._abandoned_attempts.add(claim.context.task_id)
 
     def _heartbeat_loop(self) -> None:
         """独立续租所有已领取任务，包含等待线程池执行的 claim。"""
@@ -396,7 +422,10 @@ class Worker:
                         self._emit_operational_alerts()
                         last_maintenance = now
             except Exception as exc:
-                self.queue.r.hincrby(self.queue.metrics_key, "maintenance.failure", 1)
+                try:
+                    self.queue.r.hincrby(self.queue.metrics_key, "maintenance.failure", 1)
+                except redis.RedisError:
+                    pass
                 logger.exception(f"Maintenance error: {exc}")
 
             stop_wait = min(60, self.maintenance_interval, self.heartbeat_interval)
@@ -420,11 +449,20 @@ class Worker:
 
         try:
             self._refresh_heartbeat()
+            with self._active_claims_lock:
+                protected = {item.raw_message for item in self._active_claims.values()}
+                spent_attempts = set(self._abandoned_attempts)
+            recovered = self.queue.recover_abandoned_claims(protected, spent_attempts=spent_attempts)
+            with self._active_claims_lock:
+                self._abandoned_attempts.difference_update(spent_attempts)
+            if recovered:
+                logger.warning(f"Recovered {recovered} abandoned local claims")
             self.queue.move_retry()
             claim = self.queue.pop_claim(
                 timeout=2,
                 _on_started=self._register_claim,
                 _on_discarded=self._discard_claim,
+                _stop_requested=self._shutdown_event.is_set,
             )
             if claim is None:
                 return False
@@ -438,11 +476,7 @@ class Worker:
                     # 提交失败时直接处理已领取任务，避免消息留在活跃 processing。
                     self._process_task_with_semaphore(claim)
             else:
-                try:
-                    self._process_task(claim)
-                finally:
-                    with self._active_claims_lock:
-                        self._active_claims.pop(claim.context.task_id, None)
+                self._process_task_with_semaphore(claim)
             return True
         finally:
             if acquired and self._semaphore:

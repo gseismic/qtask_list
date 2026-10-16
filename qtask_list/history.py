@@ -16,14 +16,76 @@ from .clock import Clock, SystemClock
 
 TERMINAL_OUTCOMES = {"completed", "failed", "skipped", "cancelled"}
 
+# 类型和内容必须在同一原子读取中获取，兼容在线 String→Hash 转换。
+READ_TASK_RECORD_LUA = r"""
+local kind = redis.call('TYPE', KEYS[1])['ok']
+if kind == 'hash' then return {kind, redis.call('HGETALL', KEYS[1])} end
+if kind == 'string' then return {kind, redis.call('GET', KEYS[1])} end
+return {kind, false}
+"""
+_TEXT_FIELDS = {
+    "task_id", "_queue", "action", "logical_key", "trace_id", "parent_task_id", "replay_of",
+    "concurrency_key", "supersede_key", "supersede_value", "reason", "reason_code",
+    "last_error", "last_error_code", "payload_ref", "payload_checksum", "payload_kind",
+    "payload_storage_id", "history_mode", "status", "outcome", "location", "delay_reason",
+    "replayed_by", "duplicate_override_of",
+    "claim_token",
+}
+
+
+def decode_history_field(field: str, value: Any) -> Any:
+    """文本身份不按 JSON 猜类型，结构字段和数值字段继续反序列化。"""
+    if field in _TEXT_FIELDS:
+        return value
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return value
+
+
+def decode_task_record(task_id: str, snapshot: Any) -> dict[str, Any] | None:
+    """解析原子读取结果，保持旧 String 和新 Hash 的公共返回形态一致。"""
+    kind, raw = snapshot
+    if kind == "none":
+        return None
+    if kind == "hash":
+        record = {field: decode_history_field(field, value)
+                  for field, value in zip(raw[::2], raw[1::2])}
+        if not record:
+            return None
+    elif kind == "string":
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            parsed = raw
+        record = parsed if isinstance(parsed, dict) else {"_raw": parsed}
+    else:
+        raise ValueError(f"unsupported task record type: {kind}")
+    record.setdefault("task_id", task_id)
+    return cast(dict[str, Any], record)
+
+
+def read_task_record(client: Any, task_id: str) -> dict[str, Any] | None:
+    """以一次 Redis 调用读取完整历史，避免格式迁移期间类型失配。"""
+    return decode_task_record(task_id, client.eval(READ_TASK_RECORD_LUA, 1, f"qtask:task:{task_id}"))
+
 
 def _serialize_value(value: Any) -> Any:
     """历史字段序列化：None 转空串，容器转紧凑 JSON，其余原样。"""
     if value is None:
         return ""
+    if isinstance(value, bool):
+        return json.dumps(value)
     if isinstance(value, (dict, list, tuple)):
         return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
     return value
+
+
+def _serialize_field(field: str, value: Any) -> Any:
+    """运行标记使用脚本约定的 0/1，其余布尔值保留 JSON 类型。"""
+    if field == "operational_message" and isinstance(value, bool):
+        return int(value)
+    return _serialize_value(value)
 
 
 class TaskHistory:
@@ -44,13 +106,48 @@ class TaskHistory:
             self.r = redis.from_url(redis_url, decode_responses=True)
         else:
             raise ValueError("Either redis_url or redis_client must be provided")
-        if ttl_days < 0:
-            raise ValueError("ttl_days must be >= 0")
+        if not isinstance(ttl_days, int) or ttl_days < 0:
+            raise ValueError("ttl_days must be an integer >= 0")
         self.queue_name = queue_name
         self.idx_key = f"qtask:hist:{queue_name}"
         self.task_key_prefix = "qtask:task:"
         self.ttl_seconds = ttl_days * 86400
         self.clock = clock or SystemClock()
+
+    def ensure_hash(self, task_id: str) -> bool:
+        """CAS 转换旧 String 历史，保留 TTL 和完整 JSON，避免覆盖并发更新。"""
+        key = f"{self.task_key_prefix}{task_id}"
+        for _ in range(8):
+            kind, raw = self.r.eval(READ_TASK_RECORD_LUA, 1, key)
+            if kind == "hash":
+                return True
+            if kind == "none":
+                return False
+            if kind != "string":
+                raise ValueError(f"unsupported task record type: {kind}")
+            if raw is None:
+                continue
+            parsed = json.loads(raw)
+            if not isinstance(parsed, dict):
+                raise ValueError("legacy task history must be a JSON object")
+            parsed.setdefault("task_id", task_id)
+            parsed.setdefault("_queue", self.queue_name)
+            flat: list[Any] = []
+            for field, value in parsed.items():
+                flat.extend([field, _serialize_field(field, value)])
+            script = r"""
+            local kind = redis.call('TYPE', KEYS[1])['ok']
+            if kind == 'hash' then return 1 end
+            if kind ~= 'string' or redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
+            local ttl = redis.call('PTTL', KEYS[1])
+            redis.call('DEL', KEYS[1])
+            redis.call('HSET', KEYS[1], unpack(ARGV, 2))
+            if ttl >= 0 then redis.call('PEXPIRE', KEYS[1], math.max(ttl, 1)) end
+            return 1
+            """
+            if self.r.eval(script, 1, key, raw, *flat):
+                return True
+        raise RuntimeError("legacy task record changed repeatedly during conversion")
 
     def record(self, task_id: str, data: dict[str, Any]) -> None:
         """记录新任务；新记录默认视为仍有 operational message。"""
@@ -70,15 +167,17 @@ class TaskHistory:
         record.setdefault("status", "pending")
         record.setdefault("operational_message", 1)
         task_key = f"{self.task_key_prefix}{task_id}"
-        pipe.hset(task_key, mapping={key: _serialize_value(value) for key, value in record.items()})
+        pipe.hset(task_key, mapping={key: _serialize_field(key, value) for key, value in record.items()})
         pipe.persist(task_key)
         pipe.zadd(self.idx_key, {task_id: float(record["created_at"])}, nx=True)
 
     def update(self, task_id: str, fields: dict[str, Any]) -> bool:
         """更新运行元数据；已经写入的 terminal outcome 不允许重新打开或改写。"""
         key = f"{self.task_key_prefix}{task_id}"
+        if not self.ensure_hash(task_id):
+            return False
         now = self.clock.now()
-        mapping = {name: _serialize_value(value) for name, value in fields.items()}
+        mapping = {name: _serialize_field(name, value) for name, value in fields.items()}
         requested_outcome = str(mapping.get("outcome", ""))
         requested_status = str(mapping.get("status", ""))
         if not requested_outcome and requested_status in TERMINAL_OUTCOMES:
@@ -132,21 +231,7 @@ class TaskHistory:
 
     def get(self, task_id: str) -> Optional[Dict[str, Any]]:
         """获取任务详情，兼容旧版 String 记录。"""
-        key = f"{self.task_key_prefix}{task_id}"
-        redis_type = self.r.type(key)
-        if redis_type == "hash":
-            raw_data = self.r.hgetall(key)
-            if not raw_data:
-                return None
-            return {field: self._decode(value) for field, value in raw_data.items()}
-        raw_data = self.r.get(key)
-        if not raw_data:
-            return None
-        try:
-            parsed = json.loads(raw_data)
-            return cast(Dict[str, Any], parsed) if isinstance(parsed, dict) else {"_raw": parsed}
-        except (json.JSONDecodeError, TypeError):
-            return {"_raw": raw_data}
+        return read_task_record(self.r, task_id)
 
     def list(self, limit: int = 50) -> List[Dict[str, Any]]:
         """按创建时间倒序列出任务历史。"""
@@ -188,7 +273,8 @@ class TaskHistory:
         end
         if kind ~= 'hash' then return 0 end
         local outcome = redis.call('HGET', KEYS[1], 'outcome') or ''
-        local operational = redis.call('HGET', KEYS[1], 'operational_message') or '1'
+        if outcome == '' then outcome = redis.call('HGET', KEYS[1], 'status') or '' end
+        local operational = redis.call('HGET', KEYS[1], 'operational_message') or '0'
         if (outcome == 'completed' or outcome == 'failed' or
             outcome == 'skipped' or outcome == 'cancelled') and operational == '0' then
             redis.call('DEL', KEYS[1])
@@ -204,6 +290,13 @@ class TaskHistory:
                 break
             batch_removed = 0
             for task_id in task_ids:
+                # 旧记录可能没有 operational 标记，转换前用真实容器确认。
+                if self.r.type(f"{self.task_key_prefix}{task_id}") == "string":
+                    if self._task_has_operational_message(str(task_id)):
+                        self.ensure_hash(str(task_id))
+                        self.r.hset(f"{self.task_key_prefix}{task_id}", "operational_message", "1")
+                        continue
+                    self.ensure_hash(str(task_id))
                 batch_removed += int(self.r.eval(
                     script, 2, f"{self.task_key_prefix}{task_id}", self.idx_key, task_id
                 ) or 0)
@@ -242,6 +335,7 @@ class TaskHistory:
                     continue
                 if self._task_has_operational_message(task_id):
                     # 修复旧记录缺失/错误的 operational 标记，但不删除。
+                    self.ensure_hash(task_id)
                     self.r.hset(f"{self.task_key_prefix}{task_id}", "operational_message", "1")
                     continue
                 finished_at = self._float_or_none(
@@ -266,6 +360,7 @@ class TaskHistory:
 
     def _delete_if_still_archivable(self, task_id: str, cutoff: float) -> int:
         """再次在 Redis 内检查终态与 operational 标记，避免 moved=0 后误删。"""
+        self.ensure_hash(task_id)
         script = r"""
         if redis.call('EXISTS', KEYS[1]) == 0 then
             return redis.call('ZREM', KEYS[2], ARGV[1])
