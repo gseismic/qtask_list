@@ -4,4 +4,4 @@
 
 | 更新时间（Asia/Shanghai） | 计划 | 状态 | 结果 |
 | --- | --- | --- | --- |
-| 2026-10-17 00:18 | [自定义 processing 统计与恢复](./PLAN-20261017-001-model-unknown-custom-processing-index.md) | 已完成（WORKTREE） | [结果](./PLAN-20261017-001-model-unknown-custom-processing-index-OUTCOME.md)：队列级登记修复统计、查看和恢复；Python 250、前端 15 项通过，Ruff/mypy 通过。 |
+| 2026-10-17 00:49 | [自定义 processing 统计与恢复](./PLAN-20261017-001-model-unknown-custom-processing-index.md) | 已完成（未推送） | [结果](./PLAN-20261017-001-model-unknown-custom-processing-index-OUTCOME.md)：提交 `054f12c25d4a248a5adf80a3c1c8e18add818458`；Python 工作区 250、候选 224，前端 15 项通过，Ruff/mypy 通过。 |

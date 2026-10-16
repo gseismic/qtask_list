@@ -1,9 +1,9 @@
 # 自定义 processing 统计与恢复计划结果
 
-- 结果时间：2026-10-17 00:18（Asia/Shanghai）。
+- 结果更新时间：2026-10-17 00:49（Asia/Shanghai）。
 - 实际执行模型：Codex / model-unknown（环境声明基于 GPT-6，未提供具体模型 ID）。
 - 计划：[PLAN-20261017-001](./PLAN-20261017-001-model-unknown-custom-processing-index.md)。
-- 实施范围：WORKTREE；基准提交 `3ff689706e788264b02839c4e2db9bd8a4644d50`，分支 `main`。结果尚未固定为提交。
+- 实施版本：`054f12c25d4a248a5adf80a3c1c8e18add818458`（完整 commit）；基准提交 `3ff689706e788264b02839c4e2db9bd8a4644d50`，分支 `main`。已提交，未推送。
 - 相关测试记录：[自定义 processing 修复测试](../test/20261017-00-WORKTREE/自定义-processing-修复测试.md)。
 
 ## 完成情况
@@ -21,10 +21,10 @@
 ## 验证结果
 
 - 定向 Python 回归：9 passed，132 deselected。
-- 全量 Python：250 passed，80 warnings，18.79s。
+- 全量工作区 Python：250 passed，80 warnings，18.79s；提交候选隔离 Python：224 passed，80 warnings，19.25s。
 - 前端：15 passed。
 - Ruff：通过。
 - mypy：20 source files 通过。
 - `git diff --check`：通过。
 
-代码和结果仍处于 WORKTREE，没有提交或推送。工作区中此前已有的 Dashboard、前端和其他文档修改均予以保留。
+本次修复已提交为 `054f12c25d4a248a5adf80a3c1c8e18add818458`，未推送。工作区中此前已有的 Dashboard、前端和其他文档修改均予以保留。

@@ -77,3 +77,11 @@ assert QueueAdmin(redis_client=r).queue_stats("review")["processing"] == 0
 - 状态保持：已解决。补入管理端 processing 列表实际读取断言后，定向用例 9 passed、132 deselected；全量 Python 250 passed、80 warnings（18.79s）。前端 15 项、Ruff、mypy 和 `git diff --check` 仍通过。
 - 依据版本：WORKTREE，基准提交 `3ff689706e788264b02839c4e2db9bd8a4644d50`；仍未提交。
 - 更新后的完整记录：[测试记录](../test/20261017-00-WORKTREE/自定义-processing-修复测试.md)和[计划结果](../plans/PLAN-20261017-001-model-unknown-custom-processing-index-OUTCOME.md)。
+
+
+## 2026-10-17 00:49（Asia/Shanghai）提交版本确认事件
+
+- 模型：Codex / model-unknown（环境声明基于 GPT-6，未提供具体模型 ID）。
+- 状态保持：已解决。将登记、统计、查看、恢复与删除清理修复提交；修复版本完整 commit：`054f12c25d4a248a5adf80a3c1c8e18add818458`。
+- 验证依据：提交内容与隔离提交候选一致；Python 224 passed、80 warnings，Ruff 和 mypy（20 个源文件）通过。完整工作区另有 Python 250 passed、前端 15 passed 的记录，详见[测试记录](../test/20261017-00-WORKTREE/自定义-processing-修复测试.md)。
+- 推送状态：未推送。

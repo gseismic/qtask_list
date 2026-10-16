@@ -2,7 +2,7 @@
 
 - 测试时间范围：2026-10-17 00:14–00:48（Asia/Shanghai）。
 - 测试模型：Codex / model-unknown（环境声明基于 GPT-6，未提供具体模型 ID）。
-- 被测版本：WORKTREE；基准提交 `3ff689706e788264b02839c4e2db9bd8a4644d50`，分支 `main`。结果尚未固定为提交。
+- 被测版本：完整工作区基于 `3ff689706e788264b02839c4e2db9bd8a4644d50`；隔离提交候选内容已确认为 commit `054f12c25d4a248a5adf80a3c1c8e18add818458`（分支 `main`，未推送）。
 - 测试目的：验证直接使用自定义 `processing_key` 的 SmartQueue 在领取前登记 key 后，管理端统计、枚举、恢复与终态结算正确，并确认既有 Worker 注册表路径不回归。
 - 环境：Linux、Python 3.12、Redis 7.1.0。Python 测试由 `tests/conftest.py` 启动临时 Redis Unix socket；未连接共享 Redis `127.0.0.1:6379`。前端测试在 `qtask_list/frontend/` 运行。
 - 相关 WORKTREE 文件：`qtask_list/admin.py`、`qtask_list/queue.py`、`qtask_list/state.py`、`qtask_list/worker.py`、`README.md`、`tests/test_core_reliability.py`、`tests/test_dashboard_api.py`、`tests/test_cli.py`、`docs/HANDOFF.md`、`docs/KNOWN-ISSUES.md`、`docs/known-issues/KI-20261016-2343-001-custom-processing-index.md`、`docs/plans/`。同一工作区还包含此前已存在的 Dashboard 前端、静态资源及测试改动；均保留。
