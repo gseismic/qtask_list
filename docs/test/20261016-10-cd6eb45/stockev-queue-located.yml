@@ -1,0 +1,443 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: Q
+      - generic [ref=f1e7]:
+        - generic [ref=f1e8]: qtask_list
+        - generic [ref=f1e9]: 管理后台
+    - navigation [ref=f1e10]:
+      - link "📊 总览" [ref=f1e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f1e12]: 📊
+        - generic [ref=f1e13]: 总览
+      - link "📋 队列" [ref=f1e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f1e15]: 📋
+        - generic [ref=f1e16]: 队列
+      - link "🔍 任务" [ref=f1e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f1e18]: 🔍
+        - generic [ref=f1e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f1e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f1e21]: 🧑‍🏭
+        - generic [ref=f1e22]: Worker
+      - link "🔔 告警 5" [ref=f1e52] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f1e24]: 🔔
+        - generic [ref=f1e25]: 告警
+        - generic [ref=f1e53]: "5"
+      - link "📖 教程" [ref=f1e26] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f1e27]: 📖
+        - generic [ref=f1e28]: 教程
+    - generic [ref=f1e29]: v0.2.0 · Redis 任务队列
+  - generic [ref=f1e30]:
+    - banner [ref=f1e31]:
+      - generic "Redis 连接正常" [ref=f1e54]: 已连接
+      - generic "2026/10/16 10:36:03" [ref=f1e103]: 更新于 10:36:03
+      - button "刷新" [ref=f1e34] [cursor=pointer]
+      - generic [ref=f1e35]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f1e36]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f1e37] [cursor=pointer]
+    - generic [ref=f1e104]:
+      - generic [ref=f1e105]:
+        - heading "stockev:day-kline-sina:fetch" [level=1] [ref=f1e106]
+        - link "← 队列列表" [ref=f1e107] [cursor=pointer]:
+          - /url: /queues
+      - button "排队中 5571" [ref=f1e109] [cursor=pointer]
+      - generic [ref=f1e110]:
+        - button "操作 ▾" [ref=f1e112] [cursor=pointer]
+        - button "⚠ 危险操作 ▾" [ref=f1e115] [cursor=pointer]
+      - generic [ref=f1e116]:
+        - button "全部" [ref=f1e117] [cursor=pointer]
+        - button "排队中5571" [ref=f1e118] [cursor=pointer]
+        - button "执行中" [ref=f1e119] [cursor=pointer]
+        - button "手动重试" [ref=f1e120] [cursor=pointer]
+        - button "等待重试" [ref=f1e121] [cursor=pointer]
+        - button "延迟" [ref=f1e122] [cursor=pointer]
+        - button "死信" [ref=f1e123] [cursor=pointer]
+        - button "完成" [ref=f1e124] [cursor=pointer]
+        - button "失败" [ref=f1e125] [cursor=pointer]
+        - button "跳过" [ref=f1e126] [cursor=pointer]
+        - button "取消" [ref=f1e127] [cursor=pointer]
+        - button "过期" [ref=f1e128] [cursor=pointer]
+        - button "历史5571" [ref=f1e129] [cursor=pointer]
+      - generic [ref=f1e130]:
+        - textbox "搜索任务" [ref=f1e131]:
+          - /placeholder: 搜索 task_id / action / payload
+        - button "高级筛选" [ref=f1e132] [cursor=pointer]
+        - generic "跟随顶栏刷新间隔；加载更多后暂停以保持当前列表" [ref=f1e133]:
+          - checkbox "自动刷新" [checked] [ref=f1e134]
+          - text: 自动刷新
+      - generic [ref=f1e135]: 当前该状态 5,571 条
+      - generic [ref=f1e136]:
+        - button "刷新第一页" [ref=f1e137] [cursor=pointer]
+        - status [ref=f1e138]: 自动刷新 · 更新于 10:36:05
+        - generic [ref=f1e139]: 加载更多后暂停自动刷新
+      - table [ref=f1e141]:
+        - rowgroup [ref=f1e142]:
+          - row [ref=f1e143]:
+            - columnheader "task_id" [ref=f1e144]
+            - columnheader "action" [ref=f1e145]
+            - columnheader "attempt" [ref=f1e146]
+            - columnheader "状态" [ref=f1e147]
+            - columnheader "发布时间" [ref=f1e148]
+            - columnheader "更新时间" [ref=f1e149]
+        - rowgroup [ref=f1e150]:
+          - row [ref=f1e151] [cursor=pointer]:
+            - cell "d6801805…0515" [ref=f1e152]
+            - cell "scrape_day_kline_sina" [ref=f1e153]
+            - cell "0" [ref=f1e154]
+            - cell "排队中" [ref=f1e155]
+            - cell "—" [ref=f1e158]
+            - cell "—" [ref=f1e159]
+          - row [ref=f1e160] [cursor=pointer]:
+            - cell "56648ec1…80c1" [ref=f1e161]
+            - cell "scrape_day_kline_sina" [ref=f1e162]
+            - cell "0" [ref=f1e163]
+            - cell "排队中" [ref=f1e164]
+            - cell "—" [ref=f1e167]
+            - cell "—" [ref=f1e168]
+          - row [ref=f1e169] [cursor=pointer]:
+            - cell "7c468235…1636" [ref=f1e170]
+            - cell "scrape_day_kline_sina" [ref=f1e171]
+            - cell "0" [ref=f1e172]
+            - cell "排队中" [ref=f1e173]
+            - cell "—" [ref=f1e176]
+            - cell "—" [ref=f1e177]
+          - row [ref=f1e178] [cursor=pointer]:
+            - cell "af3c1334…a896" [ref=f1e179]
+            - cell "scrape_day_kline_sina" [ref=f1e180]
+            - cell "0" [ref=f1e181]
+            - cell "排队中" [ref=f1e182]
+            - cell "—" [ref=f1e185]
+            - cell "—" [ref=f1e186]
+          - row [ref=f1e187] [cursor=pointer]:
+            - cell "53c7b497…a9b9" [ref=f1e188]
+            - cell "scrape_day_kline_sina" [ref=f1e189]
+            - cell "0" [ref=f1e190]
+            - cell "排队中" [ref=f1e191]
+            - cell "—" [ref=f1e194]
+            - cell "—" [ref=f1e195]
+          - row [ref=f1e196] [cursor=pointer]:
+            - cell "71849134…d411" [ref=f1e197]
+            - cell "scrape_day_kline_sina" [ref=f1e198]
+            - cell "0" [ref=f1e199]
+            - cell "排队中" [ref=f1e200]
+            - cell "—" [ref=f1e203]
+            - cell "—" [ref=f1e204]
+          - row [ref=f1e205] [cursor=pointer]:
+            - cell "86e67a34…44cb" [ref=f1e206]
+            - cell "scrape_day_kline_sina" [ref=f1e207]
+            - cell "0" [ref=f1e208]
+            - cell "排队中" [ref=f1e209]
+            - cell "—" [ref=f1e212]
+            - cell "—" [ref=f1e213]
+          - row [ref=f1e214] [cursor=pointer]:
+            - cell "8196eaed…3048" [ref=f1e215]
+            - cell "scrape_day_kline_sina" [ref=f1e216]
+            - cell "0" [ref=f1e217]
+            - cell "排队中" [ref=f1e218]
+            - cell "—" [ref=f1e221]
+            - cell "—" [ref=f1e222]
+          - row [ref=f1e223] [cursor=pointer]:
+            - cell "2d144d08…0dd2" [ref=f1e224]
+            - cell "scrape_day_kline_sina" [ref=f1e225]
+            - cell "0" [ref=f1e226]
+            - cell "排队中" [ref=f1e227]
+            - cell "—" [ref=f1e230]
+            - cell "—" [ref=f1e231]
+          - row [ref=f1e232] [cursor=pointer]:
+            - cell "b9c6e1b6…5fea" [ref=f1e233]
+            - cell "scrape_day_kline_sina" [ref=f1e234]
+            - cell "0" [ref=f1e235]
+            - cell "排队中" [ref=f1e236]
+            - cell "—" [ref=f1e239]
+            - cell "—" [ref=f1e240]
+          - row [ref=f1e241] [cursor=pointer]:
+            - cell "ed8b0b23…c20c" [ref=f1e242]
+            - cell "scrape_day_kline_sina" [ref=f1e243]
+            - cell "0" [ref=f1e244]
+            - cell "排队中" [ref=f1e245]
+            - cell "—" [ref=f1e248]
+            - cell "—" [ref=f1e249]
+          - row [ref=f1e250] [cursor=pointer]:
+            - cell "1f69caed…350b" [ref=f1e251]
+            - cell "scrape_day_kline_sina" [ref=f1e252]
+            - cell "0" [ref=f1e253]
+            - cell "排队中" [ref=f1e254]
+            - cell "—" [ref=f1e257]
+            - cell "—" [ref=f1e258]
+          - row [ref=f1e259] [cursor=pointer]:
+            - cell "2342c1c5…b59a" [ref=f1e260]
+            - cell "scrape_day_kline_sina" [ref=f1e261]
+            - cell "0" [ref=f1e262]
+            - cell "排队中" [ref=f1e263]
+            - cell "—" [ref=f1e266]
+            - cell "—" [ref=f1e267]
+          - row [ref=f1e268] [cursor=pointer]:
+            - cell "c51a5b75…979a" [ref=f1e269]
+            - cell "scrape_day_kline_sina" [ref=f1e270]
+            - cell "0" [ref=f1e271]
+            - cell "排队中" [ref=f1e272]
+            - cell "—" [ref=f1e275]
+            - cell "—" [ref=f1e276]
+          - row [ref=f1e277] [cursor=pointer]:
+            - cell "d0b48b19…afde" [ref=f1e278]
+            - cell "scrape_day_kline_sina" [ref=f1e279]
+            - cell "0" [ref=f1e280]
+            - cell "排队中" [ref=f1e281]
+            - cell "—" [ref=f1e284]
+            - cell "—" [ref=f1e285]
+          - row [ref=f1e286] [cursor=pointer]:
+            - cell "c3db1912…4e92" [ref=f1e287]
+            - cell "scrape_day_kline_sina" [ref=f1e288]
+            - cell "0" [ref=f1e289]
+            - cell "排队中" [ref=f1e290]
+            - cell "—" [ref=f1e293]
+            - cell "—" [ref=f1e294]
+          - row [ref=f1e295] [cursor=pointer]:
+            - cell "bdaf312a…8804" [ref=f1e296]
+            - cell "scrape_day_kline_sina" [ref=f1e297]
+            - cell "0" [ref=f1e298]
+            - cell "排队中" [ref=f1e299]
+            - cell "—" [ref=f1e302]
+            - cell "—" [ref=f1e303]
+          - row [ref=f1e304] [cursor=pointer]:
+            - cell "d8eefd65…cbdb" [ref=f1e305]
+            - cell "scrape_day_kline_sina" [ref=f1e306]
+            - cell "0" [ref=f1e307]
+            - cell "排队中" [ref=f1e308]
+            - cell "—" [ref=f1e311]
+            - cell "—" [ref=f1e312]
+          - row [ref=f1e313] [cursor=pointer]:
+            - cell "2628f3c4…8a0d" [ref=f1e314]
+            - cell "scrape_day_kline_sina" [ref=f1e315]
+            - cell "0" [ref=f1e316]
+            - cell "排队中" [ref=f1e317]
+            - cell "—" [ref=f1e320]
+            - cell "—" [ref=f1e321]
+          - row [ref=f1e322] [cursor=pointer]:
+            - cell "4cd518cb…cc82" [ref=f1e323]
+            - cell "scrape_day_kline_sina" [ref=f1e324]
+            - cell "0" [ref=f1e325]
+            - cell "排队中" [ref=f1e326]
+            - cell "—" [ref=f1e329]
+            - cell "—" [ref=f1e330]
+          - row [ref=f1e331] [cursor=pointer]:
+            - cell "043a06ac…e1b7" [ref=f1e332]
+            - cell "scrape_day_kline_sina" [ref=f1e333]
+            - cell "0" [ref=f1e334]
+            - cell "排队中" [ref=f1e335]
+            - cell "—" [ref=f1e338]
+            - cell "—" [ref=f1e339]
+          - row [ref=f1e340] [cursor=pointer]:
+            - cell "e31b19b7…73aa" [ref=f1e341]
+            - cell "scrape_day_kline_sina" [ref=f1e342]
+            - cell "0" [ref=f1e343]
+            - cell "排队中" [ref=f1e344]
+            - cell "—" [ref=f1e347]
+            - cell "—" [ref=f1e348]
+          - row [ref=f1e349] [cursor=pointer]:
+            - cell "aeaa6406…5182" [ref=f1e350]
+            - cell "scrape_day_kline_sina" [ref=f1e351]
+            - cell "0" [ref=f1e352]
+            - cell "排队中" [ref=f1e353]
+            - cell "—" [ref=f1e356]
+            - cell "—" [ref=f1e357]
+          - row [ref=f1e358] [cursor=pointer]:
+            - cell "cf9d447c…0751" [ref=f1e359]
+            - cell "scrape_day_kline_sina" [ref=f1e360]
+            - cell "0" [ref=f1e361]
+            - cell "排队中" [ref=f1e362]
+            - cell "—" [ref=f1e365]
+            - cell "—" [ref=f1e366]
+          - row [ref=f1e367] [cursor=pointer]:
+            - cell "f3f23966…829b" [ref=f1e368]
+            - cell "scrape_day_kline_sina" [ref=f1e369]
+            - cell "0" [ref=f1e370]
+            - cell "排队中" [ref=f1e371]
+            - cell "—" [ref=f1e374]
+            - cell "—" [ref=f1e375]
+          - row [ref=f1e376] [cursor=pointer]:
+            - cell "ce45e517…0600" [ref=f1e377]
+            - cell "scrape_day_kline_sina" [ref=f1e378]
+            - cell "0" [ref=f1e379]
+            - cell "排队中" [ref=f1e380]
+            - cell "—" [ref=f1e383]
+            - cell "—" [ref=f1e384]
+          - row [ref=f1e385] [cursor=pointer]:
+            - cell "61fd1da8…b959" [ref=f1e386]
+            - cell "scrape_day_kline_sina" [ref=f1e387]
+            - cell "0" [ref=f1e388]
+            - cell "排队中" [ref=f1e389]
+            - cell "—" [ref=f1e392]
+            - cell "—" [ref=f1e393]
+          - row [ref=f1e394] [cursor=pointer]:
+            - cell "f2d36f54…028f" [ref=f1e395]
+            - cell "scrape_day_kline_sina" [ref=f1e396]
+            - cell "0" [ref=f1e397]
+            - cell "排队中" [ref=f1e398]
+            - cell "—" [ref=f1e401]
+            - cell "—" [ref=f1e402]
+          - row [ref=f1e403] [cursor=pointer]:
+            - cell "10d6651d…9cfb" [ref=f1e404]
+            - cell "scrape_day_kline_sina" [ref=f1e405]
+            - cell "0" [ref=f1e406]
+            - cell "排队中" [ref=f1e407]
+            - cell "—" [ref=f1e410]
+            - cell "—" [ref=f1e411]
+          - row [ref=f1e412] [cursor=pointer]:
+            - cell "949c758c…c116" [ref=f1e413]
+            - cell "scrape_day_kline_sina" [ref=f1e414]
+            - cell "0" [ref=f1e415]
+            - cell "排队中" [ref=f1e416]
+            - cell "—" [ref=f1e419]
+            - cell "—" [ref=f1e420]
+          - row [ref=f1e421] [cursor=pointer]:
+            - cell "164ac2df…0441" [ref=f1e422]
+            - cell "scrape_day_kline_sina" [ref=f1e423]
+            - cell "0" [ref=f1e424]
+            - cell "排队中" [ref=f1e425]
+            - cell "—" [ref=f1e428]
+            - cell "—" [ref=f1e429]
+          - row [ref=f1e430] [cursor=pointer]:
+            - cell "0198cec9…d910" [ref=f1e431]
+            - cell "scrape_day_kline_sina" [ref=f1e432]
+            - cell "0" [ref=f1e433]
+            - cell "排队中" [ref=f1e434]
+            - cell "—" [ref=f1e437]
+            - cell "—" [ref=f1e438]
+          - row [ref=f1e439] [cursor=pointer]:
+            - cell "a1a2b5b7…9587" [ref=f1e440]
+            - cell "scrape_day_kline_sina" [ref=f1e441]
+            - cell "0" [ref=f1e442]
+            - cell "排队中" [ref=f1e443]
+            - cell "—" [ref=f1e446]
+            - cell "—" [ref=f1e447]
+          - row [ref=f1e448] [cursor=pointer]:
+            - cell "3e9a85da…8f98" [ref=f1e449]
+            - cell "scrape_day_kline_sina" [ref=f1e450]
+            - cell "0" [ref=f1e451]
+            - cell "排队中" [ref=f1e452]
+            - cell "—" [ref=f1e455]
+            - cell "—" [ref=f1e456]
+          - row [ref=f1e457] [cursor=pointer]:
+            - cell "262022e8…c6b2" [ref=f1e458]
+            - cell "scrape_day_kline_sina" [ref=f1e459]
+            - cell "0" [ref=f1e460]
+            - cell "排队中" [ref=f1e461]
+            - cell "—" [ref=f1e464]
+            - cell "—" [ref=f1e465]
+          - row [ref=f1e466] [cursor=pointer]:
+            - cell "b8c3286e…62fd" [ref=f1e467]
+            - cell "scrape_day_kline_sina" [ref=f1e468]
+            - cell "0" [ref=f1e469]
+            - cell "排队中" [ref=f1e470]
+            - cell "—" [ref=f1e473]
+            - cell "—" [ref=f1e474]
+          - row [ref=f1e475] [cursor=pointer]:
+            - cell "e6c21d9f…8fd5" [ref=f1e476]
+            - cell "scrape_day_kline_sina" [ref=f1e477]
+            - cell "0" [ref=f1e478]
+            - cell "排队中" [ref=f1e479]
+            - cell "—" [ref=f1e482]
+            - cell "—" [ref=f1e483]
+          - row [ref=f1e484] [cursor=pointer]:
+            - cell "3edbc4a9…3131" [ref=f1e485]
+            - cell "scrape_day_kline_sina" [ref=f1e486]
+            - cell "0" [ref=f1e487]
+            - cell "排队中" [ref=f1e488]
+            - cell "—" [ref=f1e491]
+            - cell "—" [ref=f1e492]
+          - row [ref=f1e493] [cursor=pointer]:
+            - cell "90bc353e…40b6" [ref=f1e494]
+            - cell "scrape_day_kline_sina" [ref=f1e495]
+            - cell "0" [ref=f1e496]
+            - cell "排队中" [ref=f1e497]
+            - cell "—" [ref=f1e500]
+            - cell "—" [ref=f1e501]
+          - row [ref=f1e502] [cursor=pointer]:
+            - cell "06ece5e4…22a6" [ref=f1e503]
+            - cell "scrape_day_kline_sina" [ref=f1e504]
+            - cell "0" [ref=f1e505]
+            - cell "排队中" [ref=f1e506]
+            - cell "—" [ref=f1e509]
+            - cell "—" [ref=f1e510]
+          - row [ref=f1e511] [cursor=pointer]:
+            - cell "d03fe48e…00ee" [ref=f1e512]
+            - cell "scrape_day_kline_sina" [ref=f1e513]
+            - cell "0" [ref=f1e514]
+            - cell "排队中" [ref=f1e515]
+            - cell "—" [ref=f1e518]
+            - cell "—" [ref=f1e519]
+          - row [ref=f1e520] [cursor=pointer]:
+            - cell "ebbee416…b450" [ref=f1e521]
+            - cell "scrape_day_kline_sina" [ref=f1e522]
+            - cell "0" [ref=f1e523]
+            - cell "排队中" [ref=f1e524]
+            - cell "—" [ref=f1e527]
+            - cell "—" [ref=f1e528]
+          - row [ref=f1e529] [cursor=pointer]:
+            - cell "25aafac8…e02d" [ref=f1e530]
+            - cell "scrape_day_kline_sina" [ref=f1e531]
+            - cell "0" [ref=f1e532]
+            - cell "排队中" [ref=f1e533]
+            - cell "—" [ref=f1e536]
+            - cell "—" [ref=f1e537]
+          - row [ref=f1e538] [cursor=pointer]:
+            - cell "5edf4f94…1454" [ref=f1e539]
+            - cell "scrape_day_kline_sina" [ref=f1e540]
+            - cell "0" [ref=f1e541]
+            - cell "排队中" [ref=f1e542]
+            - cell "—" [ref=f1e545]
+            - cell "—" [ref=f1e546]
+          - row [ref=f1e547] [cursor=pointer]:
+            - cell "7b1810b2…a115" [ref=f1e548]
+            - cell "scrape_day_kline_sina" [ref=f1e549]
+            - cell "0" [ref=f1e550]
+            - cell "排队中" [ref=f1e551]
+            - cell "—" [ref=f1e554]
+            - cell "—" [ref=f1e555]
+          - row [ref=f1e556] [cursor=pointer]:
+            - cell "4c7000b5…8267" [ref=f1e557]
+            - cell "scrape_day_kline_sina" [ref=f1e558]
+            - cell "0" [ref=f1e559]
+            - cell "排队中" [ref=f1e560]
+            - cell "—" [ref=f1e563]
+            - cell "—" [ref=f1e564]
+          - row [ref=f1e565] [cursor=pointer]:
+            - cell "d0b78fb9…a74d" [ref=f1e566]
+            - cell "scrape_day_kline_sina" [ref=f1e567]
+            - cell "0" [ref=f1e568]
+            - cell "排队中" [ref=f1e569]
+            - cell "—" [ref=f1e572]
+            - cell "—" [ref=f1e573]
+          - row [ref=f1e574] [cursor=pointer]:
+            - cell "1e73eab5…a0a6" [ref=f1e575]
+            - cell "scrape_day_kline_sina" [ref=f1e576]
+            - cell "0" [ref=f1e577]
+            - cell "排队中" [ref=f1e578]
+            - cell "—" [ref=f1e581]
+            - cell "—" [ref=f1e582]
+          - row [ref=f1e583] [cursor=pointer]:
+            - cell "3c937b4b…8b84" [ref=f1e584]
+            - cell "scrape_day_kline_sina" [ref=f1e585]
+            - cell "0" [ref=f1e586]
+            - cell "排队中" [ref=f1e587]
+            - cell "—" [ref=f1e590]
+            - cell "—" [ref=f1e591]
+          - row [ref=f1e592] [cursor=pointer]:
+            - cell "8aa4de93…09cb" [ref=f1e593]
+            - cell "scrape_day_kline_sina" [ref=f1e594]
+            - cell "0" [ref=f1e595]
+            - cell "排队中" [ref=f1e596]
+            - cell "—" [ref=f1e599]
+            - cell "—" [ref=f1e600]
+      - button "加载更多（已显示 50 条）" [ref=f1e602] [cursor=pointer]

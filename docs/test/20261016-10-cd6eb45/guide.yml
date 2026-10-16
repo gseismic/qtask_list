@@ -1,0 +1,167 @@
+- generic [ref=f6e3]:
+  - complementary [ref=f6e4]:
+    - generic [ref=f6e5]:
+      - generic [ref=f6e6]: Q
+      - generic [ref=f6e7]:
+        - generic [ref=f6e8]: qtask_list
+        - generic [ref=f6e9]: 管理后台
+    - navigation [ref=f6e10]:
+      - link "📊 总览" [ref=f6e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f6e12]: 📊
+        - generic [ref=f6e13]: 总览
+      - link "📋 队列" [ref=f6e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f6e15]: 📋
+        - generic [ref=f6e16]: 队列
+      - link "🔍 任务" [ref=f6e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f6e18]: 🔍
+        - generic [ref=f6e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f6e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f6e21]: 🧑‍🏭
+        - generic [ref=f6e22]: Worker
+      - link "🔔 告警 5" [ref=f6e158] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f6e24]: 🔔
+        - generic [ref=f6e25]: 告警
+        - generic [ref=f6e159]: "5"
+      - link "📖 教程" [ref=f6e26] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f6e27]: 📖
+        - generic [ref=f6e28]: 教程
+    - generic [ref=f6e29]: v0.2.0 · Redis 任务队列
+  - generic [ref=f6e30]:
+    - banner [ref=f6e31]:
+      - generic "Redis 连接正常" [ref=f6e160]: 已连接
+      - generic "2026/10/16 10:36:28" [ref=f6e161]: 更新于 10:36:28
+      - button "刷新" [ref=f6e34] [cursor=pointer]
+      - generic [ref=f6e35]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f6e36]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f6e37] [cursor=pointer]
+    - generic [ref=f6e38]:
+      - heading "教程" [level=1] [ref=f6e39]
+      - paragraph [ref=f6e40]: 说人话的概念手册 · 给第一次用的人看
+      - generic [ref=f6e41]:
+        - link "30 秒总览" [ref=f6e42] [cursor=pointer]:
+          - /url: "#quick"
+        - link "任务和队列的关系" [ref=f6e43] [cursor=pointer]:
+          - /url: "#relation"
+        - link "任务的一生（状态）" [ref=f6e44] [cursor=pointer]:
+          - /url: "#states"
+        - link "关键数字怎么读" [ref=f6e45] [cursor=pointer]:
+          - /url: "#numbers"
+        - link "去重：同一件事只干一次" [ref=f6e46] [cursor=pointer]:
+          - /url: "#identity"
+        - link "Worker 与心跳" [ref=f6e47] [cursor=pointer]:
+          - /url: "#workers"
+        - link "日常操作怎么做" [ref=f6e48] [cursor=pointer]:
+          - /url: "#ops"
+        - link "后台各页是干嘛的" [ref=f6e49] [cursor=pointer]:
+          - /url: "#pages"
+      - generic [ref=f6e50]:
+        - heading "30 秒总览" [level=2] [ref=f6e51]
+        - paragraph [ref=f6e52]: 你的程序把要干的活（任务）扔进队列；Worker 是干活的工人，从队列里取任务执行。失败了会自动重试（越等越久）；实在不行就进死信队列（DLQ），等管理员处理。后台就是让你看清这一切、并在出问题时动手的地方。
+        - generic [ref=f6e53]:
+          - generic [ref=f6e54]: 你的程序投递
+          - generic [ref=f6e55]: →
+          - generic [ref=f6e56]: 队列
+          - generic [ref=f6e57]: →
+          - generic [ref=f6e58]: Worker 执行
+          - generic [ref=f6e59]: →
+          - generic [ref=f6e60]: 完成
+          - generic [ref=f6e61]: ／
+          - generic [ref=f6e62]: 重试（越等越久）
+          - generic [ref=f6e63]: →
+          - generic [ref=f6e64]: DLQ 死信（等管理员）
+      - generic [ref=f6e65]:
+        - heading "任务和队列的关系" [level=2] [ref=f6e66]
+        - paragraph [ref=f6e67]: 队列 = 流水线的名字（一类活），任务 = 流水线里一件具体的活。namespace 是项目分组前缀（冒号前面），比如 stockev:quote:5min 就是 stockev 项目下的行情 5 分钟抓取流水线。对应到后台：队列页看流水线整体，任务表格看每件事的具体进展。
+        - generic [ref=f6e68]:
+          - code [ref=f6e69]: stockev:quote:5min
+          - text: 是一个队列；"抓取 2026-09-21 10:00 这根 AAPL 行情"就是里面的一条任务， 用 logical_key
+          - code [ref=f6e70]: quote:AAPL:20260921T1000
+          - text: 标记身份。
+      - generic [ref=f6e71]:
+        - heading "任务的一生（状态）" [level=2] [ref=f6e72]
+        - paragraph [ref=f6e73]: 一句话：还没干 / 正在干 / 干完了（不管好坏）。
+        - generic [ref=f6e74]:
+          - generic [ref=f6e75]: ready 排队中
+          - generic [ref=f6e77]: →
+          - generic [ref=f6e78]: processing 执行中
+          - generic [ref=f6e80]: →
+          - generic [ref=f6e81]: completed 完成
+        - generic [ref=f6e83]:
+          - generic [ref=f6e84]: 失败时：
+          - generic [ref=f6e85]: processing
+          - generic [ref=f6e87]: →
+          - generic [ref=f6e88]: retry_wait 越等越久
+          - generic [ref=f6e90]: →
+          - generic [ref=f6e91]: 再次执行
+          - generic [ref=f6e93]: →
+          - generic [ref=f6e94]: 重试耗尽
+          - generic [ref=f6e95]: →
+          - generic [ref=f6e96]: dlq 死信
+        - generic [ref=f6e98]:
+          - generic [ref=f6e99]: 其他终态：
+          - generic [ref=f6e100]: failed 失败
+          - generic [ref=f6e102]: skipped 跳过
+          - generic [ref=f6e104]: cancelled 取消
+        - paragraph [ref=f6e106]:
+          - generic [ref=f6e107]: deadline_missed 过期
+          - text: 是待处理任务的过期视图，不是终态。更新截止时间后可以重放为新任务。
+      - generic [ref=f6e109]:
+        - heading "关键数字怎么读" [level=2] [ref=f6e110]
+        - paragraph [ref=f6e111]: attempt：第几次尝试。max_retry=3 表示总共 3 次机会。待处理：ready+processing+旧 retry+delay，其中 retry_wait 已包含在 delay 内。色条表示当前待处理任务的状态构成。观测完成：本次访问最近约 1 小时内观察到的完成增量，切换页面会保留，完整刷新浏览器后重新采样。速率：至少观测 30 秒后估算每分钟完成条数。ETA：仅在无延迟任务且有速率样本时粗估。疑似停滞：持续有 ready 积压和在线 Worker，连续 2 分钟没有完成；空闲、无 Worker 或观测中断会重新计时。完成/失败等标签的计数为累计值，历史保留期可能使可查记录更少。
+      - generic [ref=f6e112]:
+        - heading "去重：同一件事只干一次" [level=2] [ref=f6e113]
+        - paragraph [ref=f6e114]: logical_key 是"这件事的身份"。同一个身份的任务在途（未到终态）时不会被重复投递，天然防重。带时间桶的 key（如 quote:AAPL:20260921T1000）让每个时间片天然是"新的一件事"。
+      - generic [ref=f6e115]:
+        - heading "Worker 与心跳" [level=2] [ref=f6e116]
+        - paragraph [ref=f6e117]: Worker 定期写心跳，相当于"报平安"。心跳消失（进程崩溃/机器宕机）后，它 processing 里的任务变成孤儿，可以在 Worker 页或队列页一键恢复回主队列。崩溃不会丢任务，但可能重跑——所以业务落库一定要幂等。
+      - generic [ref=f6e118]:
+        - heading "日常操作怎么做" [level=2] [ref=f6e119]
+        - table [ref=f6e120]:
+          - rowgroup [ref=f6e121]:
+            - row [ref=f6e122]:
+              - columnheader "场景" [ref=f6e123]
+              - columnheader "去哪" [ref=f6e124]
+              - columnheader "干什么" [ref=f6e125]
+          - rowgroup [ref=f6e126]:
+            - row [ref=f6e127]:
+              - cell "DLQ 涨了" [ref=f6e128]
+              - cell "队列详情 → dlq 标签" [ref=f6e129]
+              - cell "看失败原因 → 单条重放或批量重放" [ref=f6e130]
+            - row [ref=f6e131]:
+              - cell "Worker 失联" [ref=f6e132]
+              - cell "Worker 页" [ref=f6e133]
+              - cell "确认机器确实停了 → 在对应行恢复，只处理该 Worker 的任务" [ref=f6e134]
+            - row [ref=f6e135]:
+              - cell "任务过期（deadline_missed）" [ref=f6e136]
+              - cell "队列详情 → 过期 标签" [ref=f6e137]
+              - cell "设置新的截止时间 → 重放" [ref=f6e138]
+            - row [ref=f6e139]:
+              - cell "失败 / 跳过 / 取消后需要重跑" [ref=f6e140]
+              - cell "任务详情" [ref=f6e141]
+              - cell "重放时按需更新截止 → 查看新任务 → 核对结果" [ref=f6e142]
+            - row [ref=f6e143]:
+              - cell "队列不要了" [ref=f6e144]
+              - cell "队列页/详情 → 危险操作" [ref=f6e145]
+              - cell "清空或删除（需输入队列名二次确认）" [ref=f6e146]
+            - row [ref=f6e147]:
+              - cell "需要手工投递" [ref=f6e148]
+              - cell "队列详情 → 操作 → 投递任务" [ref=f6e149]
+              - cell "填真实 handler action 和 payload；Worker 会执行" [ref=f6e150]
+            - row [ref=f6e151]:
+              - cell "排查某个任务" [ref=f6e152]
+              - cell "任务页搜索 task_id" [ref=f6e153]
+              - cell "打开详情抽屉看时间线/血缘，按状态操作" [ref=f6e154]
+      - generic [ref=f6e155]:
+        - heading "后台各页是干嘛的" [level=2] [ref=f6e156]
+        - paragraph [ref=f6e157]: 总览：所有队列的待处理量、观测速率与异常一屏看完。队列：管理所有流水线，进详情做操作。任务：跨队列搜索定位某个任务。Worker：心跳与失联恢复。告警：异常信号聚合，点定位直达现场。教程：就是本页。

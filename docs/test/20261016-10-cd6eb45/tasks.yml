@@ -1,0 +1,558 @@
+- generic [ref=f4e3]:
+  - complementary [ref=f4e4]:
+    - generic [ref=f4e5]:
+      - generic [ref=f4e6]: Q
+      - generic [ref=f4e7]:
+        - generic [ref=f4e8]: qtask_list
+        - generic [ref=f4e9]: 管理后台
+    - navigation [ref=f4e10]:
+      - link "📊 总览" [ref=f4e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f4e12]: 📊
+        - generic [ref=f4e13]: 总览
+      - link "📋 队列" [ref=f4e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f4e15]: 📋
+        - generic [ref=f4e16]: 队列
+      - link "🔍 任务" [ref=f4e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f4e18]: 🔍
+        - generic [ref=f4e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f4e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f4e21]: 🧑‍🏭
+        - generic [ref=f4e22]: Worker
+      - link "🔔 告警 5" [ref=f4e59] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f4e24]: 🔔
+        - generic [ref=f4e25]: 告警
+        - generic [ref=f4e60]: "5"
+      - link "📖 教程" [ref=f4e26] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f4e27]: 📖
+        - generic [ref=f4e28]: 教程
+    - generic [ref=f4e29]: v0.2.0 · Redis 任务队列
+  - generic [ref=f4e30]:
+    - banner [ref=f4e31]:
+      - generic "Redis 连接正常" [ref=f4e61]: 已连接
+      - generic "2026/10/16 10:36:27" [ref=f4e62]: 更新于 10:36:27
+      - button "刷新" [ref=f4e34] [cursor=pointer]
+      - generic [ref=f4e35]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f4e36]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f4e37] [cursor=pointer]
+    - generic [ref=f4e38]:
+      - heading "任务" [level=1] [ref=f4e39]
+      - paragraph [ref=f4e40]: 跨队列排查任务。task_id 精确命中时直接打开详情；高级筛选会保存在地址中。
+      - generic [ref=f4e41]:
+        - combobox "任务队列" [ref=f4e42]:
+          - option "全部队列" [selected]
+          - option "dashdemo:fetch"
+          - option "dashdemo:ingest"
+          - option "demo:big-payload"
+          - option "demo:dedup-demo"
+          - option "demo:dlq-demo"
+          - option "demo:hello"
+          - option "demo:jobs"
+          - option "demo:timing-demo"
+          - option "finance:calculate"
+          - option "integration:delay_pipeline"
+          - option "integration:fetch"
+          - option "integration:hist_clear"
+          - option "integration:hist_update"
+          - option "integration:large"
+          - option "integration:parallel"
+          - option "integration:retry_success"
+          - option "integration:special"
+          - option "integration:stats"
+          - option "integration:store"
+          - option "no_namespace"
+          - option "qtask_dash_test:day-kline-xq:fetch"
+          - option "qtask_dash_test:expire:fetch"
+          - option "qtask_dash_test:expired:bulk-requeue"
+          - option "qtask_dash_test:expired:ready"
+          - option "qtask_dash_test:expired:requeue"
+          - option "qtask_dash_test:retry-wait:fetch"
+          - option "review:retry-ui"
+          - option "stockev:day-kline-sina:fetch"
+          - option "stockev_list:clear_test"
+          - option "stockev_list:fetch"
+          - option "stockev_list:news-discover"
+          - option "stockev_list:news-fetch"
+          - option "stockev_list:push_test"
+          - option "stockev_list:store"
+          - option "stockev_list:task_delete"
+          - option "test_archive_queue"
+          - option "testns:backoff"
+          - option "testns:backoff_dlq"
+          - option "testns:backoff_env"
+          - option "testns:batch_delay"
+          - option "testns:batch_expire"
+          - option "testns:batch_test"
+          - option "testns:clean_test"
+          - option "testns:concurrency_test"
+          - option "testns:dedup"
+          - option "testns:dedup_batch"
+          - option "testns:dedup_force"
+          - option "testns:dedup_ttl"
+          - option "testns:dlq_test"
+          - option "testns:exception_test"
+          - option "testns:expired"
+          - option "testns:expired_next"
+          - option "testns:history_test"
+          - option "testns:large_asym"
+          - option "testns:large_transient"
+          - option "testns:nohist"
+          - option "testns:push_ns"
+          - option "testns:result_out"
+          - option "testns:result_test"
+          - option "testns:retry_test"
+          - option "testns:rq_keep"
+          - option "testns:rq_reset"
+          - option "testns:stale_recovery"
+          - option "testns:term_arch"
+          - option "testns:test"
+          - option "testns:ttl_test"
+          - option "testns:unknown_test"
+          - option "testns:worker_recovery"
+          - option "testns:zstd_mt"
+        - textbox "搜索任务" [ref=f4e43]:
+          - /placeholder: 搜索 task_id / action / payload
+        - combobox "任务状态" [ref=f4e44]:
+          - option "全部" [selected]
+          - option "排队中"
+          - option "执行中"
+          - option "手动重试"
+          - option "等待重试"
+          - option "延迟"
+          - option "死信"
+          - option "完成"
+          - option "失败"
+          - option "跳过"
+          - option "取消"
+          - option "过期"
+          - option "历史"
+        - button "高级筛选" [ref=f4e45] [cursor=pointer]
+        - generic "跟随顶栏刷新间隔；加载更多后暂停以保持当前列表" [ref=f4e46]:
+          - checkbox "自动刷新" [checked] [ref=f4e47]
+          - text: 自动刷新
+      - generic [ref=f4e63]:
+        - button "刷新第一页" [ref=f4e64] [cursor=pointer]
+        - status [ref=f4e65]: 自动刷新 · 更新于 10:36:27
+        - generic [ref=f4e66]: 加载更多后暂停自动刷新
+      - table [ref=f4e68]:
+        - rowgroup [ref=f4e69]:
+          - row [ref=f4e70]:
+            - columnheader "task_id" [ref=f4e71]
+            - columnheader "action" [ref=f4e72]
+            - columnheader "队列" [ref=f4e73]
+            - columnheader "attempt" [ref=f4e74]
+            - columnheader "状态" [ref=f4e75]
+            - columnheader "发布时间" [ref=f4e76]
+            - columnheader "更新时间" [ref=f4e77]
+        - rowgroup [ref=f4e78]:
+          - row [ref=f4e79] [cursor=pointer]:
+            - cell "9f092ff1…f0ac" [ref=f4e80]
+            - cell "scrape_day_kline_sina" [ref=f4e81]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e82]
+            - cell "0" [ref=f4e83]
+            - cell "排队中" [ref=f4e84]
+            - cell "2026-10-02 19:04:41" [ref=f4e87]
+            - cell "2026-10-02 19:04:41" [ref=f4e88]
+          - row [ref=f4e89] [cursor=pointer]:
+            - cell "42cbb060…dea6" [ref=f4e90]
+            - cell "scrape_day_kline_sina" [ref=f4e91]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e92]
+            - cell "0" [ref=f4e93]
+            - cell "排队中" [ref=f4e94]
+            - cell "2026-10-02 19:04:41" [ref=f4e97]
+            - cell "2026-10-02 19:04:41" [ref=f4e98]
+          - row [ref=f4e99] [cursor=pointer]:
+            - cell "5f74a4c3…6fbe" [ref=f4e100]
+            - cell "scrape_day_kline_sina" [ref=f4e101]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e102]
+            - cell "0" [ref=f4e103]
+            - cell "排队中" [ref=f4e104]
+            - cell "2026-10-02 19:04:41" [ref=f4e107]
+            - cell "2026-10-02 19:04:41" [ref=f4e108]
+          - row [ref=f4e109] [cursor=pointer]:
+            - cell "0b29126b…8a2a" [ref=f4e110]
+            - cell "scrape_day_kline_sina" [ref=f4e111]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e112]
+            - cell "0" [ref=f4e113]
+            - cell "排队中" [ref=f4e114]
+            - cell "2026-10-02 19:04:41" [ref=f4e117]
+            - cell "2026-10-02 19:04:41" [ref=f4e118]
+          - row [ref=f4e119] [cursor=pointer]:
+            - cell "6b945742…f68d" [ref=f4e120]
+            - cell "scrape_day_kline_sina" [ref=f4e121]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e122]
+            - cell "0" [ref=f4e123]
+            - cell "排队中" [ref=f4e124]
+            - cell "2026-10-02 19:04:41" [ref=f4e127]
+            - cell "2026-10-02 19:04:41" [ref=f4e128]
+          - row [ref=f4e129] [cursor=pointer]:
+            - cell "320e2c52…f3a0" [ref=f4e130]
+            - cell "scrape_day_kline_sina" [ref=f4e131]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e132]
+            - cell "0" [ref=f4e133]
+            - cell "排队中" [ref=f4e134]
+            - cell "2026-10-02 19:04:41" [ref=f4e137]
+            - cell "2026-10-02 19:04:41" [ref=f4e138]
+          - row [ref=f4e139] [cursor=pointer]:
+            - cell "b062f36c…a0f4" [ref=f4e140]
+            - cell "scrape_day_kline_sina" [ref=f4e141]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e142]
+            - cell "0" [ref=f4e143]
+            - cell "排队中" [ref=f4e144]
+            - cell "2026-10-02 19:04:41" [ref=f4e147]
+            - cell "2026-10-02 19:04:41" [ref=f4e148]
+          - row [ref=f4e149] [cursor=pointer]:
+            - cell "8a60a780…ee19" [ref=f4e150]
+            - cell "scrape_day_kline_sina" [ref=f4e151]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e152]
+            - cell "0" [ref=f4e153]
+            - cell "排队中" [ref=f4e154]
+            - cell "2026-10-02 19:04:41" [ref=f4e157]
+            - cell "2026-10-02 19:04:41" [ref=f4e158]
+          - row [ref=f4e159] [cursor=pointer]:
+            - cell "a2f8d502…e3ad" [ref=f4e160]
+            - cell "scrape_day_kline_sina" [ref=f4e161]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e162]
+            - cell "0" [ref=f4e163]
+            - cell "排队中" [ref=f4e164]
+            - cell "2026-10-02 19:04:41" [ref=f4e167]
+            - cell "2026-10-02 19:04:41" [ref=f4e168]
+          - row [ref=f4e169] [cursor=pointer]:
+            - cell "92c56161…03d9" [ref=f4e170]
+            - cell "scrape_day_kline_sina" [ref=f4e171]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e172]
+            - cell "0" [ref=f4e173]
+            - cell "排队中" [ref=f4e174]
+            - cell "2026-10-02 19:04:41" [ref=f4e177]
+            - cell "2026-10-02 19:04:41" [ref=f4e178]
+          - row [ref=f4e179] [cursor=pointer]:
+            - cell "ca71ee47…5d33" [ref=f4e180]
+            - cell "scrape_day_kline_sina" [ref=f4e181]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e182]
+            - cell "0" [ref=f4e183]
+            - cell "排队中" [ref=f4e184]
+            - cell "2026-10-02 19:04:41" [ref=f4e187]
+            - cell "2026-10-02 19:04:41" [ref=f4e188]
+          - row [ref=f4e189] [cursor=pointer]:
+            - cell "10a774e4…705c" [ref=f4e190]
+            - cell "scrape_day_kline_sina" [ref=f4e191]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e192]
+            - cell "0" [ref=f4e193]
+            - cell "排队中" [ref=f4e194]
+            - cell "2026-10-02 19:04:41" [ref=f4e197]
+            - cell "2026-10-02 19:04:41" [ref=f4e198]
+          - row [ref=f4e199] [cursor=pointer]:
+            - cell "dedea7e2…efa2" [ref=f4e200]
+            - cell "scrape_day_kline_sina" [ref=f4e201]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e202]
+            - cell "0" [ref=f4e203]
+            - cell "排队中" [ref=f4e204]
+            - cell "2026-10-02 19:04:41" [ref=f4e207]
+            - cell "2026-10-02 19:04:41" [ref=f4e208]
+          - row [ref=f4e209] [cursor=pointer]:
+            - cell "3d8a8322…1ded" [ref=f4e210]
+            - cell "scrape_day_kline_sina" [ref=f4e211]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e212]
+            - cell "0" [ref=f4e213]
+            - cell "排队中" [ref=f4e214]
+            - cell "2026-10-02 19:04:41" [ref=f4e217]
+            - cell "2026-10-02 19:04:41" [ref=f4e218]
+          - row [ref=f4e219] [cursor=pointer]:
+            - cell "42de95ca…ddbc" [ref=f4e220]
+            - cell "scrape_day_kline_sina" [ref=f4e221]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e222]
+            - cell "0" [ref=f4e223]
+            - cell "排队中" [ref=f4e224]
+            - cell "2026-10-02 19:04:41" [ref=f4e227]
+            - cell "2026-10-02 19:04:41" [ref=f4e228]
+          - row [ref=f4e229] [cursor=pointer]:
+            - cell "3ccbd0dd…0b01" [ref=f4e230]
+            - cell "scrape_day_kline_sina" [ref=f4e231]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e232]
+            - cell "0" [ref=f4e233]
+            - cell "排队中" [ref=f4e234]
+            - cell "2026-10-02 19:04:41" [ref=f4e237]
+            - cell "2026-10-02 19:04:41" [ref=f4e238]
+          - row [ref=f4e239] [cursor=pointer]:
+            - cell "3a27f7ae…0911" [ref=f4e240]
+            - cell "scrape_day_kline_sina" [ref=f4e241]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e242]
+            - cell "0" [ref=f4e243]
+            - cell "排队中" [ref=f4e244]
+            - cell "2026-10-02 19:04:41" [ref=f4e247]
+            - cell "2026-10-02 19:04:41" [ref=f4e248]
+          - row [ref=f4e249] [cursor=pointer]:
+            - cell "89915b6b…d64b" [ref=f4e250]
+            - cell "scrape_day_kline_sina" [ref=f4e251]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e252]
+            - cell "0" [ref=f4e253]
+            - cell "排队中" [ref=f4e254]
+            - cell "2026-10-02 19:04:41" [ref=f4e257]
+            - cell "2026-10-02 19:04:41" [ref=f4e258]
+          - row [ref=f4e259] [cursor=pointer]:
+            - cell "4532080b…b0a8" [ref=f4e260]
+            - cell "scrape_day_kline_sina" [ref=f4e261]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e262]
+            - cell "0" [ref=f4e263]
+            - cell "排队中" [ref=f4e264]
+            - cell "2026-10-02 19:04:41" [ref=f4e267]
+            - cell "2026-10-02 19:04:41" [ref=f4e268]
+          - row [ref=f4e269] [cursor=pointer]:
+            - cell "18d21da8…6f32" [ref=f4e270]
+            - cell "scrape_day_kline_sina" [ref=f4e271]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e272]
+            - cell "0" [ref=f4e273]
+            - cell "排队中" [ref=f4e274]
+            - cell "2026-10-02 19:04:41" [ref=f4e277]
+            - cell "2026-10-02 19:04:41" [ref=f4e278]
+          - row [ref=f4e279] [cursor=pointer]:
+            - cell "fed274f8…cf37" [ref=f4e280]
+            - cell "scrape_day_kline_sina" [ref=f4e281]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e282]
+            - cell "0" [ref=f4e283]
+            - cell "排队中" [ref=f4e284]
+            - cell "2026-10-02 19:04:41" [ref=f4e287]
+            - cell "2026-10-02 19:04:41" [ref=f4e288]
+          - row [ref=f4e289] [cursor=pointer]:
+            - cell "6f4a3df4…1cb0" [ref=f4e290]
+            - cell "scrape_day_kline_sina" [ref=f4e291]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e292]
+            - cell "0" [ref=f4e293]
+            - cell "排队中" [ref=f4e294]
+            - cell "2026-10-02 19:04:41" [ref=f4e297]
+            - cell "2026-10-02 19:04:41" [ref=f4e298]
+          - row [ref=f4e299] [cursor=pointer]:
+            - cell "0f6b831a…b174" [ref=f4e300]
+            - cell "scrape_day_kline_sina" [ref=f4e301]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e302]
+            - cell "0" [ref=f4e303]
+            - cell "排队中" [ref=f4e304]
+            - cell "2026-10-02 19:04:41" [ref=f4e307]
+            - cell "2026-10-02 19:04:41" [ref=f4e308]
+          - row [ref=f4e309] [cursor=pointer]:
+            - cell "ca49afc5…79a6" [ref=f4e310]
+            - cell "scrape_day_kline_sina" [ref=f4e311]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e312]
+            - cell "0" [ref=f4e313]
+            - cell "排队中" [ref=f4e314]
+            - cell "2026-10-02 19:04:41" [ref=f4e317]
+            - cell "2026-10-02 19:04:41" [ref=f4e318]
+          - row [ref=f4e319] [cursor=pointer]:
+            - cell "7672a9de…f76a" [ref=f4e320]
+            - cell "scrape_day_kline_sina" [ref=f4e321]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e322]
+            - cell "0" [ref=f4e323]
+            - cell "排队中" [ref=f4e324]
+            - cell "2026-10-02 19:04:41" [ref=f4e327]
+            - cell "2026-10-02 19:04:41" [ref=f4e328]
+          - row [ref=f4e329] [cursor=pointer]:
+            - cell "5ae66f16…5554" [ref=f4e330]
+            - cell "scrape_day_kline_sina" [ref=f4e331]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e332]
+            - cell "0" [ref=f4e333]
+            - cell "排队中" [ref=f4e334]
+            - cell "2026-10-02 19:04:41" [ref=f4e337]
+            - cell "2026-10-02 19:04:41" [ref=f4e338]
+          - row [ref=f4e339] [cursor=pointer]:
+            - cell "1e54b694…c2d3" [ref=f4e340]
+            - cell "scrape_day_kline_sina" [ref=f4e341]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e342]
+            - cell "0" [ref=f4e343]
+            - cell "排队中" [ref=f4e344]
+            - cell "2026-10-02 19:04:41" [ref=f4e347]
+            - cell "2026-10-02 19:04:41" [ref=f4e348]
+          - row [ref=f4e349] [cursor=pointer]:
+            - cell "109e0a3e…b153" [ref=f4e350]
+            - cell "scrape_day_kline_sina" [ref=f4e351]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e352]
+            - cell "0" [ref=f4e353]
+            - cell "排队中" [ref=f4e354]
+            - cell "2026-10-02 19:04:41" [ref=f4e357]
+            - cell "2026-10-02 19:04:41" [ref=f4e358]
+          - row [ref=f4e359] [cursor=pointer]:
+            - cell "6adf8c27…882c" [ref=f4e360]
+            - cell "scrape_day_kline_sina" [ref=f4e361]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e362]
+            - cell "0" [ref=f4e363]
+            - cell "排队中" [ref=f4e364]
+            - cell "2026-10-02 19:04:41" [ref=f4e367]
+            - cell "2026-10-02 19:04:41" [ref=f4e368]
+          - row [ref=f4e369] [cursor=pointer]:
+            - cell "64f04f32…6219" [ref=f4e370]
+            - cell "scrape_day_kline_sina" [ref=f4e371]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e372]
+            - cell "0" [ref=f4e373]
+            - cell "排队中" [ref=f4e374]
+            - cell "2026-10-02 19:04:41" [ref=f4e377]
+            - cell "2026-10-02 19:04:41" [ref=f4e378]
+          - row [ref=f4e379] [cursor=pointer]:
+            - cell "5b99f3fd…24f0" [ref=f4e380]
+            - cell "scrape_day_kline_sina" [ref=f4e381]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e382]
+            - cell "0" [ref=f4e383]
+            - cell "排队中" [ref=f4e384]
+            - cell "2026-10-02 19:04:41" [ref=f4e387]
+            - cell "2026-10-02 19:04:41" [ref=f4e388]
+          - row [ref=f4e389] [cursor=pointer]:
+            - cell "838cdc84…efa9" [ref=f4e390]
+            - cell "scrape_day_kline_sina" [ref=f4e391]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e392]
+            - cell "0" [ref=f4e393]
+            - cell "排队中" [ref=f4e394]
+            - cell "2026-10-02 19:04:41" [ref=f4e397]
+            - cell "2026-10-02 19:04:41" [ref=f4e398]
+          - row [ref=f4e399] [cursor=pointer]:
+            - cell "3d82a1d1…4422" [ref=f4e400]
+            - cell "scrape_day_kline_sina" [ref=f4e401]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e402]
+            - cell "0" [ref=f4e403]
+            - cell "排队中" [ref=f4e404]
+            - cell "2026-10-02 19:04:41" [ref=f4e407]
+            - cell "2026-10-02 19:04:41" [ref=f4e408]
+          - row [ref=f4e409] [cursor=pointer]:
+            - cell "e0338511…5604" [ref=f4e410]
+            - cell "scrape_day_kline_sina" [ref=f4e411]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e412]
+            - cell "0" [ref=f4e413]
+            - cell "排队中" [ref=f4e414]
+            - cell "2026-10-02 19:04:41" [ref=f4e417]
+            - cell "2026-10-02 19:04:41" [ref=f4e418]
+          - row [ref=f4e419] [cursor=pointer]:
+            - cell "8952aea4…d838" [ref=f4e420]
+            - cell "scrape_day_kline_sina" [ref=f4e421]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e422]
+            - cell "0" [ref=f4e423]
+            - cell "排队中" [ref=f4e424]
+            - cell "2026-10-02 19:04:41" [ref=f4e427]
+            - cell "2026-10-02 19:04:41" [ref=f4e428]
+          - row [ref=f4e429] [cursor=pointer]:
+            - cell "302f170c…c56c" [ref=f4e430]
+            - cell "scrape_day_kline_sina" [ref=f4e431]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e432]
+            - cell "0" [ref=f4e433]
+            - cell "排队中" [ref=f4e434]
+            - cell "2026-10-02 19:04:41" [ref=f4e437]
+            - cell "2026-10-02 19:04:41" [ref=f4e438]
+          - row [ref=f4e439] [cursor=pointer]:
+            - cell "3b73aab8…07dc" [ref=f4e440]
+            - cell "scrape_day_kline_sina" [ref=f4e441]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e442]
+            - cell "0" [ref=f4e443]
+            - cell "排队中" [ref=f4e444]
+            - cell "2026-10-02 19:04:41" [ref=f4e447]
+            - cell "2026-10-02 19:04:41" [ref=f4e448]
+          - row [ref=f4e449] [cursor=pointer]:
+            - cell "a2cdea46…839e" [ref=f4e450]
+            - cell "scrape_day_kline_sina" [ref=f4e451]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e452]
+            - cell "0" [ref=f4e453]
+            - cell "排队中" [ref=f4e454]
+            - cell "2026-10-02 19:04:41" [ref=f4e457]
+            - cell "2026-10-02 19:04:41" [ref=f4e458]
+          - row [ref=f4e459] [cursor=pointer]:
+            - cell "311886a0…b71c" [ref=f4e460]
+            - cell "scrape_day_kline_sina" [ref=f4e461]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e462]
+            - cell "0" [ref=f4e463]
+            - cell "排队中" [ref=f4e464]
+            - cell "2026-10-02 19:04:41" [ref=f4e467]
+            - cell "2026-10-02 19:04:41" [ref=f4e468]
+          - row [ref=f4e469] [cursor=pointer]:
+            - cell "8b3829d0…2616" [ref=f4e470]
+            - cell "scrape_day_kline_sina" [ref=f4e471]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e472]
+            - cell "0" [ref=f4e473]
+            - cell "排队中" [ref=f4e474]
+            - cell "2026-10-02 19:04:41" [ref=f4e477]
+            - cell "2026-10-02 19:04:41" [ref=f4e478]
+          - row [ref=f4e479] [cursor=pointer]:
+            - cell "f40b404b…d765" [ref=f4e480]
+            - cell "scrape_day_kline_sina" [ref=f4e481]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e482]
+            - cell "0" [ref=f4e483]
+            - cell "排队中" [ref=f4e484]
+            - cell "2026-10-02 19:04:41" [ref=f4e487]
+            - cell "2026-10-02 19:04:41" [ref=f4e488]
+          - row [ref=f4e489] [cursor=pointer]:
+            - cell "9aa8cb29…ec7d" [ref=f4e490]
+            - cell "scrape_day_kline_sina" [ref=f4e491]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e492]
+            - cell "0" [ref=f4e493]
+            - cell "排队中" [ref=f4e494]
+            - cell "2026-10-02 19:04:41" [ref=f4e497]
+            - cell "2026-10-02 19:04:41" [ref=f4e498]
+          - row [ref=f4e499] [cursor=pointer]:
+            - cell "2d124806…69a3" [ref=f4e500]
+            - cell "scrape_day_kline_sina" [ref=f4e501]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e502]
+            - cell "0" [ref=f4e503]
+            - cell "排队中" [ref=f4e504]
+            - cell "2026-10-02 19:04:41" [ref=f4e507]
+            - cell "2026-10-02 19:04:41" [ref=f4e508]
+          - row [ref=f4e509] [cursor=pointer]:
+            - cell "0e51b038…47b7" [ref=f4e510]
+            - cell "scrape_day_kline_sina" [ref=f4e511]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e512]
+            - cell "0" [ref=f4e513]
+            - cell "排队中" [ref=f4e514]
+            - cell "2026-10-02 19:04:41" [ref=f4e517]
+            - cell "2026-10-02 19:04:41" [ref=f4e518]
+          - row [ref=f4e519] [cursor=pointer]:
+            - cell "43847f11…49c5" [ref=f4e520]
+            - cell "scrape_day_kline_sina" [ref=f4e521]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e522]
+            - cell "0" [ref=f4e523]
+            - cell "排队中" [ref=f4e524]
+            - cell "2026-10-02 19:04:41" [ref=f4e527]
+            - cell "2026-10-02 19:04:41" [ref=f4e528]
+          - row [ref=f4e529] [cursor=pointer]:
+            - cell "25b0bd96…8965" [ref=f4e530]
+            - cell "scrape_day_kline_sina" [ref=f4e531]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e532]
+            - cell "0" [ref=f4e533]
+            - cell "排队中" [ref=f4e534]
+            - cell "2026-10-02 19:04:41" [ref=f4e537]
+            - cell "2026-10-02 19:04:41" [ref=f4e538]
+          - row [ref=f4e539] [cursor=pointer]:
+            - cell "7f1664e7…bbd0" [ref=f4e540]
+            - cell "scrape_day_kline_sina" [ref=f4e541]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e542]
+            - cell "0" [ref=f4e543]
+            - cell "排队中" [ref=f4e544]
+            - cell "2026-10-02 19:04:41" [ref=f4e547]
+            - cell "2026-10-02 19:04:41" [ref=f4e548]
+          - row [ref=f4e549] [cursor=pointer]:
+            - cell "8836695b…46e4" [ref=f4e550]
+            - cell "scrape_day_kline_sina" [ref=f4e551]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e552]
+            - cell "0" [ref=f4e553]
+            - cell "排队中" [ref=f4e554]
+            - cell "2026-10-02 19:04:41" [ref=f4e557]
+            - cell "2026-10-02 19:04:41" [ref=f4e558]
+          - row [ref=f4e559] [cursor=pointer]:
+            - cell "87e33308…9694" [ref=f4e560]
+            - cell "scrape_day_kline_sina" [ref=f4e561]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e562]
+            - cell "0" [ref=f4e563]
+            - cell "排队中" [ref=f4e564]
+            - cell "2026-10-02 19:04:41" [ref=f4e567]
+            - cell "2026-10-02 19:04:41" [ref=f4e568]
+          - row [ref=f4e569] [cursor=pointer]:
+            - cell "1f4ef358…027d" [ref=f4e570]
+            - cell "scrape_day_kline_sina" [ref=f4e571]
+            - cell "stockev:day-kline-sina:fetch" [ref=f4e572]
+            - cell "0" [ref=f4e573]
+            - cell "排队中" [ref=f4e574]
+            - cell "2026-10-02 19:04:41" [ref=f4e577]
+            - cell "2026-10-02 19:04:41" [ref=f4e578]
+      - button "加载更多（已显示 50 条）" [ref=f4e580] [cursor=pointer]

@@ -1,0 +1,244 @@
+- generic [ref=f2e3]:
+  - complementary [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - generic [ref=f2e6]: Q
+      - generic [ref=f2e7]:
+        - generic [ref=f2e8]: qtask_list
+        - generic [ref=f2e9]: 管理后台
+    - navigation [ref=f2e10]:
+      - link "📊 总览" [ref=f2e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f2e12]: 📊
+        - generic [ref=f2e13]: 总览
+      - link "📋 队列" [ref=f2e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f2e15]: 📋
+        - generic [ref=f2e16]: 队列
+      - link "🔍 任务" [ref=f2e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f2e18]: 🔍
+        - generic [ref=f2e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f2e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f2e21]: 🧑‍🏭
+        - generic [ref=f2e22]: Worker
+      - link "🔔 告警 5" [ref=f2e48] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f2e24]: 🔔
+        - generic [ref=f2e25]: 告警
+        - generic [ref=f2e49]: "5"
+      - link "📖 教程" [ref=f2e26] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f2e27]: 📖
+        - generic [ref=f2e28]: 教程
+    - generic [ref=f2e29]: v0.2.0 · Redis 任务队列
+  - generic [ref=f2e30]:
+    - banner [ref=f2e31]:
+      - generic "Redis 连接正常" [ref=f2e50]: 已连接
+      - generic "2026/10/16 10:36:25" [ref=f2e51]: 更新于 10:36:25
+      - button "刷新" [ref=f2e34] [cursor=pointer]
+      - generic [ref=f2e35]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f2e36]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f2e37] [cursor=pointer]
+    - generic [ref=f2e38]:
+      - heading "总览" [level=1] [ref=f2e39]
+      - paragraph [ref=f2e40]: 查看当前待处理量与异常；完成量和速率来自本次访问近一小时的浏览器观测，切换页面会保留采样。
+      - generic [ref=f2e52]:
+        - combobox "总览 namespace" [ref=f2e53]:
+          - option "全部 namespace" [selected]
+          - option "(默认)"
+          - option "dashdemo"
+          - option "demo"
+          - option "finance"
+          - option "integration"
+          - option "qtask_dash_test"
+          - option "review"
+          - option "stockev"
+          - option "stockev_list"
+          - option "testns"
+        - textbox "搜索队列名" [ref=f2e54]
+        - generic [ref=f2e55]: 当前范围 69 / 69 个队列
+      - generic [ref=f2e56]:
+        - button "活跃队列 4/69 当前范围内有待处理任务的队列" [ref=f2e57] [cursor=pointer]:
+          - generic [ref=f2e58]: 活跃队列
+          - generic [ref=f2e59]: 4/69
+          - generic [ref=f2e60]: 当前范围内有待处理任务的队列
+        - button "总待处理 5,584 排队 + 执行 + 延迟 + 旧重试" [ref=f2e61] [cursor=pointer]:
+          - generic [ref=f2e62]: 总待处理
+          - generic [ref=f2e63]: 5,584
+          - generic [ref=f2e64]: 排队 + 执行 + 延迟 + 旧重试
+        - generic [ref=f2e65]:
+          - generic [ref=f2e66]: 合计观测速率
+          - generic [ref=f2e67]: —
+          - generic [ref=f2e68]: 观测至少 30 秒后估算
+        - button "异常队列 4 死信 / 无 Worker / 停滞 / 失联 / 过期" [ref=f2e69] [cursor=pointer]:
+          - generic [ref=f2e70]: 异常队列
+          - generic [ref=f2e71]: "4"
+          - generic [ref=f2e72]: 死信 / 无 Worker / 停滞 / 失联 / 过期
+      - generic [ref=f2e73]:
+        - generic [ref=f2e74]:
+          - heading "待处理告警" [level=2] [ref=f2e75]
+          - link "查看全部 →" [ref=f2e76] [cursor=pointer]:
+            - /url: /alerts
+        - generic [ref=f2e77]:
+          - generic [ref=f2e78]: DLQ 堆积
+          - strong [ref=f2e79]: dashdemo:fetch
+          - generic [ref=f2e80]: 死信队列有 1 条任务等待处理
+          - link "定位" [ref=f2e81] [cursor=pointer]:
+            - /url: /queues/dashdemo%3Afetch?state=dlq
+        - generic [ref=f2e82]:
+          - generic [ref=f2e83]: 无人消费
+          - strong [ref=f2e84]: dashdemo:fetch
+          - generic [ref=f2e85]: ready 有 9 条任务，但没有在线 Worker
+          - link "定位" [ref=f2e86] [cursor=pointer]:
+            - /url: /queues/dashdemo%3Afetch?state=ready
+        - generic [ref=f2e87]:
+          - generic [ref=f2e88]: 无人消费
+          - strong [ref=f2e89]: dashdemo:ingest
+          - generic [ref=f2e90]: ready 有 1 条任务，但没有在线 Worker
+          - link "定位" [ref=f2e91] [cursor=pointer]:
+            - /url: /queues/dashdemo%3Aingest?state=ready
+      - generic [ref=f2e92]:
+        - heading "队列运行矩阵" [level=2] [ref=f2e93]
+        - generic [ref=f2e94]:
+          - button "全部" [ref=f2e95] [cursor=pointer]
+          - button "进行中" [ref=f2e96] [cursor=pointer]
+          - button "仅异常" [ref=f2e97] [cursor=pointer]
+      - paragraph [ref=f2e98]: 待处理构成： 排队 执行 延迟 旧重试 · ETA 仅估算无延迟队列
+      - generic "队列运行矩阵，可横向滚动" [ref=f2e103]:
+        - generic [ref=f2e104]:
+          - generic [aria-hidden] [ref=f2e105]:
+            - generic [ref=f2e106]: 队列
+            - generic [ref=f2e107]: 待处理构成
+            - generic [ref=f2e108]: 待处理
+            - generic [ref=f2e109]: 观测完成
+            - generic [ref=f2e110]: 条/min
+            - generic [ref=f2e111]: 预计/状态
+            - generic [ref=f2e112]: 异常
+          - generic [ref=f2e113]:
+            - button "▾ (默认) · 2 个队列 · 待处理 1 · 观测完成 — ⚠ 1" [expanded] [ref=f2e114] [cursor=pointer]:
+              - generic [ref=f2e115]: ▾
+              - generic [ref=f2e116]: (默认)
+              - generic [ref=f2e117]: · 2 个队列
+              - generic [ref=f2e118]: · 待处理 1
+              - generic [ref=f2e119]: · 观测完成 —
+              - generic [ref=f2e120]: ⚠ 1
+            - link "no_namespace 排队 1 · 执行 0 · 延迟 0 · 旧重试 0 1 — — 无 Worker 无 Worker 指标需回填" [ref=f2e121] [cursor=pointer]:
+              - generic "no_namespace" [ref=f2e122]
+              - img "排队 1 · 执行 0 · 延迟 0 · 旧重试 0" [ref=f2e123]
+              - generic [ref=f2e125]: "1"
+              - generic [ref=f2e126]: —
+              - generic [ref=f2e127]: —
+              - generic [ref=f2e128]: 无 Worker
+              - generic [ref=f2e129]:
+                - generic [ref=f2e130]: 无 Worker
+                - generic "旧队列需运行 rebuild-observation 回填监控索引" [ref=f2e131]: 指标需回填
+            - link "test_archive_queue 无待处理任务 0 — — — 指标需回填 空闲" [ref=f2e132] [cursor=pointer]:
+              - generic "test_archive_queue" [ref=f2e133]
+              - img "无待处理任务" [ref=f2e134]
+              - generic [ref=f2e135]: "0"
+              - generic [ref=f2e136]: —
+              - generic [ref=f2e137]: —
+              - generic [ref=f2e138]: —
+              - generic [ref=f2e139]:
+                - generic "旧队列需运行 rebuild-observation 回填监控索引" [ref=f2e140]: 指标需回填
+                - generic [ref=f2e141]: 空闲
+          - generic [ref=f2e142]:
+            - button "▾ dashdemo · 2 个队列 · 待处理 12 · 观测完成 — ⚠ 2" [expanded] [ref=f2e143] [cursor=pointer]:
+              - generic [ref=f2e144]: ▾
+              - generic [ref=f2e145]: dashdemo
+              - generic [ref=f2e146]: · 2 个队列
+              - generic [ref=f2e147]: · 待处理 12
+              - generic [ref=f2e148]: · 观测完成 —
+              - generic [ref=f2e149]: ⚠ 2
+            - link "dashdemo:fetch 排队 9 · 执行 0 · 延迟 2 · 旧重试 0 11 — — 无 Worker DLQ 1 无 Worker 指标需回填" [ref=f2e150] [cursor=pointer]:
+              - generic "dashdemo:fetch" [ref=f2e151]
+              - img "排队 9 · 执行 0 · 延迟 2 · 旧重试 0" [ref=f2e152]
+              - generic [ref=f2e155]: "11"
+              - generic [ref=f2e156]: —
+              - generic [ref=f2e157]: —
+              - generic [ref=f2e158]: 无 Worker
+              - generic [ref=f2e159]:
+                - generic [ref=f2e160]: DLQ 1
+                - generic [ref=f2e161]: 无 Worker
+                - generic "旧队列需运行 rebuild-observation 回填监控索引" [ref=f2e162]: 指标需回填
+            - link "dashdemo:ingest 排队 1 · 执行 0 · 延迟 0 · 旧重试 0 1 — — 无 Worker 无 Worker 指标需回填" [ref=f2e163] [cursor=pointer]:
+              - generic "dashdemo:ingest" [ref=f2e164]
+              - img "排队 1 · 执行 0 · 延迟 0 · 旧重试 0" [ref=f2e165]
+              - generic [ref=f2e167]: "1"
+              - generic [ref=f2e168]: —
+              - generic [ref=f2e169]: —
+              - generic [ref=f2e170]: 无 Worker
+              - generic [ref=f2e171]:
+                - generic [ref=f2e172]: 无 Worker
+                - generic "旧队列需运行 rebuild-observation 回填监控索引" [ref=f2e173]: 指标需回填
+          - button "▸ demo · 6 个队列 · 待处理 0 · 观测完成 — 空闲" [ref=f2e175] [cursor=pointer]:
+            - generic [ref=f2e176]: ▸
+            - generic [ref=f2e177]: demo
+            - generic [ref=f2e178]: · 6 个队列
+            - generic [ref=f2e179]: · 待处理 0
+            - generic [ref=f2e180]: · 观测完成 —
+            - generic [ref=f2e181]: 空闲
+          - button "▸ finance · 1 个队列 · 待处理 0 · 观测完成 — 空闲" [ref=f2e183] [cursor=pointer]:
+            - generic [ref=f2e184]: ▸
+            - generic [ref=f2e185]: finance
+            - generic [ref=f2e186]: · 1 个队列
+            - generic [ref=f2e187]: · 待处理 0
+            - generic [ref=f2e188]: · 观测完成 —
+            - generic [ref=f2e189]: 空闲
+          - button "▸ integration · 10 个队列 · 待处理 0 · 观测完成 — 空闲" [ref=f2e191] [cursor=pointer]:
+            - generic [ref=f2e192]: ▸
+            - generic [ref=f2e193]: integration
+            - generic [ref=f2e194]: · 10 个队列
+            - generic [ref=f2e195]: · 待处理 0
+            - generic [ref=f2e196]: · 观测完成 —
+            - generic [ref=f2e197]: 空闲
+          - button "▸ qtask_dash_test · 6 个队列 · 待处理 0 · 观测完成 — 空闲" [ref=f2e199] [cursor=pointer]:
+            - generic [ref=f2e200]: ▸
+            - generic [ref=f2e201]: qtask_dash_test
+            - generic [ref=f2e202]: · 6 个队列
+            - generic [ref=f2e203]: · 待处理 0
+            - generic [ref=f2e204]: · 观测完成 —
+            - generic [ref=f2e205]: 空闲
+          - button "▸ review · 1 个队列 · 待处理 0 · 观测完成 — 空闲" [ref=f2e207] [cursor=pointer]:
+            - generic [ref=f2e208]: ▸
+            - generic [ref=f2e209]: review
+            - generic [ref=f2e210]: · 1 个队列
+            - generic [ref=f2e211]: · 待处理 0
+            - generic [ref=f2e212]: · 观测完成 —
+            - generic [ref=f2e213]: 空闲
+          - generic [ref=f2e214]:
+            - button "▾ stockev · 1 个队列 · 待处理 5,571 · 观测完成 — ⚠ 1" [expanded] [ref=f2e215] [cursor=pointer]:
+              - generic [ref=f2e216]: ▾
+              - generic [ref=f2e217]: stockev
+              - generic [ref=f2e218]: · 1 个队列
+              - generic [ref=f2e219]: · 待处理 5,571
+              - generic [ref=f2e220]: · 观测完成 —
+              - generic [ref=f2e221]: ⚠ 1
+            - link "stockev:day-kline-sina:fetch 排队 5571 · 执行 0 · 延迟 0 · 旧重试 0 5,571 — — 无 Worker 无 Worker" [ref=f2e222] [cursor=pointer]:
+              - generic "stockev:day-kline-sina:fetch" [ref=f2e223]
+              - img "排队 5571 · 执行 0 · 延迟 0 · 旧重试 0" [ref=f2e224]
+              - generic [ref=f2e226]: 5,571
+              - generic [ref=f2e227]: —
+              - generic [ref=f2e228]: —
+              - generic [ref=f2e229]: 无 Worker
+              - generic [ref=f2e230]: 无 Worker
+          - button "▸ stockev_list · 7 个队列 · 待处理 0 · 观测完成 — 空闲" [ref=f2e233] [cursor=pointer]:
+            - generic [ref=f2e234]: ▸
+            - generic [ref=f2e235]: stockev_list
+            - generic [ref=f2e236]: · 7 个队列
+            - generic [ref=f2e237]: · 待处理 0
+            - generic [ref=f2e238]: · 观测完成 —
+            - generic [ref=f2e239]: 空闲
+          - button "▸ testns · 33 个队列 · 待处理 0 · 观测完成 — 空闲" [ref=f2e241] [cursor=pointer]:
+            - generic [ref=f2e242]: ▸
+            - generic [ref=f2e243]: testns
+            - generic [ref=f2e244]: · 33 个队列
+            - generic [ref=f2e245]: · 待处理 0
+            - generic [ref=f2e246]: · 观测完成 —
+            - generic [ref=f2e247]: 空闲
