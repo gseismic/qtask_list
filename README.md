@@ -2,6 +2,10 @@
 
 基于 Redis List 的分布式任务队列，核心机制是 `BRPOPLPUSH` 可靠消费 + 多子队列状态管理。仅依赖 Redis，无需 RabbitMQ/Kafka。
 
+内置 Web Dashboard（`qtask web`）用于可视化盯盘与运维：
+
+![Web Dashboard 总览页：KPI 卡片、告警与队列运行矩阵](docs/images/dashboard-overview-light.png)
+
 ## 特性
 
 - **可靠消费**：`BRPOPLPUSH` 原子操作，Worker 崩溃不丢任务
@@ -569,9 +573,7 @@ qtask storage --port 8096 --data-dir ~/.qtask-storage --gc-redis redis://localho
 qtask web
 ```
 
-Dashboard 是 React 单页应用（构建产物已随包发布，无需 Node 环境）。启动后打开 `http://localhost:8765`，信息架构面向"盯盘 → 排查 → 处理"的运维动线：
-
-![Web Dashboard 总览页：KPI 卡片、告警与队列运行矩阵](docs/images/dashboard-overview-light.png)
+Dashboard 是 React 单页应用（构建产物已随包发布，无需 Node 环境）。启动后打开 `http://localhost:8765`，信息架构面向"盯盘 → 排查 → 处理"的运维动线（总览页见文首截图）：
 
 | 页面 | 路由 | 用途 |
 |------|------|------|
