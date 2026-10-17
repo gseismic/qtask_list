@@ -49,5 +49,5 @@ python -m qtask_list.cli status                          # 所有队列状态
 python -m qtask_list.cli watch demo:jobs                 # 实时监控某队列
 python -m qtask_list.cli peek demo:jobs --state dlq      # 查看死信
 python -m qtask_list.cli history demo:jobs -l 20         # 任务历史
-python -m qtask_list.cli dashboard                       # Web 控制台
+python -m qtask_list.cli web                             # Web 控制台
 ```

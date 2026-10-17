@@ -324,8 +324,8 @@ qtask storage --port 8096 --data-dir ~/.qtask-storage --gc-redis redis://localho
 # 启动 Worker（加载用户模块中已注册 handler 的 worker 实例）
 qtask worker --module myapp.workers:worker
 
-# 启动 Dashboard；远程访问必须设置 --password 或环境变量认证
-qtask dashboard
+# 启动 Web Dashboard（旧命令 qtask dashboard 仍兼容）；远程访问必须设置 --password 或环境变量认证
+qtask web
 ```
 
 ## Dashboard

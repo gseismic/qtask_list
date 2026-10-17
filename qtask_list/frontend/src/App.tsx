@@ -33,7 +33,7 @@ function SideNav() {
           </NavLink>
         ))}
       </nav>
-      <div className="foot">v0.2.0 · Redis 任务队列</div>
+      <div className="foot">v{__APP_VERSION__} · Redis 任务队列</div>
     </aside>
   );
 }

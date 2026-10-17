@@ -565,11 +565,13 @@ qtask monitor
 # 启动 RemoteStorage 服务端（大 payload 外存）
 qtask storage --port 8096 --data-dir ~/.qtask-storage --gc-redis redis://localhost:6379/0
 
-# 启动 Web Dashboard
-qtask dashboard
+# 启动 Web Dashboard（旧命令 qtask dashboard 仍兼容）
+qtask web
 ```
 
-Dashboard 是 React 单页应用（构建产物已随包发布，无需 Node 环境），启动后打开 `http://localhost:8765`。信息架构面向"盯盘 → 排查 → 处理"的运维动线：
+Dashboard 是 React 单页应用（构建产物已随包发布，无需 Node 环境）。启动后打开 `http://localhost:8765`，信息架构面向"盯盘 → 排查 → 处理"的运维动线：
+
+![Web Dashboard 总览页：KPI 卡片、告警与队列运行矩阵](docs/images/dashboard-overview-light.png)
 
 | 页面 | 路由 | 用途 |
 |------|------|------|
@@ -594,10 +596,19 @@ Dashboard 内存告警默认使用 Redis `maxmemory`；可设置 `QTASK_DASHBOAR
 
 告警“已处理”只保存在本浏览器，确认后立即更新；完整重新加载页面后持续故障的确认仍有效。监测到故障恢复后再复发时重新提示。未打开后台期间发生的恢复与复发无法由浏览器单独判断，多人共享或后台持久化告警仍需要服务端模型。
 
-远程查看时应启用登录，并显式监听远程地址：
+### 运行 Dashboard
+
+**本机使用**：默认监听 `127.0.0.1`，无需认证，启动后自动打开浏览器：
 
 ```bash
-qtask dashboard \
+qtask web               # 默认 8765 端口，旧命令 qtask dashboard 仍兼容
+qtask web --port 8900   # 指定端口
+```
+
+**远程访问**：必须启用登录，并显式监听远程地址（CLI 参数方式）：
+
+```bash
+qtask web \
   --host 0.0.0.0 \
   --port 8765 \
   --user admin \
@@ -605,19 +616,16 @@ qtask dashboard \
   --no-open
 ```
 
-也可以通过环境变量部署：
+或通过环境变量部署（适合容器编排）：
 
 ```bash
 export QTASK_DASHBOARD_USER=admin
 export QTASK_DASHBOARD_PASSWORD='<strong-password>'
 export QTASK_DASHBOARD_SECRET='<random-secret>'
-qtask dashboard --host 0.0.0.0 --no-open
+qtask web --host 0.0.0.0 --no-open
 ```
 
-设置 `QTASK_DASHBOARD_PASSWORD` 后，访问 `/` 会先跳转到 `/login`，所有 `/api/*` 管理接口以及 SPA 客户端路由（如 `/queues`）也会校验登录会话。不设置密码时认证默认关闭，服务可直接访问。公网部署建议放在 HTTPS 反向代理后，并设置 `QTASK_DASHBOARD_SECURE_COOKIE=1` 或 CLI 参数 `--secure-cookie`。
-CLI 绑定非 loopback 地址且未配置认证时会拒绝启动；确需在可信网络无认证运行时，必须显式传 `--allow-unauthenticated`。直接运行 `uvicorn` 不经过此 CLI 保护，请自行配置认证。
-
-也可以不用 CLI，直接用 uvicorn 部署（适合 systemd/容器）：
+**不用 CLI，直接用 uvicorn**（适合 systemd/容器；不经过 CLI 的认证保护检查，需自行配置认证）：
 
 ```bash
 pip install "qtask_list[dashboard]"
@@ -627,6 +635,9 @@ export QTASK_DASHBOARD_PASSWORD='<strong-password>'
 export QTASK_DASHBOARD_SECRET='<random-secret>'
 uvicorn qtask_list.dashboard.main:app --host 0.0.0.0 --port 8765
 ```
+
+设置 `QTASK_DASHBOARD_PASSWORD` 后，访问 `/` 会先跳转到 `/login`，所有 `/api/*` 管理接口以及 SPA 客户端路由（如 `/queues`）也会校验登录会话。不设置密码时认证默认关闭，服务可直接访问。公网部署建议放在 HTTPS 反向代理后，并设置 `QTASK_DASHBOARD_SECURE_COOKIE=1` 或 CLI 参数 `--secure-cookie`。
+CLI 绑定非 loopback 地址且未配置认证时会拒绝启动；确需在可信网络无认证运行时，必须显式传 `--allow-unauthenticated`。
 
 ### 修改前端（仅开发 Dashboard 时需要）
 

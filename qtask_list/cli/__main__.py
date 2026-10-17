@@ -680,8 +680,7 @@ def monitor(
     console.print(table)
 
 
-@app.command()
-def dashboard(
+def web(
     host: str = typer.Option("127.0.0.1", "--host", help="Dashboard 监听地址，远程访问可用 0.0.0.0"),
     port: int = typer.Option(8765, "--port", "-p", help="Dashboard 端口"),
     redis_url: str = typer.Option(DEFAULT_REDIS_URL, "--redis", help="Redis URL"),
@@ -694,7 +693,7 @@ def dashboard(
     ),
     open_browser: bool = typer.Option(True, "--open/--no-open", help="启动后打开浏览器"),
 ):
-    """启动 Dashboard 面板"""
+    """启动 Web Dashboard 面板"""
     os.environ["REDIS_URL"] = redis_url
     os.environ["QTASK_DASHBOARD_SESSION_TTL"] = str(session_ttl)
     if user is not None:
@@ -736,6 +735,11 @@ def dashboard(
         threading.Thread(target=open_browser_delayed, daemon=True).start()
 
     uvicorn.run(app, host=host, port=port, log_level="info")
+
+
+app.command("web")(web)
+# 兼容别名：qtask dashboard 等价于 qtask web，不在帮助列表中显示
+app.command("dashboard", hidden=True)(web)
 
 
 @task_app.command("get")

@@ -371,13 +371,26 @@ class TestCLIWorker:
         assert "--queue" in old_option.stdout
 
 
-def test_dashboard_rejects_remote_bind_without_auth(runner, monkeypatch):
+def test_web_rejects_remote_bind_without_auth(runner, monkeypatch):
     # 管理后台含写操作，绑定非本地网卡时默认必须有认证配置。
     monkeypatch.delenv("QTASK_DASHBOARD_PASSWORD", raising=False)
     monkeypatch.delenv("QTASK_DASHBOARD_AUTH", raising=False)
-    result = runner.invoke(app, ["dashboard", "--host", "0.0.0.0", "--no-open"])
+    result = runner.invoke(app, ["web", "--host", "0.0.0.0", "--no-open"])
     assert result.exit_code == 2
     assert "--allow-unauthenticated" in result.stdout
+
+
+def test_web_dashboard_alias_kept_hidden(runner, monkeypatch):
+    # 旧命令名 dashboard 等价于 web；帮助列表只显示 web。
+    monkeypatch.delenv("QTASK_DASHBOARD_PASSWORD", raising=False)
+    monkeypatch.delenv("QTASK_DASHBOARD_AUTH", raising=False)
+    alias = runner.invoke(app, ["dashboard", "--host", "0.0.0.0", "--no-open"])
+    assert alias.exit_code == 2
+    assert "--allow-unauthenticated" in alias.stdout
+
+    help_text = runner.invoke(app, ["--help"]).stdout
+    assert "web" in help_text
+    assert "dashboard" not in help_text
 
 
 class TestCLICleanHistory:
