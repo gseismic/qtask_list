@@ -1,0 +1,14 @@
+Building wheel...
+  × Failed to build `/tmp/qtask-wheel-source-0g7nd64h`
+  ├─▶ Failed to resolve requirements from `build-system.requires`
+  ├─▶ No solution found when resolving: `setuptools>=68.0`
+  ├─▶ Failed to fetch: `https://pypi.org/simple/setuptools/`
+  ├─▶ Request failed after 3 retries
+  ├─▶ error sending request for url (https://pypi.org/simple/setuptools/)
+  ╰─▶ operation timed out
+Traceback (most recent call last):
+  File "/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/docs/test/20261017-17-WORKTREE/clean-wheel-build.py", line 16, in <module>
+    subprocess.run(["uv", "build", "--wheel", str(source), "--out-dir", str(output)], check=True)
+  File "/home/lsl/miniconda3/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['uv', 'build', '--wheel', '/tmp/qtask-wheel-source-0g7nd64h', '--out-dir', '/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/docs/test/20261017-17-WORKTREE/wheel-clean']' returned non-zero exit status 2.

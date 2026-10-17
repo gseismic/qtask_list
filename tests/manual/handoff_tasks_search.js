@@ -1,0 +1,117 @@
+// 先启动 handoff_dashboard_server.py，再用 playwright-cli run-code --filename 执行。
+async page => {
+  const origin = await page.evaluate(() => location.origin);
+  const pathOf = url => url.replace(origin, "").split("?")[0];
+  const queryOf = (url, name) => {
+    const value = (url.split("?")[1] ?? "").split("&").find(pair => pair.startsWith(`${name}=`));
+    return value ? decodeURIComponent(value.slice(name.length + 1).replace(/\+/g, " ")) : null;
+  };
+  const searchOf = url => queryOf(url, "search");
+  const requests = [];
+  const failures = [];
+  const checks = [];
+  const assert = (condition, message) => { if (!condition) throw new Error(message); };
+  page.on("request", request => {
+    const path = request.url().replace(origin, "");
+    if (path.startsWith("/api/")) requests.push(path);
+  });
+  page.on("response", response => {
+    if (response.status() >= 400) failures.push({ url: response.url(), status: response.status() });
+  });
+  page.on("pageerror", error => failures.push({ error: error.message }));
+  const details = () => requests.filter(path => path.startsWith("/api/task/") ||
+    path.startsWith("/api/tasks/detail?"));
+  const drawer = page.getByRole("dialog", { name: "任务详情" });
+  const isList = response => /^\/api\/(tasks|queues\/tasks|queue\/[^/]+\/tasks)$/.test(pathOf(response.url()));
+  const search = async value => {
+    const loaded = page.waitForResponse(response => isList(response) &&
+      searchOf(response.url()) === value);
+    await page.getByRole("textbox", { name: "搜索任务" }).fill(value);
+    await loaded;
+    await page.waitForURL(url => url.searchParams.get("q") === value);
+  };
+  const keyword = async value => {
+    const before = details().length;
+    await search(value);
+    await page.waitForTimeout(100);
+    assert(await drawer.count() === 0, `${value} 错误打开详情`);
+    assert(details().length === before, `${value} 额外请求详情`);
+    checks.push(`普通词/无效 ID 无详情请求：${value}`);
+  };
+  const exact = async id => {
+    const before = details().length;
+    const loaded = page.waitForResponse(response =>
+      decodeURIComponent(pathOf(response.url())) === `/api/task/${id}` ||
+      (pathOf(response.url()) === "/api/tasks/detail" && queryOf(response.url(), "task_id") === id));
+    await search(id);
+    await loaded;
+    await drawer.waitFor();
+    assert(await drawer.locator(`[title="${id}"]`).count() === 1, `${id} 未打开匹配详情`);
+    assert(details().length === before + 1, `${id} 重复请求详情`);
+    await drawer.getByRole("button", { name: "关闭", exact: true }).click();
+    checks.push(`精确 ID 只请求一次详情：${id}`);
+  };
+
+  await page.goto(`${origin}/tasks`);
+  await page.getByRole("textbox", { name: "搜索任务" }).waitFor();
+  await page.locator(".topbar select").selectOption("0");
+  await keyword("browser_test_dlq");
+  assert(await page.locator("tbody tr").count() === 4, "关键词筛选没有返回预期任务");
+  await keyword("missing_task_id");
+  await keyword("00000000-0000-4000-8000-000000000000");
+  for (const id of ["4b701bde-5f35-4c8a-b05c-59b6e929f265", "legacy_order_42", "v1", "旧任务-42"]) {
+    await exact(id);
+  }
+
+  const beforeRefresh = details().length;
+  const refreshed = page.waitForResponse(isList);
+  await page.getByRole("button", { name: "刷新第一页" }).click();
+  await refreshed;
+  await page.waitForTimeout(100);
+  assert(await drawer.count() === 0 && details().length === beforeRefresh, "刷新重新打开已关闭详情");
+  const polled = page.waitForResponse(isList);
+  await page.locator(".topbar select").selectOption("5");
+  await polled;
+  await page.waitForTimeout(100);
+  assert(await drawer.count() === 0 && details().length === beforeRefresh, "轮询重新打开已关闭详情");
+  await page.locator(".topbar select").selectOption("0");
+  checks.push("关闭详情后手动刷新及实际轮询均不重开");
+
+  await page.getByRole("combobox", { name: "任务队列" }).selectOption("handoff_browser:search");
+  await keyword("browser_test_dlq");
+  await exact("legacy_order_42");
+  checks.push("指定队列搜索保留精确 ID 自动打开");
+  await page.getByRole("combobox", { name: "任务状态" }).selectOption("failed");
+  await exact("unindexed-legacy-id");
+  checks.push("无历史索引且不符合列表筛选的有效 ID 仍可定位");
+
+  await page.goto(`${origin}/tasks`);
+  await page.getByRole("textbox", { name: "搜索任务" }).waitFor();
+  let release;
+  let heldResolve;
+  const gate = new Promise(resolve => { release = resolve; });
+  const held = new Promise(resolve => { heldResolve = resolve; });
+  const delayedSearch = async route => {
+    if (searchOf(route.request().url()) === "legacy_order_42") {
+      const response = await route.fetch();
+      heldResolve();
+      await gate;
+      await route.fulfill({ response });
+    } else await route.continue();
+  };
+  await page.route("**/api/tasks?*", delayedSearch);
+  const beforeRace = details().length;
+  await page.getByRole("textbox", { name: "搜索任务" }).fill("legacy_order_42");
+  await held;
+  await keyword("browser_test_dlq");
+  const staleResponse = page.waitForResponse(response => isList(response) &&
+    searchOf(response.url()) === "legacy_order_42");
+  release();
+  await staleResponse;
+  await page.waitForTimeout(100);
+  assert(await drawer.count() === 0 && details().length === beforeRace, "旧查询响应打开了错误详情");
+  await page.unroute("**/api/tasks?*", delayedSearch);
+  checks.push("延迟返回的旧精确查询不会干扰当前关键词搜索");
+  assert(failures.length === 0, JSON.stringify(failures));
+  return { passed: checks.length, checks, failures, requests };
+}

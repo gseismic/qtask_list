@@ -1,103 +1,104 @@
 # 交接文档（HANDOFF）
 
-- 更新时间：2026-10-16 12:23（Asia/Shanghai）
-- 文档模型：Codex / model-unknown（环境声明基于 GPT-6，未公开具体模型 ID）
-- 交接依据代码基线：2722fbcfd10f5784fa19b669bba1f5fe21a69535（main，当时与 origin/main 同步）
-- 最近浏览器测试基线：8cea280c9007d4e924d5705632c6685a80d53da1
-- 交接目的：将 Dashboard 浏览器测试确认的两个问题交给后续修复者
-- 工作树保护：AGENTS.md 当前有用户未提交修改；本次未修改、未暂存该文件
+- 更新时间：2026-10-17 00:18（Asia/Shanghai）。
+- 文档模型：Codex / model-unknown（环境声明基于 GPT-6，未提供具体模型 ID）。
+- 当前版本：WORKTREE；分支 main，基准提交 3ff689706e788264b02839c4e2db9bd8a4644d50。下述实现含大量未提交、未跟踪文件，不能把基准提交当作这些修改的固定版本。
+- 交接目的：记录 Dashboard 修复、被中断的 Review，以及随后完成的自定义 processing 修复。
+- 本次修复自定义 processing 登记与管理端统计/恢复，新增回归并完成全量验证；没有提交或推送。此前工作区中的用户和其他任务改动均保留。
 
-## 1. 项目背景
+## 1. 项目与用户约束
 
-qtask_list 是基于 Redis 的分布式任务队列库，当前版本为 0.2.0。队列提供者、Worker 和管理后台共享 Redis 中的队列与任务状态；项目保留 V1 队列/任务的兼容发现和读取路径。
+qtask_list 是基于 Redis 的任务队列库，当前版本 0.2.0；后端使用 Python/FastAPI，管理端为 qtask_list/frontend/ 下的 React、TypeScript、Vite 项目，使用 pnpm。运行时 SPA 位于 qtask_list/dashboard/static/spa/。
 
-管理后台由 FastAPI 提供 API 和 SPA 托管，前端源码位于 qtask_list/frontend/，使用 React、TypeScript、Vite 和 pnpm；运行时静态资源位于 qtask_list/dashboard/static/spa/。队列发现及管理逻辑集中在 qtask_list/admin.py，页面 API 路由位于 qtask_list/dashboard/main.py。
+开始任务先检查 GOAL.md；当前不存在，不要擅自创建。AGENTS.md 有用户原有未提交修改，须保留。提交和推送分别需要明确授权，本次没有这两项授权。
 
-项目目标、开发和提交规则以仓库根目录 AGENTS.md 为准。开始修复前应读取该文件；它在当前工作树中含有尚未提交的用户修改。
+用户已明确表示不需要兼容性。对于队列和 Worker 的自动发现，已采用注册表作为唯一来源，删除 V1 发现扫描及缓存。旧交接中“必须保留 V1 自动发现”的要求已被取代。后续修复应完善当前数据的登记，不恢复旧扫描。其他模块的旧消息读取、重试等兼容分支并未在这轮全面删除。
 
-## 2. 当前状态
+## 2. 已完成工作
 
-- 最近一次完整浏览器回归已完成，覆盖总览、队列、队列详情、任务列表和详情、Worker、告警、教程及可见条件操作。
-- 测试结束后清理了本轮临时数据；测试记录称 Dashboard 队列列表及本轮 Redis 注册表、历史、任务、Worker 和队列状态键均为空。
-- 本轮没有修改业务代码。当前尚未解决的问题有两项，详情及状态见[已知问题索引](./KNOWN-ISSUES.md)。
-- 测试报告、页面快照和截图位于[测试报告目录](./test/20261016-10-8cea280/)。主页面空状态截图为[主页面.png](./test/20261016-10-8cea280/主页面.png)。
+### 注册表发现与 Worker 生命周期
 
-## 3. 待修复问题
+见[PLAN-20261016-002 结果](./plans/PLAN-20261016-002-model-unknown-registry-discovery-OUTCOME.md)。
 
-建议优先处理 P2，再处理 P3。下面的复现都应使用隔离 Redis 或专用测试前缀，不要对用户队列执行清理。
+- qtask_list/admin.py 的 queue_names() 直接读取 qtask:queues，list_workers() 读取各队列的 qtask:workers:<queue>。
+- qtask_list/state.py 和 qtask_list/worker.py 实现原子登记队列、Worker 和 TTL 心跳，写入前检查键类型及 namespace 冲突；空闲 Worker 也登记队列。
+- Worker 退出但仍有 processing 任务时保留注册项，供失联诊断和恢复；失效注册项清理原子复核心跳及 processing，保护并发续租。
+- 已登记的空逻辑队列保留；外部移除注册项会在下一次查询反映，运行中的 Worker 会在下一次心跳重新登记。
+- README.md、tests/test_registry_discovery.py 及 API/CLI 样本已同步。
 
-### P2：外部清空 Redis 后 Dashboard 仍显示旧队列
+### 搜索误发详情请求
 
-问题详情：[KI-20261016-1218-001](./known-issues/KI-20261016-1218-001-queue-discovery-cache.md)。
+见[PLAN-20261016-001 结果](./plans/PLAN-20261016-001-model-unknown-dashboard-handoff-fixes-OUTCOME.md)。该计划中早期保留兼容发现的部分已由 PLAN-002 替代，搜索修复继续有效。
 
-代码位置：[QueueAdmin.queue_names](../qtask_list/admin.py)，约第 91–121 行。旧版队列发现结果缓存在进程内；缓存未过期时，queue_names 会把 Redis 当前 qtask:queues 注册表和 _legacy_queue_cache 合并返回。若其他进程在 Dashboard 最近一次扫描后删除旧队列、历史和任务数据，缓存仍可能让 GET /api/queues 返回不存在的队列。本轮观察到注册表已空但界面/API 显示 7 个空队列，重启 Dashboard 后显示恢复。复现截图见[缓存异常复现.png](./test/20261016-10-8cea280/缓存异常复现.png)。
+- search_tasks_page() 的第一页返回服务端确认的 exact_task_id；普通关键词不再靠正则猜测 ID 并预请求详情。
+- qtask_list/frontend/src/pages/TasksPage.tsx、components/TaskTable.tsx、useTaskPage.ts、types.ts 使用当前列表查询的确认结果打开详情，防止旧响应和重复轮询重新打开抽屉。
 
-注意：Dashboard 自身的删除路径在 qtask_list/admin.py 的 delete_queue 中会从 _legacy_queue_cache 移除对应队列（约第 1194 行）。已确认问题针对外部 Redis 清理，没有经过这条失效路径。修复应同时保留旧版无注册表队列的发现兼容性，避免简单关闭 legacy 扫描造成旧队列漏报。
+### 总览 KPI 点击反馈
 
-建议复现步骤：
+用户截图反馈的“4 张卡点击没反应”已在后续修改中处理，见[PLAN-20261016-003 结果](./plans/PLAN-20261016-003-model-unknown-overview-kpi-interactions-OUTCOME.md)与[交互测试记录](./test/20261016-19-WORKTREE/总览-KPI交互测试.md)。本次交接已核对当前代码与这些记录，未重复执行浏览器测试。
 
-1. 在隔离 Redis 中创建一个只通过旧版结构可发现的测试队列，并让同一个 QueueAdmin 实例调用 queue_names，确认它已填充 legacy 缓存。
-2. 使用独立 Redis 客户端删除该队列相关的状态键、任务历史及任务记录；不要调用 Dashboard 的 delete_queue。
-3. 仍使用原 Dashboard/QueueAdmin 进程请求 GET /api/queues。
-4. 观察同一进程是否仍返回已删除队列；当前问题会在旧发现缓存的一小时刷新窗口内复现。
+- “活跃队列”和“总待处理”跳转至 /queues?filter=active。
+- “异常队列”筛选异常、展开匹配分组并滚动定位矩阵。
+- 可点击卡片增加 hover/focus 操作提示、键盘焦点和可访问名称。
+- “合计观测速率”保持只读，不应作为按钮验收。
+- 相关代码为 qtask_list/frontend/src/pages/OverviewPage.tsx、qtask_list/frontend/src/components/ui.tsx、qtask_list/frontend/src/styles.css。
+- 目前 SPA index.html 引用 index-5vhg9Z4O.js 和 index-B0zgLNSh.css；更早的 index-BHQL5wkx.js 已被后续构建替代。旧 JS/CSS 的删除属于构建产物更新。
 
-验收建议：
+总览修复记录指出：目标队列页仍沿用其保存的 namespace/名称筛选，可能进一步缩小下钻列表。复测时应核对这些筛选；是否改变该产品行为尚未定案。
 
-- 外部删除后，现存 Dashboard 进程能在明确且可接受的刷新窗口内停止返回已不存在的队列，不依赖重启或等待整小时缓存自然过期。
-- 仍能发现真实存在、没有 qtask:queues 注册项的 V1/旧版队列。
-- Dashboard 自身删除队列的行为和既有 legacy 兼容性不回归；为外部删除场景增加同进程回归测试。
+## 3. 已知问题状态
 
-### P3：普通关键词搜索误触发任务详情请求
+[KI-20261016-2343-001：自定义 processing 消费任务未计入管理端统计](./known-issues/KI-20261016-2343-001-custom-processing-index.md) 已在 WORKTREE 修复并验证，严重度 P2；详情已追加解决事件并归档。
 
-问题详情：[KI-20261016-1218-002](./known-issues/KI-20261016-1218-002-task-search-id-heuristic.md)。
+修复前的私有 Redis 复现使用 SmartQueue(processing_key="review:processing:custom")，enqueue(TaskSpec(...)) 投递后再以 pop_claim_no_wait() 领取一个 V2 新任务：
 
-代码位置：[TasksPage.tsx](../qtask_list/frontend/src/pages/TasksPage.tsx)，约第 38–45 行。输入框用于按 task_id、action、payload 搜索；同一字符串若符合“至少 8 位且仅含字母、数字、下划线或连字符”的正则，useEffect 就会调用 api.task(id)。因此普通搜索词也会被当作 task_id 请求详情。本轮搜索 browser_test_dlq 时记录到两次 404；列表关键词搜索本身仍有结果，详情请求错误被 catch 忽略。
+| 观测 | 结果 |
+| --- | --- |
+| 任务记录 location | processing |
+| 实际专属 List 长度 | 1 |
+| SmartQueue.get_stats() 的 processing | 1 |
+| 当前 QueueAdmin.queue_stats() 的 processing | 0 |
+| 当前 QueueAdmin.list_workers() | 空 |
+| 同数据下基准提交的 QueueAdmin processing | 1 |
 
-新任务 ID 在 qtask_list/queue.py 中由 uuid.uuid4() 生成，但修复前需确认旧数据或调用方是否允许其他 ID 格式，避免只按新 ID 格式识别而破坏兼容。
+[结构化复现结果](./test/20261016-19-WORKTREE/processing-index-review.json)保留修复前证据。当前 `SmartQueue` 在阻塞和非阻塞领取前将自定义 processing key 登记到 `qtask:processing:<queue>`；管理统计、查看和恢复从该注册表、Worker 注册表及默认 key 枚举。队列删除时清除索引，不扫描 Redis 键空间，也不为自定义消费者伪造 Worker heartbeat。
 
-建议复现步骤：
+定向回归覆盖领取前登记、管理端与 Dashboard 统计、ack/fail、无 heartbeat 的退出恢复、索引类型冲突和队列删除。修复前已经存在但从未登记的自定义 processing key 不会自动回填；调用方可在新代码下对该 key 调用领取 API 登记，或按独立维护流程处理。这是按用户“不需要兼容性”约束保留的边界。完整结果见[计划结果](./plans/PLAN-20261017-001-model-unknown-custom-processing-index-OUTCOME.md)及[测试记录](./test/20261017-00-WORKTREE/自定义-processing-修复测试.md)。
 
-1. 启动 Dashboard 并进入任务列表。
-2. 搜索 browser_test_dlq 或其他至少 8 位、仅含允许字符的普通关键词。
-3. 检查浏览器网络请求：当前会额外请求 /api/task/{keyword} 并得到 404；列表搜索仍正常。
-4. 使用一条真实 task_id 搜索，核对当前自动打开详情的行为是否需要保留。
+早先两项问题 KI-20261016-1218-001、KI-20261016-1218-002 已解决并归档；当前状态以[已知问题索引](./KNOWN-ISSUES.md)及各详情的最后事件为准。
 
-验收建议：
+## 4. 验证依据与覆盖空白
 
-- 普通 action/payload 关键词可以正常筛选，且不会触发无意义的详情请求或 404。
-- 有效 task_id 的既有查找/打开详情体验仍符合产品约定；无效 ID 不产生无提示的额外请求。
-- 增加覆盖普通关键词与有效 task_id 两种情况的前端回归测试。
+| 阶段 | 已有结果 | 覆盖边界与证据 |
+| --- | --- | --- |
+| 注册表发现修复 | Python 全量 243 passed；前端 15 passed；浏览器 18 项；ruff/mypy 通过 | [18 时测试记录](./test/20261016-18-WORKTREE/测试记录.md)。此阶段早于总览 KPI 后续补丁。 |
+| 本次会话的 Review | Python 定向 101 passed；前端纯逻辑 15 passed；独立 Redis 确认自定义 processing 遗漏 | 指令为 pytest tests/test_registry_discovery.py tests/test_dashboard_api.py tests/test_cli.py -q，以及 pnpm test。没有新增或修改产品测试文件。 |
+| 总览 KPI 后续补丁 | pnpm build 及浏览器下钻、异常展开定位、hover/focus、键盘和告警定位检查通过 | [19 时交互测试记录](./test/20261016-19-WORKTREE/总览-KPI交互测试.md)记载至 19:55；该阶段没有重跑前端单元套件。 |
+| 本次交接维护 | 核对当前代码、状态、报告、构建资源及正在运行的服务 | 未重跑产品测试。此前 243 项通过不表示已覆盖本次 Review 发现的缺陷。 |
+| 自定义 processing 修复 | Python 250 passed；前端 15 passed；ruff、mypy 和 diff check 通过 | [00 时测试记录](./test/20261017-00-WORKTREE/自定义-processing-修复测试.md)。三个 Worker 测试夹具补登记注册表后，全量测试通过。 |
 
-## 4. 建议验证
+Review 的最初 KPI 复现证据 overview-kpi-review.txt、overview-reviewed.yml 属于修复前状态；当前 KPI 以 PLAN-003 和其后续测试快照为准，不能继续把旧交互当作未修复问题。
 
-Python Dashboard API 测试：
+修复前 KPI 证据与自定义 processing 复现仍保留在历史测试目录；判断当前行为时分别以 PLAN-003 和本次修复测试记录为准。
 
-~~~bash
-python -m pytest tests/test_dashboard_api.py -q
-~~~
+Python 测试沿用 tests/conftest.py 在收集前创建的私有 Unix socket Redis；建议继续使用 uv run --no-project python -m pytest。前端使用 pnpm test 和 pnpm build。所有新增测试产物按 AGENTS.md 放入对应时段的 WORKTREE 测试目录，保留已有记录。
 
-前端测试和构建：
+## 5. 工作区与运行环境
 
-~~~bash
-cd qtask_list/frontend
-pnpm test
-pnpm build
-~~~
+所有上述代码和文档仍处于 WORKTREE。除源代码修改外，还有未跟踪的 docs/plans/、三轮测试产物、已知问题归档、tests/test_registry_discovery.py、tests/manual/handoff_dashboard_server.py、tests/manual/handoff_tasks_search.js，以及新 SPA 资源。后续获得提交授权时，先检查完整 git status 和差异，区分用户原有 AGENTS.md 改动及各轮任务，不直接暂存整个目录。
 
-修复完成后再运行完整 Python 测试：
+2026-10-16 23:43 核对时，以下服务仍在运行并可访问：
 
-~~~bash
-python -m pytest tests/ -q
-~~~
+- Dashboard：http://127.0.0.1:56643；/api/health 返回 ok，首页引用上述最新 JS/CSS。
+- 启动方式：uv run --no-project python tests/manual/handoff_dashboard_server.py /tmp/qtask-dashboard-live.ohRJC0。
+- 对应 Python 进程 PID 605371，父进程 PID 605368，私有 Redis 进程 PID 605372；PID 和临时路径仅是当前观测，后续先重新核对。
+- 私有 Redis socket：/tmp/qtask-handoff-browser-f34z37hu/redis.sock。运行信息见[浏览器运行信息](./test/20261016-19-WORKTREE/browser-runtime.json)及 /tmp/qtask-dashboard-live.ohRJC0/browser-runtime.json。
 
-当前 tests/test_dashboard_api.py 的 Redis fixture 默认连接 redis://localhost:6379/0，清理范围以 qtask_dash_test 前缀为主；管理后台队列发现会扫描更广的 Redis 键空间。请优先使用隔离 Redis 实例或确认测试数据完全隔离后再运行，避免影响共享队列。
+该服务由后续 KPI 工作保留供用户复测，本次没有停止、重启或清理。之前 13/18 时测试环境“已清理”的记录只针对各自临时实例，不能据此停止当前服务。共享 Redis 127.0.0.1:6379 进程也存在，本次未访问其业务数据。
 
-## 5. 交接资料
+## 6. 建议接续步骤
 
-- [浏览器测试报告](./test/20261016-10-8cea280/测试报告.md)：环境、范围、逐页预期/实际结果、未执行项和最终清理结果。
-- [缓存异常复现截图](./test/20261016-10-8cea280/缓存异常复现.png)：外部清理后 Dashboard 显示缓存队列。
-- [最终主页面截图](./test/20261016-10-8cea280/主页面.png)：测试数据清理后的 Dashboard 空状态。
-- [KNOWN-ISSUES 索引](./KNOWN-ISSUES.md)：当前状态与两个问题详情。
-- [项目说明](../README.md)：安装、组件和运行方式。
+1. 自定义 processing 问题已完成并归档；如未来需要处理修复前未登记的历史 key，应按当时明确授权的维护范围单独处置，不恢复自动键扫描。
+2. 如继续复核总览，使用最新 SPA，检查目标页保存的筛选条件，并区分可点击的 3 张 KPI 与只读速率卡。
 
-交接文档引用的代码结论以当前基线 2722fbcfd10f5784fa19b669bba1f5fe21a69535 为准；两个问题的浏览器复现记录来自测试基线 8cea280c9007d4e924d5705632c6685a80d53da1。后续修复者应在其实际工作分支重新核对代码和问题状态。
+Review 在回复完整结论前被中断；本次完成的是其中单独记录的 KI 修复，不代表整个工作区已完成 Review。用户后续开发、提交和推送的授权应依实际请求判断。

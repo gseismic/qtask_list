@@ -1,0 +1,297 @@
+ M AGENTS.md
+ M README.md
+ M docs/HANDOFF.md
+ M docs/KNOWN-ISSUES.md
+ M docs/known-issues/KI-20261016-1218-001-queue-discovery-cache.md
+ M docs/known-issues/KI-20261016-1218-002-task-search-id-heuristic.md
+ M docs/known-issues/archive-2026.md
+ M docs/plans/INDEX.md
+ M pyproject.toml
+ M qtask_list/admin.py
+ M qtask_list/archiver.py
+ M qtask_list/cli/__main__.py
+ M qtask_list/dashboard/auth.py
+ M qtask_list/dashboard/main.py
+ D qtask_list/dashboard/static/spa/assets/index-BqPATi5L.js
+ D qtask_list/dashboard/static/spa/assets/index-DB2_i1a5.css
+ M qtask_list/dashboard/static/spa/index.html
+ M qtask_list/dashboard/templates/login.html
+ M qtask_list/frontend/src/alerts.ts
+ M qtask_list/frontend/src/api.ts
+ M qtask_list/frontend/src/components/PushTaskDialog.tsx
+ M qtask_list/frontend/src/components/TaskDrawer.tsx
+ M qtask_list/frontend/src/components/TaskTable.tsx
+ M qtask_list/frontend/src/components/ui.tsx
+ M qtask_list/frontend/src/pages/OverviewPage.tsx
+ M qtask_list/frontend/src/pages/QueueDetailPage.tsx
+ M qtask_list/frontend/src/pages/QueuesPage.tsx
+ M qtask_list/frontend/src/pages/TasksPage.tsx
+ M qtask_list/frontend/src/pages/WorkersPage.tsx
+ M qtask_list/frontend/src/styles.css
+ M qtask_list/frontend/src/types.ts
+ M qtask_list/frontend/src/useTaskPage.ts
+ M qtask_list/frontend/tests/behavior.test.mjs
+ M qtask_list/history.py
+ M qtask_list/queue.py
+ M qtask_list/state.py
+ M qtask_list/worker.py
+ M tests/test_cli.py
+ M tests/test_dashboard_api.py
+?? docs/plans/PLAN-20261016-001-model-unknown-dashboard-handoff-fixes-OUTCOME.md
+?? docs/plans/PLAN-20261016-001-model-unknown-dashboard-handoff-fixes.md
+?? docs/plans/PLAN-20261016-002-model-unknown-registry-discovery-OUTCOME.md
+?? docs/plans/PLAN-20261016-002-model-unknown-registry-discovery.md
+?? docs/plans/PLAN-20261016-003-model-unknown-overview-kpi-interactions-OUTCOME.md
+?? docs/plans/PLAN-20261016-003-model-unknown-overview-kpi-interactions.md
+?? docs/plans/PLAN-20261017-002-model-unknown-dashboard-review-remediation-OUTCOME.md
+?? docs/plans/PLAN-20261017-002-model-unknown-dashboard-review-remediation.md
+?? docs/test/20261016-13-WORKTREE/.playwright-cli/page-2026-10-16T05-06-24-113Z.yml
+?? docs/test/20261016-13-WORKTREE/.playwright-cli/page-2026-10-16T05-07-14-595Z.yml
+?? docs/test/20261016-13-WORKTREE/.playwright-cli/page-2026-10-16T05-10-37-931Z.yml
+?? docs/test/20261016-13-WORKTREE/.playwright-cli/page-2026-10-16T05-11-26-641Z.yml
+?? docs/test/20261016-13-WORKTREE/before-fix-pytest.txt
+?? docs/test/20261016-13-WORKTREE/browser-console-final.txt
+?? docs/test/20261016-13-WORKTREE/browser-console.txt
+?? docs/test/20261016-13-WORKTREE/browser-environment.txt
+?? docs/test/20261016-13-WORKTREE/browser-runtime-first.json
+?? docs/test/20261016-13-WORKTREE/browser-runtime.json
+?? docs/test/20261016-13-WORKTREE/browser-server-final.txt
+?? docs/test/20261016-13-WORKTREE/browser-server.txt
+?? docs/test/20261016-13-WORKTREE/cleanup-final.json
+?? docs/test/20261016-13-WORKTREE/cleanup.json
+?? docs/test/20261016-13-WORKTREE/dashboard-pytest.txt
+?? docs/test/20261016-13-WORKTREE/external-delete-api-final.json
+?? docs/test/20261016-13-WORKTREE/external-delete-api.json
+?? docs/test/20261016-13-WORKTREE/external-delete-browser-final.txt
+?? docs/test/20261016-13-WORKTREE/external-delete-browser.txt
+?? docs/test/20261016-13-WORKTREE/external-delete-history-final.json
+?? docs/test/20261016-13-WORKTREE/external-flush-browser-final.txt
+?? docs/test/20261016-13-WORKTREE/external-flush-browser.txt
+?? docs/test/20261016-13-WORKTREE/frontend-build.txt
+?? docs/test/20261016-13-WORKTREE/frontend-test.txt
+?? docs/test/20261016-13-WORKTREE/full-pytest-final.txt
+?? docs/test/20261016-13-WORKTREE/full-pytest.txt
+?? docs/test/20261016-13-WORKTREE/mypy-final.txt
+?? docs/test/20261016-13-WORKTREE/queues-after-external-delete.png
+?? docs/test/20261016-13-WORKTREE/queues-after-external-delete.yml
+?? docs/test/20261016-13-WORKTREE/queues-after-external-flush.yml
+?? docs/test/20261016-13-WORKTREE/queues-before-external-delete.yml
+?? docs/test/20261016-13-WORKTREE/queues-final-after-external-delete.png
+?? docs/test/20261016-13-WORKTREE/queues-final-after-external-delete.yml
+?? docs/test/20261016-13-WORKTREE/queues-final-after-external-flush.yml
+?? docs/test/20261016-13-WORKTREE/queues-final-before-external-delete.yml
+?? docs/test/20261016-13-WORKTREE/ruff-final.txt
+?? docs/test/20261016-13-WORKTREE/task-search-browser-attempt1.txt
+?? docs/test/20261016-13-WORKTREE/task-search-browser-final.json
+?? docs/test/20261016-13-WORKTREE/task-search-browser-final.txt
+?? docs/test/20261016-13-WORKTREE/task-search-browser.json
+?? docs/test/20261016-13-WORKTREE/task-search-browser.txt
+?? docs/test/20261016-13-WORKTREE/tasks-keyword-final.png
+?? docs/test/20261016-13-WORKTREE/tasks-keyword-final.yml
+?? docs/test/20261016-13-WORKTREE/tasks-keyword.png
+?? docs/test/20261016-13-WORKTREE/tasks-keyword.yml
+?? docs/test/20261016-13-WORKTREE/测试记录.md
+?? docs/test/20261016-18-WORKTREE/.playwright-cli/page-2026-10-16T10-56-55-194Z.yml
+?? docs/test/20261016-18-WORKTREE/.playwright-cli/page-2026-10-16T10-57-36-563Z.yml
+?? docs/test/20261016-18-WORKTREE/before-change.txt
+?? docs/test/20261016-18-WORKTREE/browser-console.txt
+?? docs/test/20261016-18-WORKTREE/browser-runtime.json
+?? docs/test/20261016-18-WORKTREE/browser-server.txt
+?? docs/test/20261016-18-WORKTREE/cleanup.json
+?? docs/test/20261016-18-WORKTREE/frontend-tests.txt
+?? docs/test/20261016-18-WORKTREE/full-tests.txt
+?? docs/test/20261016-18-WORKTREE/mypy.txt
+?? docs/test/20261016-18-WORKTREE/pruning-before-fix.txt
+?? docs/test/20261016-18-WORKTREE/queues-before.yml
+?? docs/test/20261016-18-WORKTREE/registry-empty-browser.txt
+?? docs/test/20261016-18-WORKTREE/registry-empty.json
+?? docs/test/20261016-18-WORKTREE/registry-empty.yml
+?? docs/test/20261016-18-WORKTREE/registry-readd-browser.txt
+?? docs/test/20261016-18-WORKTREE/registry-readd.json
+?? docs/test/20261016-18-WORKTREE/registry-remove-browser.txt
+?? docs/test/20261016-18-WORKTREE/registry-remove.json
+?? docs/test/20261016-18-WORKTREE/registry-removed.png
+?? docs/test/20261016-18-WORKTREE/registry-removed.yml
+?? docs/test/20261016-18-WORKTREE/registry-tests.txt
+?? docs/test/20261016-18-WORKTREE/ruff.txt
+?? docs/test/20261016-18-WORKTREE/targeted-tests-first.txt
+?? docs/test/20261016-18-WORKTREE/task-search-browser.json
+?? docs/test/20261016-18-WORKTREE/task-search-browser.txt
+?? docs/test/20261016-18-WORKTREE/测试记录.md
+?? docs/test/20261016-19-WORKTREE/browser-console.txt
+?? docs/test/20261016-19-WORKTREE/browser-runtime.json
+?? docs/test/20261016-19-WORKTREE/keyboard-focus-review.txt
+?? docs/test/20261016-19-WORKTREE/overview-initial.yml
+?? docs/test/20261016-19-WORKTREE/overview-kpi-review.txt
+?? docs/test/20261016-19-WORKTREE/overview-reviewed.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-12-25-303Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-12-43-522Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-13-09-430Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-13-16-247Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-13-24-000Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-14-01-059Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-14-04-708Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-14-08-508Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-16-43-699Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-16-52-626Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-17-16-622Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-17-23-703Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-17-43-723Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-17-47-318Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-18-00-965Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-18-12-701Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-18-21-297Z.yml
+?? docs/test/20261016-19-WORKTREE/page-2026-10-16T11-52-12-340Z.yml
+?? docs/test/20261016-19-WORKTREE/总览-KPI交互测试.md
+?? docs/test/20261017-01-WORKTREE/browser-runtime.json
+?? docs/test/20261017-01-WORKTREE/总览-仅异常-KPI.png
+?? docs/test/20261017-16-WORKTREE/.playwright-cli/page-2026-10-17T08-18-34-947Z.yml
+?? docs/test/20261017-16-WORKTREE/browser/browser-runtime.json
+?? docs/test/20261017-16-WORKTREE/browser/review-bulk-replay-silent-skip.png
+?? docs/test/20261017-16-WORKTREE/browser/review-list-stops-at-500.png
+?? docs/test/20261017-16-WORKTREE/browser/review-memory-over-limit-healthy.png
+?? docs/test/20261017-16-WORKTREE/browser/review-overdue-row-vs-drawer.png
+?? docs/test/20261017-16-WORKTREE/browser/review-seed.json
+?? docs/test/20261017-16-WORKTREE/browser/review-table-missing-times.png
+?? docs/test/20261017-16-WORKTREE/browser/review-time-filter-500.png
+?? docs/test/20261017-16-WORKTREE/review-browser-cases.js
+?? docs/test/20261017-16-WORKTREE/review-browser-results.json
+?? docs/test/20261017-16-WORKTREE/review-browser-results.txt
+?? docs/test/20261017-16-WORKTREE/review-browser-seed.py
+?? docs/test/20261017-16-WORKTREE/review-clean-dashboard-import.txt
+?? docs/test/20261017-16-WORKTREE/review-login-redirect-results-2.json
+?? docs/test/20261017-16-WORKTREE/review-login-redirect-results-2.txt
+?? docs/test/20261017-16-WORKTREE/review-login-redirect-results.txt
+?? docs/test/20261017-16-WORKTREE/review-login-redirect.js
+?? docs/test/20261017-16-WORKTREE/review-management-cases.py
+?? docs/test/20261017-16-WORKTREE/review-management-results.json
+?? docs/test/20261017-16-WORKTREE/review-memory-ui-results.json
+?? docs/test/20261017-16-WORKTREE/review-memory-ui-results.txt
+?? docs/test/20261017-16-WORKTREE/review-memory-ui.js
+?? docs/test/20261017-16-WORKTREE/review-spa/assets/index-5vhg9Z4O.js
+?? docs/test/20261017-16-WORKTREE/review-spa/assets/index-B0zgLNSh.css
+?? docs/test/20261017-16-WORKTREE/review-spa/index.html
+?? docs/test/20261017-16-WORKTREE/管理后台审查测试.md
+?? docs/test/20261017-17-WORKTREE/.playwright-cli/page-2026-10-17T09-16-27-020Z.yml
+?? docs/test/20261017-17-WORKTREE/.playwright-cli/page-2026-10-17T09-31-18-073Z.yml
+?? docs/test/20261017-17-WORKTREE/.playwright-cli/page-2026-10-17T09-35-17-605Z.yml
+?? docs/test/20261017-17-WORKTREE/.playwright-cli/page-2026-10-17T09-38-33-439Z.yml
+?? docs/test/20261017-17-WORKTREE/.playwright-cli/page-2026-10-17T09-47-46-974Z.yml
+?? docs/test/20261017-17-WORKTREE/artifact-consistency-build-final.txt
+?? docs/test/20261017-17-WORKTREE/artifact-consistency-build.txt
+?? docs/test/20261017-17-WORKTREE/artifact-consistency-final.json
+?? docs/test/20261017-17-WORKTREE/artifact-consistency.json
+?? docs/test/20261017-17-WORKTREE/artifact-consistency.py
+?? docs/test/20261017-17-WORKTREE/browser-2/browser-runtime.json
+?? docs/test/20261017-17-WORKTREE/browser-2/review-seed.json
+?? docs/test/20261017-17-WORKTREE/browser-3/browser-runtime.json
+?? docs/test/20261017-17-WORKTREE/browser-3/bulk-partial-visible.png
+?? docs/test/20261017-17-WORKTREE/browser-3/delay-state-consistency.png
+?? docs/test/20261017-17-WORKTREE/browser-3/memory-over-limit-warning.png
+?? docs/test/20261017-17-WORKTREE/browser-3/nested-busy-focus.png
+?? docs/test/20261017-17-WORKTREE/browser-3/overview-mobile.png
+?? docs/test/20261017-17-WORKTREE/browser-3/pagination-501.png
+?? docs/test/20261017-17-WORKTREE/browser-3/queues-desktop.png
+?? docs/test/20261017-17-WORKTREE/browser-3/ready-state-consistency.png
+?? docs/test/20261017-17-WORKTREE/browser-3/replay-lineage.png
+?? docs/test/20261017-17-WORKTREE/browser-3/review-seed.json
+?? docs/test/20261017-17-WORKTREE/browser-3/sparse-filter-found.png
+?? docs/test/20261017-17-WORKTREE/browser-3/unicode-queue-clear.png
+?? docs/test/20261017-17-WORKTREE/browser-3/worker-recovery-memory-unconfigured.png
+?? docs/test/20261017-17-WORKTREE/browser-auth-results.txt
+?? docs/test/20261017-17-WORKTREE/browser-auth.js
+?? docs/test/20261017-17-WORKTREE/browser-auth/browser-runtime.json
+?? docs/test/20261017-17-WORKTREE/browser-auth/login-reviewed.png
+?? docs/test/20261017-17-WORKTREE/browser-core-results-2.txt
+?? docs/test/20261017-17-WORKTREE/browser-core-results-3.txt
+?? docs/test/20261017-17-WORKTREE/browser-core-results-4.txt
+?? docs/test/20261017-17-WORKTREE/browser-core-results-final.txt
+?? docs/test/20261017-17-WORKTREE/browser-core-results.txt
+?? docs/test/20261017-17-WORKTREE/browser-core.js
+?? docs/test/20261017-17-WORKTREE/browser-final/browser-runtime.json
+?? docs/test/20261017-17-WORKTREE/browser-final/bulk-partial-visible.png
+?? docs/test/20261017-17-WORKTREE/browser-final/delay-state-consistency.png
+?? docs/test/20261017-17-WORKTREE/browser-final/nested-busy-focus.png
+?? docs/test/20261017-17-WORKTREE/browser-final/pagination-501.png
+?? docs/test/20261017-17-WORKTREE/browser-final/ready-state-consistency.png
+?? docs/test/20261017-17-WORKTREE/browser-final/replay-lineage.png
+?? docs/test/20261017-17-WORKTREE/browser-final/review-seed.json
+?? docs/test/20261017-17-WORKTREE/browser-final/sparse-filter-found.png
+?? docs/test/20261017-17-WORKTREE/browser-legacy-id-results.txt
+?? docs/test/20261017-17-WORKTREE/browser-memory-warning-results.txt
+?? docs/test/20261017-17-WORKTREE/browser-memory-warning.js
+?? docs/test/20261017-17-WORKTREE/browser-monitor-results-2.txt
+?? docs/test/20261017-17-WORKTREE/browser-monitor-results.txt
+?? docs/test/20261017-17-WORKTREE/browser-monitor.js
+?? docs/test/20261017-17-WORKTREE/browser-names-results-2.txt
+?? docs/test/20261017-17-WORKTREE/browser-names-results.txt
+?? docs/test/20261017-17-WORKTREE/browser-names.js
+?? docs/test/20261017-17-WORKTREE/browser-replay-results-final.txt
+?? docs/test/20261017-17-WORKTREE/browser-replay-results.txt
+?? docs/test/20261017-17-WORKTREE/browser-replay.js
+?? docs/test/20261017-17-WORKTREE/browser-seed-2.txt
+?? docs/test/20261017-17-WORKTREE/browser-seed-3.txt
+?? docs/test/20261017-17-WORKTREE/browser-seed-4.txt
+?? docs/test/20261017-17-WORKTREE/browser-seed-final.txt
+?? docs/test/20261017-17-WORKTREE/browser-seed.txt
+?? docs/test/20261017-17-WORKTREE/browser/browser-runtime.json
+?? docs/test/20261017-17-WORKTREE/browser/review-seed.json
+?? docs/test/20261017-17-WORKTREE/clean-install-2.txt
+?? docs/test/20261017-17-WORKTREE/clean-install-final.txt
+?? docs/test/20261017-17-WORKTREE/clean-install.txt
+?? docs/test/20261017-17-WORKTREE/clean-startup-final-2.txt
+?? docs/test/20261017-17-WORKTREE/clean-startup-final.txt
+?? docs/test/20261017-17-WORKTREE/clean-wheel-build.py
+?? docs/test/20261017-17-WORKTREE/cleanup-probe/browser-runtime.json
+?? docs/test/20261017-17-WORKTREE/cleanup-probe/server.txt
+?? docs/test/20261017-17-WORKTREE/completion-audit.json
+?? docs/test/20261017-17-WORKTREE/deletion-scale-results.json
+?? docs/test/20261017-17-WORKTREE/deletion-scale.py
+?? docs/test/20261017-17-WORKTREE/diff-check-final.txt
+?? docs/test/20261017-17-WORKTREE/diff-check.txt
+?? docs/test/20261017-17-WORKTREE/dlq-race-before-fix.txt
+?? docs/test/20261017-17-WORKTREE/frontend-build-2.txt
+?? docs/test/20261017-17-WORKTREE/frontend-build-final.txt
+?? docs/test/20261017-17-WORKTREE/frontend-build.txt
+?? docs/test/20261017-17-WORKTREE/frontend-test-2.txt
+?? docs/test/20261017-17-WORKTREE/frontend-test-final.txt
+?? docs/test/20261017-17-WORKTREE/frontend-test.txt
+?? docs/test/20261017-17-WORKTREE/login-network-before-fix.txt
+?? docs/test/20261017-17-WORKTREE/memory-warning.py
+?? docs/test/20261017-17-WORKTREE/modal-enter-before-fix.txt
+?? docs/test/20261017-17-WORKTREE/mypy-final-2.txt
+?? docs/test/20261017-17-WORKTREE/mypy-final.txt
+?? docs/test/20261017-17-WORKTREE/mypy.txt
+?? docs/test/20261017-17-WORKTREE/pytest-final-2.txt
+?? docs/test/20261017-17-WORKTREE/pytest-final.txt
+?? docs/test/20261017-17-WORKTREE/pytest.txt
+?? docs/test/20261017-17-WORKTREE/remediation-followup-tests-2.txt
+?? docs/test/20261017-17-WORKTREE/remediation-followup-tests.txt
+?? docs/test/20261017-17-WORKTREE/resource-cleanup-2.json
+?? docs/test/20261017-17-WORKTREE/resource-cleanup.json
+?? docs/test/20261017-17-WORKTREE/ruff-final-2.txt
+?? docs/test/20261017-17-WORKTREE/ruff-final-3.txt
+?? docs/test/20261017-17-WORKTREE/ruff-final-4.txt
+?? docs/test/20261017-17-WORKTREE/ruff-final-5.txt
+?? docs/test/20261017-17-WORKTREE/ruff-final.txt
+?? docs/test/20261017-17-WORKTREE/ruff.txt
+?? docs/test/20261017-17-WORKTREE/search-browser-results-final.txt
+?? docs/test/20261017-17-WORKTREE/search-browser-results.txt
+?? docs/test/20261017-17-WORKTREE/wheel-build-clean-2.txt
+?? docs/test/20261017-17-WORKTREE/wheel-build-clean.txt
+?? docs/test/20261017-17-WORKTREE/wheel-build-final-2.txt
+?? docs/test/20261017-17-WORKTREE/wheel-build-final-3.txt
+?? docs/test/20261017-17-WORKTREE/wheel-build-final.txt
+?? docs/test/20261017-17-WORKTREE/wheel-build.txt
+?? docs/test/20261017-17-WORKTREE/worktree-status-final.txt
+?? docs/test/20261017-17-WORKTREE/管理后台修复验证.md
+?? qtask_list/dashboard/static/spa/assets/index-BvSiRx-B.css
+?? qtask_list/dashboard/static/spa/assets/index-qXYtZb6q.js
+?? qtask_list/frontend/src/modal.ts
+?? qtask_list/frontend/src/operations.ts
+?? tests/manual/dashboard_review_seed.py
+?? tests/manual/handoff_dashboard_server.py
+?? tests/manual/handoff_tasks_search.js
+?? tests/manual/verify_dashboard_wheel.py
+?? tests/test_dashboard_review_fixes.py
+?? tests/test_registry_discovery.py

@@ -1,0 +1,190 @@
+隔离浏览器测试地址：http://127.0.0.1:44909
+INFO:     Started server process [401501]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:51988 - "GET /tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51988 - "GET /assets/index-BHQL5wkx.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44736 - "GET /assets/index-DB2_i1a5.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51988 - "GET /api/auth HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44762 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44756 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44736 - "GET /api/tasks?status=all&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44750 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/tasks?status=all&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44782 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44788 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/tasks?status=all&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46596 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46612 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/tasks?status=all&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46640 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46624 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/tasks?status=all&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38756 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38750 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/tasks?status=all&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38764 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /assets/index-BHQL5wkx.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:38764 - "GET /assets/index-DB2_i1a5.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:38764 - "GET /api/auth HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38784 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38774 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/tasks?status=all&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38774 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/tasks?status=all&limit=50&search=browser_test_dlq HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/tasks?status=all&limit=50&search=missing_task_id HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/tasks?status=all&limit=50&search=00000000-0000-4000-8000-000000000000 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/tasks?status=all&limit=50&search=4b701bde-5f35-4c8a-b05c-59b6e929f265 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/task/4b701bde-5f35-4c8a-b05c-59b6e929f265 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/tasks?status=all&limit=50&search=legacy_order_42 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/task/legacy_order_42 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/tasks?status=all&limit=50&search=v1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/task/v1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/tasks?status=all&limit=50&search=%E6%97%A7%E4%BB%BB%E5%8A%A1-42 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/task/%E6%97%A7%E4%BB%BB%E5%8A%A1-42 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/tasks?status=all&limit=50&search=%E6%97%A7%E4%BB%BB%E5%8A%A1-42 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38774 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44766 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/tasks?status=all&limit=50&search=%E6%97%A7%E4%BB%BB%E5%8A%A1-42 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40980 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40970 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40980 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40970 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/queue/handoff_browser%3Asearch/tasks?state=all&limit=50&search=%E6%97%A7%E4%BB%BB%E5%8A%A1-42 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/queue/handoff_browser%3Asearch/tasks?state=all&limit=50&search=browser_test_dlq HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/queue/handoff_browser%3Asearch/tasks?state=all&limit=50&search=legacy_order_42 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/task/legacy_order_42 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/queue/handoff_browser%3Asearch/tasks?state=failed&limit=50&search=legacy_order_42 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/queue/handoff_browser%3Asearch/tasks?state=failed&limit=50&search=unindexed-legacy-id HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/task/unindexed-legacy-id HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38768 - "GET /api/auth HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40994 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40992 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40970 - "GET /api/tasks?status=all&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40980 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41006 - "GET /api/tasks?status=all&limit=50&search=legacy_order_42 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40980 - "GET /api/tasks?status=all&limit=50&search=browser_test_dlq HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34366 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34378 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40980 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40980 - "GET /api/tasks?status=all&limit=50&search=browser_test_dlq HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34400 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34388 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40980 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40980 - "GET /api/tasks?status=all&limit=50&search=browser_test_dlq HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57318 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57302 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40980 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40980 - "GET /queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40980 - "GET /assets/index-BHQL5wkx.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:57302 - "GET /assets/index-DB2_i1a5.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:40980 - "GET /api/auth HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57332 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57318 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57302 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57344 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57340 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57336 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43828 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43826 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43810 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43848 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43846 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43830 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42836 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42850 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42824 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42886 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42872 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42864 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38758 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38752 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38748 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38774 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38778 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38752 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38758 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38748 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38802 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38800 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38790 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59672 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59666 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59660 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59692 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59688 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59678 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46286 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46280 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46276 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46322 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46314 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46300 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56508 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56494 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56484 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56510 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56484 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56494 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56508 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45258 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45266 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45256 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45294 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45288 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45280 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46042 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46028 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46058 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46084 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46076 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46074 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34054 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34070 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34046 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34084 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34078 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34094 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57760 - "GET /api/queues HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57776 - "GET /api/workers HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57778 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [401501]
+Traceback (most recent call last):
+  File "/home/lsl/miniconda3/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "uvloop/loop.pyx", line 1518, in uvloop.loop.Loop.run_until_complete
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/manual/handoff_dashboard_server.py", line 79, in <module>
+    main()
+  File "/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/manual/handoff_dashboard_server.py", line 71, in main
+    uvicorn.Server(uvicorn.Config(app, log_level="info")).run(sockets=[listener])
+  File "/home/lsl/miniconda3/lib/python3.12/site-packages/uvicorn/server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/lsl/miniconda3/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/home/lsl/miniconda3/lib/python3.12/asyncio/runners.py", line 123, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt

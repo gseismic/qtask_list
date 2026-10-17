@@ -1,0 +1,1 @@
+{"passed":2,"checks":["真实 Redis 超过 maxmemory 时显示达到阈值","告警页展示内存超限"],"memory":{"used_memory_human":"4.19M","used_memory_peak_human":"9.45M","used_memory_lua_human":"268.00K","maxmemory_human":"1.00M","used_memory":4391280,"maxmemory":1048576,"status":"warning","threshold_bytes":1048576,"threshold_source":"maxmemory"},"errors":[]}

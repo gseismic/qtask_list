@@ -19,6 +19,7 @@ from .clock import Clock
 from .errors import PermanentTaskError, RetryableTaskError
 from .models import HistoryMode, TaskResult
 from .queue import SmartQueue, TaskClaim
+from .state import REGISTER_WORKER_LUA
 from .storage import RemoteStorage
 
 
@@ -124,19 +125,23 @@ class Worker:
         self.alert_callback = alert_callback
 
     def _refresh_heartbeat(self) -> None:
-        self.queue._assert_queue_namespace()
-        now = self.queue.clock.now()
-        pipe = self.queue.r.pipeline(transaction=True)
-        pipe.set(self._heartbeat_key, str(now), ex=self.heartbeat_ttl)
-        pipe.zadd(self._worker_registry_key, {self.worker_id: now})
-        pipe.execute()
-        self.queue._processing_key_managed_by_worker = True
+        try:
+            self.queue.r.eval(
+                REGISTER_WORKER_LUA, 3,
+                self.queue.registry_key, self._worker_registry_key, self._heartbeat_key,
+                self.queue.base, self.queue.clock.now(), self.worker_id, self.heartbeat_ttl,
+            )
+            self.queue._processing_key_managed_by_worker = True
+        except redis.ResponseError as exc:
+            if "qtask queue namespace conflict:" in str(exc):
+                raise ValueError(str(exc)) from exc
+            raise
 
     def _cleanup_worker_state(self) -> None:
         if self.queue.r.llen(self.queue.processing) == 0:
             self.queue.r.delete(self.queue.processing)
+            self.queue.r.zrem(self._worker_registry_key, self.worker_id)
         self.queue.r.delete(self._heartbeat_key)
-        self.queue.r.zrem(self._worker_registry_key, self.worker_id)
         release_script = r"""
         if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
         return redis.call('DEL', KEYS[1])

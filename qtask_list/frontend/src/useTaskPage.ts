@@ -11,6 +11,7 @@ export function useTaskPage({ queryKey, fetchPage, interval, refreshVersion, onP
   onPause: () => void;
 }) {
   const [rows, setRows] = useState<TaskRow[] | null>(null);
+  const [exactMatch, setExactMatch] = useState<{ queryKey: string; taskId: string | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -38,6 +39,7 @@ export function useTaskPage({ queryKey, fetchPage, interval, refreshVersion, onP
     try {
       const page = await current.current.fetchPage(cursor);
       if (!isCurrent()) return;
+      if (!cursor) setExactMatch({ queryKey: key, taskId: page.exact_task_id ?? null });
       setRows((previous) => {
         if (!cursor) return page.tasks;
         const merged = new Map<string, TaskRow>();
@@ -74,6 +76,7 @@ export function useTaskPage({ queryKey, fetchPage, interval, refreshVersion, onP
     previousQuery.current = queryKey;
     if (queryChanged) {
       setRows(null);
+      setExactMatch(null);
       setNextCursor(null);
       setScanLimited(false);
       setLastUpdated(null);
@@ -104,6 +107,7 @@ export function useTaskPage({ queryKey, fetchPage, interval, refreshVersion, onP
     void load(current.current.nextCursor);
   };
 
-  return { rows, error, loading, loadingMore, nextCursor, scanLimited, lastUpdated,
+  return { rows, exactTaskId: exactMatch?.queryKey === queryKey ? exactMatch.taskId : null,
+    error, loading, loadingMore, nextCursor, scanLimited, lastUpdated,
     refresh: () => setRefreshKey((key) => key + 1), loadMore };
 }

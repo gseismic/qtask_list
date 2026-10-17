@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { api, type PushTaskBody } from "../api";
+import { useModalFocus } from "../modal";
 
 export function PushTaskDialog({
   queue,
@@ -19,10 +20,13 @@ export function PushTaskDialog({
   const [logicalKey, setLogicalKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocus(dialogRef, { open, busy, onClose });
 
   if (!open) return null;
 
   const submit = async () => {
+    if (busy) return;
     let payload: Record<string, unknown>;
     try {
       const parsed: unknown = JSON.parse(payloadText || "{}");
@@ -76,7 +80,7 @@ export function PushTaskDialog({
 
   return (
     <div className="dialog-backdrop" onClick={() => { if (!busy) onClose(); }}>
-      <div className="dialog" role="dialog" aria-modal="true" aria-label="投递任务" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} tabIndex={-1} className="dialog" role="dialog" aria-modal="true" aria-label="投递任务" onClick={(e) => e.stopPropagation()}>
         <h3 style={{ marginTop: 0 }}>投递任务 → {queue}</h3>
         <p className="faint">任务会进入真实队列，由在线 Worker 执行，并可能产生业务副作用。</p>
         <div style={{ display: "grid", gap: 10 }}>

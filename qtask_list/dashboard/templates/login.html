@@ -46,23 +46,40 @@
 
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
+            const button = form.querySelector('button[type="submit"]');
+            if (button.disabled) return;
+            button.disabled = true;
+            button.textContent = "登录中…";
             errorBox.textContent = "";
-            const formData = new FormData(form);
-            const response = await fetch("/api/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    username: formData.get("username"),
-                    password: formData.get("password"),
-                }),
-            });
-            if (response.ok) {
-                const safeNext = nextUrl.startsWith("/") && !nextUrl.startsWith("//") ? nextUrl : "/";
-                window.location.replace(safeNext);
-                return;
+            try {
+                const formData = new FormData(form);
+                const response = await fetch("/api/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        username: formData.get("username"),
+                        password: formData.get("password"),
+                    }),
+                });
+                if (response.ok) {
+                    let safeNext = "/";
+                    try {
+                        const target = new URL(nextUrl, window.location.origin);
+                        if (target.origin === window.location.origin) {
+                            safeNext = target.pathname + target.search + target.hash;
+                        }
+                    } catch { /* 无效或跨源地址使用首页。 */ }
+                    window.location.replace(safeNext);
+                    return;
+                }
+                const data = await response.json().catch(() => ({}));
+                errorBox.textContent = data.detail || "登录失败";
+            } catch {
+                errorBox.textContent = "连接失败，请检查网络或服务状态后重试";
+            } finally {
+                button.disabled = false;
+                button.textContent = "登录";
             }
-            const data = await response.json().catch(() => ({}));
-            errorBox.textContent = data.detail || "登录失败";
         });
 
         checkAuth().catch(() => undefined);

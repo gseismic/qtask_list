@@ -1,0 +1,13 @@
+
+> qtask-dashboard-frontend@0.2.0 build /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/frontend
+> tsc --noEmit && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 58 modules transformed.
+rendering chunks...
+computing gzip size...
+../dashboard/static/spa/index.html                   0.45 kB │ gzip:  0.29 kB
+../dashboard/static/spa/assets/index-BvSiRx-B.css   15.81 kB │ gzip:  3.91 kB
+../dashboard/static/spa/assets/index-DXfW2nLm.js   244.90 kB │ gzip: 80.95 kB
+✓ built in 747ms

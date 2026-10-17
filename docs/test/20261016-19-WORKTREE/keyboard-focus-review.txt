@@ -1,0 +1,7 @@
+Playwright CLI 0.1.21，Chrome headed 会话，地址 http://127.0.0.1:56643/。
+
+使用 Tab 顺序导航至“活跃队列”KPI 后读取状态：
+
+{"activeName":"活跃队列 2/3. 点击查看进行中队列 →","focusVisible":true,"hintOpacity":"1"}
+
+页面控制台：0 errors，0 warnings。键盘焦点结果在等待 250ms 让 opacity 过渡完成后读取。

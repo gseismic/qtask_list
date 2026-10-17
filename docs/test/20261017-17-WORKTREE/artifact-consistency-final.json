@@ -1,0 +1,19 @@
+{
+  "independent_spa_build": "identical",
+  "markers": [
+    "exact_task_id",
+    "overview-matrix",
+    "kpi-action-hint",
+    "/api/queues/",
+    "/api/tasks/",
+    "focusin",
+    "stopImmediatePropagation"
+  ],
+  "sha256": {
+    "index.html": "e1819b665ad1952dfd8b0141bc5364f4f28370db9ec675dd4746217a67abe5f5",
+    "assets/index-qXYtZb6q.js": "f7739910c818ee44a5d1f5037aeae94bde75dc14344308c88e6e1e51b8336f72",
+    "assets/index-BvSiRx-B.css": "d9567ac9a2fd4e62e82b292e0e03dff3bea75a1c15ae51e00506e7ef646b905d"
+  },
+  "wheel_source_and_static_files": 25,
+  "wheel": "identical"
+}

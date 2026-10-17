@@ -1,0 +1,13 @@
+........................................................................ [ 93%]
+.....                                                                    [100%]
+=============================== warnings summary ===============================
+tests/test_dashboard_api.py::test_dashboard_retry_wait_stats_are_reported_from_injected_redis
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_dashboard_api.py:486: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "retryable"})
+
+tests/test_dashboard_api.py::test_filtered_operational_views_preserve_actionable_display_state
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_dashboard_api.py:968: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    retry_queue.push({"action": "retry_action"})
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+77 passed, 2 warnings in 1.34s

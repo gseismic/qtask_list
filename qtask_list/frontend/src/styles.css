@@ -152,11 +152,15 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Conso
 }
 .kpi.clickable { cursor: pointer; }
 .kpi.clickable:hover { border-color: var(--c-primary); }
+.kpi.clickable:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
 .kpi .kpi-label { color: var(--text-secondary); font-size: 12px; margin-bottom: 4px; }
 .kpi .kpi-value { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
 .kpi .kpi-hint { color: var(--text-faint); font-size: 12px; margin-top: 4px; }
+.kpi .kpi-action-hint { color: var(--c-primary); font-size: 11px; margin-top: 3px; opacity: 0; transition: opacity 120ms ease; }
+.kpi.clickable:hover .kpi-action-hint, .kpi.clickable:focus-visible .kpi-action-hint { opacity: 1; }
 .kpi.danger { border-color: var(--danger-border); }
 .kpi.danger .kpi-value { color: var(--c-danger); }
+.overview-matrix-anchor { scroll-margin-top: 64px; }
 
 /* ---------- 表格 ---------- */
 .table-wrap { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 6px; overflow: auto; }
@@ -264,6 +268,7 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
   display: flex; align-items: center; gap: 12px; padding: 10px 16px; margin-bottom: 16px;
   background: var(--danger-dim); border: 1px solid var(--danger-border); border-radius: 6px; color: var(--c-danger);
 }
+.dialog .error-banner { white-space: pre-line; overflow-wrap: anywhere; }
 .empty {
   text-align: center; padding: 48px 24px; color: var(--text-secondary);
   background: var(--bg-surface); border: 1px dashed var(--border-default); border-radius: 6px;

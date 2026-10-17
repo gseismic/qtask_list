@@ -1,0 +1,21 @@
+E402 Module level import not at top of file
+  --> tests/manual/verify_dashboard_wheel.py:20:1
+   |
+18 |     os.environ.pop(key, None)
+19 |
+20 | from fastapi.testclient import TestClient
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+21 | from qtask_list.dashboard import main
+   |
+
+E402 Module level import not at top of file
+  --> tests/manual/verify_dashboard_wheel.py:21:1
+   |
+20 | from fastapi.testclient import TestClient
+21 | from qtask_list.dashboard import main
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+22 |
+23 | assert "site-packages" in str(Path(main.__file__)), main.__file__
+   |
+
+Found 2 errors.

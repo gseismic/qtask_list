@@ -1,0 +1,9 @@
+{
+  "messages": 10001,
+  "unrelated_keys_preserved": 10000,
+  "elapsed_ms": 86.85,
+  "result": {
+    "deleted_keys": 10005,
+    "history_records": 10001
+  }
+}

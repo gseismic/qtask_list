@@ -1,0 +1,24 @@
+async page => {
+  const origin = 'http://127.0.0.1:33147';
+  // 使用仓库中的真实登录模板，仅替换认证响应并拦截跳转目标，避免访问外部网站。
+  await page.route(/^http:\/\/127\.0\.0\.1:33147\/login(?:\?|$)/, route => route.fulfill({
+    path: '/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/dashboard/templates/login.html',
+    contentType: 'text/html',
+  }));
+  await page.route(`${origin}/api/auth`, route => route.fulfill({
+    json: { enabled: true, authenticated: false, username: 'review' },
+  }));
+  await page.route(`${origin}/api/login`, route => route.fulfill({
+    json: { authenticated: true, enabled: true },
+  }));
+  await page.route('http://review-redirect.invalid/**', route => route.fulfill({
+    contentType: 'text/html', body: '<!doctype html><title>Intercepted redirect</title><p>隔离跳转目标</p>',
+  }));
+  const login = `${origin}/login?next=${encodeURIComponent('/\\review-redirect.invalid/')}`;
+  await page.goto(login);
+  await page.locator('input[name="username"]').fill('review');
+  await page.locator('input[name="password"]').fill('review-fixture');
+  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await page.waitForURL('http://review-redirect.invalid/');
+  return { initialUrl: login, destination: page.url(), expectedOrigin: origin, externalRequestIntercepted: true };
+}

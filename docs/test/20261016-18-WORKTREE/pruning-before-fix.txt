@@ -1,0 +1,37 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________ test_worker_pruning_rechecks_concurrent_heartbeat _______________
+
+isolated_redis = <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.UnixDomainSocketConnection(db=0,username=None,p...rsion=7.1.0,redis_connect_func=None,credential_provider=None,protocol=2,path=/tmp/qtask-tests-0v18a5_8/redis.sock)>)>)>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x71ade3629d00>
+
+    def test_worker_pruning_rechecks_concurrent_heartbeat(isolated_redis, monkeypatch):
+        r = isolated_redis
+        worker = Worker("redis://isolated/0", "jobs", redis_client=r, worker_id="renewing")
+        worker._refresh_heartbeat()
+        r.delete(worker._heartbeat_key)
+        original_llen = r.llen
+        renewed = False
+    
+        def renew_before_processing_read(key):
+            nonlocal renewed
+            if key == worker.queue.processing and not renewed:
+                renewed = True
+                worker._refresh_heartbeat()
+            return original_llen(key)
+    
+        monkeypatch.setattr(r, "llen", renew_before_processing_read)
+        admin = QueueAdmin(redis_client=r)
+        admin.list_workers()
+        assert renewed
+>       assert r.zscore(worker._worker_registry_key, worker.worker_id) is not None
+E       AssertionError: assert None is not None
+E        +  where None = zscore('qtask:workers:jobs', 'renewing')
+E        +    where zscore = <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.UnixDomainSocketConnection(db=0,username=None,p...rsion=7.1.0,redis_connect_func=None,credential_provider=None,protocol=2,path=/tmp/qtask-tests-0v18a5_8/redis.sock)>)>)>.zscore
+E        +    and   'qtask:workers:jobs' = <qtask_list.worker.Worker object at 0x71ade334d7c0>._worker_registry_key
+E        +    and   'renewing' = <qtask_list.worker.Worker object at 0x71ade334d7c0>.worker_id
+
+/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_registry_discovery.py:112: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_registry_discovery.py::test_worker_pruning_rechecks_concurrent_heartbeat
+1 failed, 10 deselected in 0.12s

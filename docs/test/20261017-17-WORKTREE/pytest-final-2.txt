@@ -1,0 +1,269 @@
+........................................................................ [ 24%]
+........................................................................ [ 49%]
+........................................................................ [ 73%]
+........................................................................ [ 98%]
+.....                                                                    [100%]
+=============================== warnings summary ===============================
+qtask_list/remote_storage/server.py:262
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/remote_storage/server.py:262: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+../../../../miniconda3/lib/python3.12/site-packages/fastapi/applications.py:4495
+  /home/lsl/miniconda3/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+tests/test_archiver_manual.py::test_archiver
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_archiver_manual.py:35: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    task_id = q.push({"action": "test_archive", "payload": "hello"})
+
+tests/test_dashboard_api.py::test_dashboard_retry_wait_stats_are_reported_from_injected_redis
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_dashboard_api.py:416: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "retryable"})
+
+tests/test_dashboard_api.py::test_filtered_operational_views_preserve_actionable_display_state
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_dashboard_api.py:913: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    retry_queue.push({"action": "retry_action"})
+
+tests/test_integration.py::TestIntegration::test_full_pipeline
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:32: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    fetch_q.push({"action": "fetch_data", "symbol": "AAPL"})
+
+tests/test_integration.py::TestIntegration::test_full_pipeline
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:42: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    store_q.push(result)
+
+tests/test_integration.py: 10 warnings
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:61: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "process", "index": i})
+
+tests/test_integration.py::TestIntegration::test_retry_then_success
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:79: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "unreliable", "fail_count": 0})
+
+tests/test_integration.py::TestIntegration::test_delay_pipeline
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:102: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "delayed"}, delay_seconds=0)
+
+tests/test_integration.py::TestEdgeCases::test_empty_payload
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:119: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({})
+
+tests/test_integration.py::TestEdgeCases::test_large_payload
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:129: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    task_id = q.push(large_data)
+
+tests/test_integration.py::TestEdgeCases::test_special_characters_in_payload
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:136: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "test", "text": "你好世界! @#$%^&*()", "unicode": "🚀🌟💻"})
+
+tests/test_integration.py::TestEdgeCases::test_queue_stats
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:155: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "test1"})
+
+tests/test_integration.py::TestEdgeCases::test_queue_stats
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:156: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "test2"})
+
+tests/test_integration.py::TestEdgeCases::test_queue_stats
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:157: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "test3"})
+
+tests/test_integration.py::TestEdgeCases::test_queue_without_namespace
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:175: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "test"})
+
+tests/test_integration.py::TestHistory::test_history_update
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:205: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    task_id = q.push({"action": "test"})
+
+tests/test_integration.py::TestHistory::test_history_clear
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:218: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "test1"})
+
+tests/test_integration.py::TestHistory::test_history_clear
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_integration.py:219: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "test2"})
+
+tests/test_plan014_fixes.py::TestLogicalKeyDedup::test_push_dedup_same_key
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:45: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    t1 = q.push({"action": "fetch"}, logical_key="kline:AAPL:1d:2026-09-19")
+
+tests/test_plan014_fixes.py::TestLogicalKeyDedup::test_push_dedup_same_key
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:46: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    t2 = q.push({"action": "fetch"}, logical_key="kline:AAPL:1d:2026-09-19")
+
+tests/test_plan014_fixes.py::TestLogicalKeyDedup::test_push_dedup_same_key
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:57: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    t3 = q.push({"action": "fetch"}, logical_key="kline:TSLA:1d:2026-09-19")
+
+tests/test_plan014_fixes.py::TestLogicalKeyDedup::test_push_force_bypasses_dedup
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:63: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "fetch"}, logical_key="news:abc")
+
+tests/test_plan014_fixes.py::TestLogicalKeyDedup::test_push_force_bypasses_dedup
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:64: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    t2 = q.push({"action": "fetch"}, logical_key="news:abc", force=True)
+
+tests/test_plan014_fixes.py::TestLogicalKeyDedup::test_push_dedup_ttl_default_follows_expire
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:71: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "fetch"}, expire_seconds=300, logical_key="quote:AAPL:1310")
+
+tests/test_plan014_fixes.py::TestLogicalKeyDedup::test_push_batch_logical_keys
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:78: DeprecationWarning: SmartQueue.push_batch() is deprecated; prefer enqueue_many()
+    ids = q.push_batch(
+
+tests/test_plan014_fixes.py::TestLogicalKeyDedup::test_push_batch_logical_keys
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:85: DeprecationWarning: SmartQueue.push_batch() is deprecated; prefer enqueue_many()
+    ids2 = q.push_batch(
+
+tests/test_plan014_fixes.py::TestLogicalKeyDedup::test_push_batch_logical_keys_length_mismatch
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:96: DeprecationWarning: SmartQueue.push_batch() is deprecated; prefer enqueue_many()
+    q.push_batch([{"action": "n"}], logical_keys=["a", "b"])
+
+tests/test_plan014_fixes.py::TestRetryBackoff::test_fail_goes_to_delay_with_backoff
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:102: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    tid = q.push({"action": "b"})
+
+tests/test_plan014_fixes.py::TestRetryBackoff::test_backoff_exhaustion_reaches_dlq
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:121: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    tid = q.push({"action": "b"})
+
+tests/test_plan014_fixes.py::TestRetryBackoff::test_backoff_preserves_expires_at_envelope
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:138: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "b"}, expire_seconds=3600)
+
+tests/test_plan014_fixes.py::TestDeadlineSkip::test_expired_task_skipped_at_pop
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:150: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    tid = q.push({"action": "stale"}, expire_seconds=3600)
+
+tests/test_plan014_fixes.py::TestDeadlineSkip::test_pop_continues_after_skipping_expired
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:173: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "live"})
+
+tests/test_plan014_fixes.py::TestLargePayloadErrors::test_transient_storage_failure_defers_not_dlq
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:187: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "big", "data": "x" * 100})
+
+tests/test_plan014_fixes.py::TestLargePayloadErrors::test_large_without_storage_goes_dlq
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:199: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q_push.push({"action": "big", "data": "x" * 100})
+
+tests/test_plan014_fixes.py::TestDlqRequeueReset::test_requeue_dlq_resets_retry
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:213: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    old_id = q.push({"action": "r"})
+
+tests/test_plan014_fixes.py::TestDlqRequeueReset::test_requeue_dlq_keep_retry
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:227: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    old_id = q.push({"action": "r"})
+
+tests/test_plan014_fixes.py::TestPushBatchParams::test_push_batch_delay
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:243: DeprecationWarning: SmartQueue.push_batch() is deprecated; prefer enqueue_many()
+    q.push_batch([{"action": "a"}, {"action": "b"}], delay_seconds=60)
+
+tests/test_plan014_fixes.py::TestPushBatchParams::test_push_batch_expire_envelope
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:249: DeprecationWarning: SmartQueue.push_batch() is deprecated; prefer enqueue_many()
+    q.push_batch([{"action": "a"}], expire_seconds=120)
+
+tests/test_plan014_fixes.py::TestArchiveTerminalOnly::test_live_task_history_not_archived
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:257: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    tid_done = q.push({"action": "done"})
+
+tests/test_plan014_fixes.py::TestArchiveTerminalOnly::test_live_task_history_not_archived
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:258: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    tid_live = q.push({"action": "live"})  # pending，仍在队列
+
+tests/test_plan014_fixes.py::TestZstdThreadLocal::test_compress_roundtrip_multithread
+tests/test_plan014_fixes.py::TestZstdThreadLocal::test_compress_roundtrip_multithread
+tests/test_plan014_fixes.py::TestZstdThreadLocal::test_compress_roundtrip_multithread
+tests/test_plan014_fixes.py::TestZstdThreadLocal::test_compress_roundtrip_multithread
+tests/test_plan014_fixes.py::TestZstdThreadLocal::test_compress_roundtrip_multithread
+tests/test_plan014_fixes.py::TestZstdThreadLocal::test_compress_roundtrip_multithread
+tests/test_plan014_fixes.py::TestZstdThreadLocal::test_compress_roundtrip_multithread
+tests/test_plan014_fixes.py::TestZstdThreadLocal::test_compress_roundtrip_multithread
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:288: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push(dict(big))
+
+tests/test_plan014_fixes.py::TestWorkerParams::test_record_history_false_skips_history
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_plan014_fixes.py:323: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    tid = q.push({"action": "x"})
+
+tests/test_queue.py::TestSmartQueue::test_push_and_pop
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_queue.py:28: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    task_id = q.push({"action": "test", "data": "hello"})
+
+tests/test_queue.py::TestSmartQueue::test_batch_push
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_queue.py:42: DeprecationWarning: SmartQueue.push_batch() is deprecated; prefer enqueue_many()
+    task_ids = q.push_batch([
+
+tests/test_queue.py::TestSmartQueue::test_fail_and_retry
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_queue.py:54: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "test"})
+
+tests/test_queue.py::TestSmartQueue::test_dlq
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_queue.py:76: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "test"})
+
+tests/test_queue.py::TestSmartQueue::test_ttl
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_queue.py:102: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "test"})
+
+tests/test_queue.py::TestSmartQueue::test_history
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_queue.py:110: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "test_action", "data": "hello"})
+
+tests/test_queue.py::TestSmartQueue::test_clean_expired
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_queue.py:119: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    done_id = q.push({"action": "done"})
+
+tests/test_queue.py::TestSmartQueue::test_clean_expired
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_queue.py:120: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    live_id = q.push({"action": "live"})
+
+tests/test_queue.py::TestSmartQueue::test_recover_stale_processing_skips_active_worker
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_queue.py:185: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    active_q.push({"action": "test"})
+
+tests/test_queue.py::TestSmartQueue::test_recover_stale_processing_recovers_missing_heartbeat
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_queue.py:208: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    stale_q.push({"action": "test"})
+
+tests/test_worker.py::TestWorker::test_worker_unknown_action
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_worker.py:38: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "unknown"})
+
+tests/test_worker.py::TestWorker::test_worker_result_queue
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_worker.py:52: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "process", "value": 10})
+
+tests/test_worker.py::TestWorker::test_worker_result_queue
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_worker.py:72: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    result_q.push(result)
+
+tests/test_worker.py::TestWorker::test_worker_exception_handling
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_worker.py:81: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "error_task"})
+
+tests/test_worker.py::TestWorkerConcurrency::test_worker_max_workers
+tests/test_worker.py::TestWorkerConcurrency::test_worker_max_workers
+tests/test_worker.py::TestWorkerConcurrency::test_worker_max_workers
+tests/test_worker.py::TestWorkerConcurrency::test_worker_max_workers
+tests/test_worker.py::TestWorkerConcurrency::test_worker_max_workers
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_worker.py:125: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    q.push({"action": "process", "index": i})
+
+tests/test_worker.py::TestWorkerLifecycle::test_worker_empty_payload_is_failed_not_left_processing
+  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_worker.py:295: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+    worker.queue.push({})
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+293 passed, 80 warnings in 20.28s

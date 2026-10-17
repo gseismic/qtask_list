@@ -23,6 +23,32 @@ if kind == 'hash' then return {kind, redis.call('HGETALL', KEYS[1])} end
 if kind == 'string' then return {kind, redis.call('GET', KEYS[1])} end
 return {kind, false}
 """
+
+# 用排序位置续读，锚点被删除时仍能定位；二分查找不会展开整个同分数区间。
+READ_HISTORY_PAGE_LUA = r"""
+local cutoff = tonumber(ARGV[1])
+local score = tonumber(ARGV[2])
+local anchor = ARGV[3]
+local count = tonumber(ARGV[4])
+local function byte_before(a, b)
+    -- Redis 按字节排序；Lua 的字符串比较可能受 locale 影响。
+    for index = 1, math.min(#a, #b) do
+        local left, right = string.byte(a, index), string.byte(b, index)
+        if left ~= right then return left < right end
+    end
+    return #a < #b
+end
+local left, right = 0, redis.call('ZCARD', KEYS[1])
+while left < right do
+    local middle = math.floor((left + right) / 2)
+    local item = redis.call('ZREVRANGE', KEYS[1], middle, middle, 'WITHSCORES')
+    local value = tonumber(item[2])
+    local eligible = value <= cutoff and
+        (not score or value < score or (value == score and byte_before(item[1], anchor)))
+    if eligible then right = middle else left = middle + 1 end
+end
+return redis.call('ZREVRANGE', KEYS[1], left, left + count - 1, 'WITHSCORES')
+"""
 _TEXT_FIELDS = {
     "task_id", "_queue", "action", "logical_key", "trace_id", "parent_task_id", "replay_of",
     "concurrency_key", "supersede_key", "supersede_value", "reason", "reason_code",

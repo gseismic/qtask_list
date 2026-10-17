@@ -1,0 +1,68 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_ test_dlq_snapshot_cannot_replay_message_already_moved_by_another_admin[admin] _
+
+management = (<starlette.testclient.TestClient object at 0x7c84bc609f10>, <qtask_list.admin.QueueAdmin object at 0x7c84bc75f020>, <...sion=7.1.0,redis_connect_func=None,credential_provider=None,protocol=2,path=/tmp/qtask-tests-em8rygbt/redis.sock)>)>)>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c84bc75ea50>
+entrypoint = 'admin'
+
+    @pytest.mark.parametrize("entrypoint", ["admin", "sdk"])
+    def test_dlq_snapshot_cannot_replay_message_already_moved_by_another_admin(management, monkeypatch, entrypoint):
+        _client, admin, r = management
+        queue = SmartQueue(redis_client=r, queue_name="review-replay")
+        task_id = failed_task(queue)
+        other_replays = []
+        if entrypoint == "admin":
+            original = admin.requeue_task
+    
+            def concurrently_move(*args, **kwargs):
+                other_replays.append(admin.replay_task(task_id, queue_name=queue.base)["task_id"])
+                return original(*args, **kwargs)
+    
+            monkeypatch.setattr(admin, "requeue_task", concurrently_move)
+            result = admin.requeue_dlq(queue.base)
+>           assert result["moved"] == 0 and result["skipped"] == 1
+E           assert (1 == 0)
+
+/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_dashboard_review_fixes.py:419: AssertionError
+_ test_dlq_snapshot_cannot_replay_message_already_moved_by_another_admin[sdk] __
+
+management = (<starlette.testclient.TestClient object at 0x7c84bc6249b0>, <qtask_list.admin.QueueAdmin object at 0x7c84bc75fe00>, <...sion=7.1.0,redis_connect_func=None,credential_provider=None,protocol=2,path=/tmp/qtask-tests-em8rygbt/redis.sock)>)>)>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c84bc6256d0>
+entrypoint = 'sdk'
+
+    @pytest.mark.parametrize("entrypoint", ["admin", "sdk"])
+    def test_dlq_snapshot_cannot_replay_message_already_moved_by_another_admin(management, monkeypatch, entrypoint):
+        _client, admin, r = management
+        queue = SmartQueue(redis_client=r, queue_name="review-replay")
+        task_id = failed_task(queue)
+        other_replays = []
+        if entrypoint == "admin":
+            original = admin.requeue_task
+    
+            def concurrently_move(*args, **kwargs):
+                other_replays.append(admin.replay_task(task_id, queue_name=queue.base)["task_id"])
+                return original(*args, **kwargs)
+    
+            monkeypatch.setattr(admin, "requeue_task", concurrently_move)
+            result = admin.requeue_dlq(queue.base)
+            assert result["moved"] == 0 and result["skipped"] == 1
+        else:
+            original_get = queue.history.get
+    
+            def move_before_record_read(identifier):
+                if not other_replays:
+                    other_replays.append(admin.replay_task(task_id, queue_name=queue.base)["task_id"])
+                return original_get(identifier)
+    
+            monkeypatch.setattr(queue.history, "get", move_before_record_read)
+>           assert queue.requeue_dlq() == 0
+E           assert 1 == 0
+E            +  where 1 = requeue_dlq()
+E            +    where requeue_dlq = <qtask_list.queue.SmartQueue object at 0x7c84bc6254c0>.requeue_dlq
+
+/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_dashboard_review_fixes.py:429: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_dashboard_review_fixes.py::test_dlq_snapshot_cannot_replay_message_already_moved_by_another_admin[admin]
+FAILED tests/test_dashboard_review_fixes.py::test_dlq_snapshot_cannot_replay_message_already_moved_by_another_admin[sdk]
+2 failed, 39 deselected in 0.44s

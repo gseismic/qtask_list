@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import ts from 'typescript';
+import vm from 'node:vm';
 
 async function sourceModule(name) {
   const source = readFileSync(new URL(`../src/${name}.ts`, import.meta.url), 'utf8');
@@ -15,6 +16,106 @@ const { taskState, canReplayTask, taskError, taskDeadline, replayIds } = await s
 const { RateSampler } = await sourceModule('sampler');
 const { AlertEngine, resolveAlert, clearResolved, loadResolved } = await sourceModule('alerts');
 const { api } = await sourceModule('api');
+const { summarizeBulkResult } = await sourceModule('operations');
+
+test('所有队列操作和任务详情通过查询参数无损传输特殊名称与 ID', async (t) => {
+  const calls = [];
+  t.mock.method(globalThis, 'fetch', async (path) => {
+    calls.push(new URL(path, 'http://localhost'));
+    return new Response(JSON.stringify({ tasks: [] }), { status: 200 });
+  });
+  const name = '中文/queue%2F?&+';
+  const id = '旧任务/ID%2F?&+';
+  await api.queueTasks({ queue: name, state: 'ready' });
+  await api.pushTask(name, { payload: { action: 'test' } });
+  await api.requeueDlq(name);
+  await api.clearQueue(name, true, false, false);
+  await api.deleteQueue(name);
+  await api.task(id);
+  await api.taskPayload(id, name);
+  await api.replayTask(id, { queue: name });
+  await api.deleteTask(id, name);
+  for (const url of calls.slice(0, 5)) assert.equal(url.searchParams.get('name'), name);
+  for (const url of calls.slice(5)) assert.equal(url.searchParams.get('task_id'), id);
+});
+
+test('批量部分完成、空批次和终止均明确表达结果', () => {
+  assert.equal(summarizeBulkResult({ moved: 3 }), null);
+  const success = summarizeBulkResult({ moved: 3, skipped: 0, errors: [] });
+  assert.equal(success.warning, false);
+  assert.match(success.message, /已处理 3 条/);
+  const partial = summarizeBulkResult({ moved: 1, skipped: 1, not_attempted: 5,
+    errors: [{ task_id: 'old', reason: 'start_deadline_at 已过' }], errors_truncated: true });
+  assert.equal(partial.warning, true);
+  for (const part of ['已处理 1 条', '跳过 1 条', '未尝试 5 条', 'old', 'start_deadline_at', '保留']) {
+    assert.ok(partial.message.includes(part));
+  }
+  assert.equal(summarizeBulkResult({ moved: 0, skipped: 0 }).warning, false);
+});
+
+test('成功状态中的无效 JSON 不能被管理操作当成成功响应', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => new Response('<html>bad gateway</html>', { status: 200 }));
+  await assert.rejects(api.deleteQueue('test'), /无法识别的响应/);
+});
+
+test('真实登录模板仅允许同源跳转，反斜杠和跨源 URL 回退首页', async () => {
+  const html = readFileSync(new URL('../../dashboard/templates/login.html', import.meta.url), 'utf8');
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  for (const [next, expected] of [
+    ['/queues?q=test#rows', '/queues?q=test#rows'],
+    ['https://dashboard.test/tasks', '/tasks'],
+    ['/\\evil.test/', '/'], ['//evil.test/', '/'], ['https://evil.test/', '/'],
+    ['javascript:alert(1)', '/'], ['http://dashboard.test/', '/'],
+  ]) {
+    let submit;
+    let destination;
+    const button = { disabled: false, textContent: '登录' };
+    const form = { querySelector: () => button, addEventListener: (_name, callback) => { submit = callback; } };
+    const location = { origin: 'https://dashboard.test', search: `?next=${encodeURIComponent(next)}`,
+      replace: value => { destination = value; } };
+    vm.runInNewContext(script, {
+      document: { getElementById: id => id === 'login-form' ? form : { textContent: '' } },
+      window: { location }, URL, URLSearchParams,
+      FormData: class { get() { return 'fixture'; } },
+      fetch: async () => ({ ok: true, json: async () => ({ enabled: true, authenticated: false }) }),
+    });
+    await submit({ preventDefault() {} });
+    assert.equal(destination, expected, next);
+    assert.equal(button.disabled, false);
+  }
+});
+
+test('登录网络失败显示反馈、恢复按钮并阻止等待期间重复提交', async () => {
+  const html = readFileSync(new URL('../../dashboard/templates/login.html', import.meta.url), 'utf8');
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  let submit;
+  let release;
+  let calls = 0;
+  const pending = new Promise(resolve => { release = resolve; });
+  const button = { disabled: false, textContent: '登录' };
+  const errorBox = { textContent: '' };
+  const form = { querySelector: () => button, addEventListener: (_name, callback) => { submit = callback; } };
+  vm.runInNewContext(script, {
+    document: { getElementById: id => id === 'login-form' ? form : errorBox },
+    window: { location: { origin: 'https://dashboard.test', search: '' } }, URL, URLSearchParams,
+    FormData: class { get() { return 'fixture'; } },
+    fetch: async path => {
+      if (path === '/api/auth') return { json: async () => ({ enabled: true, authenticated: false }) };
+      calls++;
+      await pending;
+      throw new Error('network unavailable');
+    },
+  });
+  const first = submit({ preventDefault() {} });
+  await submit({ preventDefault() {} });
+  assert.equal(calls, 1);
+  assert.equal(button.disabled, true);
+  release();
+  await first;
+  assert.match(errorBox.textContent, /连接失败.*重试/);
+  assert.equal(button.disabled, false);
+  assert.equal(button.textContent, '登录');
+});
 
 function clock(t) {
   let now = 1_000_000;

@@ -19,7 +19,7 @@ export const ALERT_RULES_DOC = [
   { name: "ready 积压", rule: "ready>10000 持续 10min", severity: "warning", source: "queue_stats.queue", note: "消费能力不足或 Worker 未启动" },
   { name: "任务过期", rule: "deadline_missed>0", severity: "warning", source: "queue_stats.deadline_missed", note: "任务超过执行截止时间，可改截止时间重放" },
   { name: "Worker 心跳超时", rule: "processing>0 且心跳不存在", severity: "danger", source: "list_workers", note: "任务变孤儿，可恢复回主队列" },
-  { name: "Redis 内存超限", rule: "超过 monitor_threshold_mb", severity: "danger", source: "/api/health", note: "检查 maxmemory 与清理策略" },
+  { name: "Redis 内存超限", rule: "达到配置阈值或 Redis maxmemory", severity: "danger", source: "/api/health", note: "未配置两者时显示未启用；检查内存上限与清理策略" },
 ];
 
 const READY_THRESHOLD = 10000;

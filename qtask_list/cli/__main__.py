@@ -443,7 +443,14 @@ def requeue(
             raise typer.Exit(1)
         return
 
-    count = admin.requeue_dlq(queue_name, reset_retry=not keep_retry)["moved"]
+    result = admin.requeue_dlq(queue_name, reset_retry=not keep_retry)
+    count = result["moved"]
+    if result.get("skipped") or result.get("not_attempted"):
+        console.print(f"[yellow]已处理 {count} 条，跳过 {result.get('skipped', 0)} 条，"
+                      f"未尝试 {result.get('not_attempted', 0)} 条[/yellow]")
+        for error in result.get("errors", []):
+            console.print(f"{error.get('task_id') or '未知任务'}：{error['reason']}", markup=False)
+        raise typer.Exit(1)
     console.print(f"[green]Requeued {count} tasks from DLQ[/green]")
 
 

@@ -1,0 +1,6 @@
+### Result
+{"passed":true,"visibleQueues":["handoff_browser:search","handoff_browser:external","handoff_browser:registered-empty"]}
+### Ran Playwright code
+```js
+await (async page => { const loaded = page.waitForResponse(r => r.url().endsWith("/api/queues")); await page.getByRole("button", { name: "刷新", exact: true }).click(); await loaded; await page.locator(".qc-name[title=\"handoff_browser:external\"]").waitFor(); const names = await page.locator(".qc-name").allTextContents(); if (names.length !== 3) throw new Error(JSON.stringify(names)); return { passed: true, visibleQueues: names }; })(page);
+```

@@ -1,0 +1,114 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: Q
+      - generic [ref=e7]:
+        - generic [ref=e8]: qtask_list
+        - generic [ref=e9]: 管理后台
+    - navigation [ref=e10]:
+      - link "📊 总览" [ref=e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e12]: 📊
+        - generic [ref=e13]: 总览
+      - link "📋 队列" [ref=e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=e15]: 📋
+        - generic [ref=e16]: 队列
+      - link "🔍 任务" [ref=e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=e18]: 🔍
+        - generic [ref=e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=e21]: 🧑‍🏭
+        - generic [ref=e22]: Worker
+      - link "🔔 告警 2" [ref=e23] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=e24]: 🔔
+        - generic [ref=e25]: 告警
+        - generic [ref=e26]: "2"
+      - link "📖 教程" [ref=e27] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=e28]: 📖
+        - generic [ref=e29]: 教程
+    - generic [ref=e30]: v0.2.0 · Redis 任务队列
+  - generic [ref=e31]:
+    - banner [ref=e32]:
+      - generic "Redis 连接正常" [ref=e33]: 已连接
+      - generic "2026/10/16 19:14:05" [ref=e271]: 更新于 19:14:05
+      - button "刷新" [ref=e36] [cursor=pointer]
+      - generic [ref=e37]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=e38]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=e39] [cursor=pointer]
+    - generic [ref=e203]:
+      - heading "总览" [level=1] [ref=e204]
+      - paragraph [ref=e205]: 查看当前待处理量与异常；完成量和速率来自本次访问近一小时的浏览器观测，切换页面会保留采样。
+      - generic [ref=e206]:
+        - combobox "总览 namespace" [ref=e207]:
+          - option "全部 namespace" [selected]
+          - option "handoff_browser"
+        - textbox "搜索队列名" [ref=e208]
+        - generic [ref=e209]: 当前范围 3 / 3 个队列
+      - generic [ref=e210]:
+        - button "活跃队列 2/3 当前范围内有待处理任务的队列" [ref=e211] [cursor=pointer]:
+          - generic [ref=e212]: 活跃队列
+          - generic [ref=e213]: 2/3
+          - generic [ref=e214]: 当前范围内有待处理任务的队列
+        - button "总待处理 5 排队 + 执行 + 延迟 + 旧重试" [active] [ref=e215] [cursor=pointer]:
+          - generic [ref=e216]: 总待处理
+          - generic [ref=e217]: "5"
+          - generic [ref=e218]: 排队 + 执行 + 延迟 + 旧重试
+        - generic [ref=e219]:
+          - generic [ref=e220]: 合计观测速率
+          - generic [ref=e221]: —
+          - generic [ref=e222]: 观测至少 30 秒后估算
+        - button "异常队列 2 死信 / 无 Worker / 停滞 / 失联 / 过期" [ref=e223] [cursor=pointer]:
+          - generic [ref=e224]: 异常队列
+          - generic [ref=e225]: "2"
+          - generic [ref=e226]: 死信 / 无 Worker / 停滞 / 失联 / 过期
+      - generic [ref=e227]:
+        - generic [ref=e228]:
+          - heading "待处理告警" [level=2] [ref=e229]
+          - link "查看全部 →" [ref=e230] [cursor=pointer]:
+            - /url: /alerts
+        - generic [ref=e231]:
+          - generic [ref=e232]: 无人消费
+          - strong [ref=e233]: handoff_browser:external
+          - generic [ref=e234]: ready 有 1 条任务，但没有在线 Worker
+          - link "定位" [ref=e235] [cursor=pointer]:
+            - /url: /queues/handoff_browser%3Aexternal?state=ready
+        - generic [ref=e236]:
+          - generic [ref=e237]: 无人消费
+          - strong [ref=e238]: handoff_browser:search
+          - generic [ref=e239]: ready 有 4 条任务，但没有在线 Worker
+          - link "定位" [ref=e240] [cursor=pointer]:
+            - /url: /queues/handoff_browser%3Asearch?state=ready
+      - generic [ref=e241]:
+        - heading "队列运行矩阵" [level=2] [ref=e242]
+        - generic [ref=e243]:
+          - button "全部" [ref=e244] [cursor=pointer]
+          - button "进行中" [ref=e245] [cursor=pointer]
+          - button "仅异常" [ref=e246] [cursor=pointer]
+      - paragraph [ref=e247]: 待处理构成： 排队 执行 延迟 旧重试 · ETA 仅估算无延迟队列
+      - generic "队列运行矩阵，可横向滚动" [ref=e252]:
+        - generic [ref=e253]:
+          - generic [aria-hidden] [ref=e254]:
+            - generic [ref=e255]: 队列
+            - generic [ref=e256]: 待处理构成
+            - generic [ref=e257]: 待处理
+            - generic [ref=e258]: 观测完成
+            - generic [ref=e259]: 条/min
+            - generic [ref=e260]: 预计/状态
+            - generic [ref=e261]: 异常
+          - button "▸ handoff_browser · 2 个队列 · 待处理 5 · 观测完成 — ⚠ 2" [ref=e272] [cursor=pointer]:
+            - generic [ref=e264]: ▸
+            - generic [ref=e265]: handoff_browser
+            - generic [ref=e266]: · 2 个队列
+            - generic [ref=e267]: · 待处理 5
+            - generic [ref=e268]: · 观测完成 —
+            - generic [ref=e269]: ⚠ 2

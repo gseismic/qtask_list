@@ -1316,9 +1316,14 @@ class SmartQueue:
         payload: Mapping[str, JsonValue] | object = _UNSET,
         logical_key: str | None | object = _UNSET,
         action: str | None = None,
+        max_attempts: int | None = None,
+        require_dlq: bool = False,
     ) -> EnqueueResult:
-        """从 failed/skipped/cancelled 创建新实例，原终态记录保持不变。"""
+        """创建新实例；require_dlq=True 时必须原子移除原 DLQ 消息才能创建。"""
         self._assert_queue_namespace()
+        replay_budget = self.max_attempts if max_attempts is None else max_attempts
+        if isinstance(replay_budget, bool) or not isinstance(replay_budget, int) or replay_budget < 1:
+            raise ValueError("max_attempts must be a positive integer")
         source = self.history.get(task_id)
         if not source:
             raise KeyError(f"task not found: {task_id}")
@@ -1326,6 +1331,10 @@ class SmartQueue:
         outcome = str(source.get("outcome") or source.get("status") or "")
         if outcome not in {"failed", "skipped", "cancelled"}:
             raise ValueError(f"task outcome is not replayable: {outcome or 'none'}")
+        source_raw = self._find_task_message(self.dlq, task_id)
+        require_source = require_dlq or str(source.get("operational_message", "0")) in {"1", "true", "True"}
+        if require_source and source_raw is None:
+            raise RuntimeError("任务已不在 DLQ 中，请刷新核对状态")
 
         old_deadline = self._float_or_none(
             source.get("start_deadline_at") or source.get("expires_at")
@@ -1399,7 +1408,7 @@ class SmartQueue:
             prepared=prepared,
             created_at=created_at,
             available_at=replay_available_at,
-            max_attempts=self.max_attempts,
+            max_attempts=replay_budget,
             replay_of=task_id,
         )
         raw_message = self.codec.encode(envelope)
@@ -1411,12 +1420,7 @@ class SmartQueue:
             available_at=replay_available_at,
             replay_of=task_id,
         )
-        source_raw = self._find_task_message(self.dlq, task_id)
-        require_source = str(source.get("operational_message", "0")) in {"1", "true", "True"}
-        if require_source and source_raw is None:
-            self._cleanup_prepared_if_unreferenced(prepared)
-            raise RuntimeError("failed task claims an operational message but is absent from DLQ")
-
+        record["max_attempts"] = str(replay_budget)
         owner_key = self._dedup_key(chosen_logical) if chosen_logical else self._dummy_key("owner", new_task_id)
         legacy_owner_key = (
             self._legacy_dedup_key(chosen_logical)
@@ -1513,13 +1517,20 @@ class SmartQueue:
                 }
             ):
                 try:
-                    result = self.replay_task(task_id)
-                except ValueError:
+                    result = self.replay_task(task_id, require_dlq=True)
+                except (ValueError, KeyError, RuntimeError):
                     result = None
                 if result is not None:
                     if result.accepted:
                         count += 1
                     continue
+            try:
+                is_v2 = json.loads(raw_message).get("version") == 2
+            except (ValueError, TypeError, AttributeError):
+                is_v2 = False
+            if is_v2:
+                # 不把缺失审计/descriptor 的 V2 信封降级成 V1 业务参数。
+                continue
             new_message = self._reset_retry_message(raw_message) if reset_retry else raw_message
             moved = self.r.eval(
                 ADMIN_MOVE_LUA,

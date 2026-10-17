@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { StateKey } from "../types";
+import { useModalFocus } from "../modal";
 
 export function fmtTime(v: number | string | null | undefined): string {
   if (v === null || v === undefined || v === "") return "—";
   const n = typeof v === "string" ? Number(v) : v;
-  const d = Number.isFinite(n) && n > 0 ? new Date(n * 1000) : new Date(v as string);
+  const d = Number.isFinite(n) ? new Date(n * 1000) : new Date(v as string);
   if (Number.isNaN(d.getTime())) return String(v);
   const pad = (x: number) => String(x).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
@@ -47,6 +48,7 @@ export function KpiCard({
   label,
   value,
   hint,
+  actionHint,
   danger,
   onClick,
   title,
@@ -54,17 +56,21 @@ export function KpiCard({
   label: string;
   value: React.ReactNode;
   hint?: string;
+  actionHint?: string;
   danger?: boolean;
   onClick?: () => void;
   title?: string;
 }) {
   const cls = `kpi${danger ? " danger" : ""}${onClick ? " clickable" : ""}`;
+  const accessibleValue = typeof value === "string" || typeof value === "number" ? value : "";
   if (onClick) {
     return (
-      <button className={cls} onClick={onClick} title={title}>
+      <button type="button" className={cls} onClick={onClick} title={title ?? actionHint}
+        aria-label={actionHint ? `${label} ${accessibleValue}. ${actionHint}` : undefined}>
         <div className="kpi-label">{label}</div>
         <div className="kpi-value">{value}</div>
         {hint && <div className="kpi-hint">{hint}</div>}
+        {actionHint && <div className="kpi-action-hint" aria-hidden="true">{actionHint}</div>}
       </button>
     );
   }
@@ -164,51 +170,17 @@ export function ConfirmDialog({
   const [typed, setTyped] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  const cancelRef = useRef({ busy, onCancel });
-  cancelRef.current = { busy, onCancel };
+  useModalFocus(dialogRef, { open, busy, onClose: onCancel });
   useEffect(() => {
     if (open) setTyped("");
   }, [open]);
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.activeElement as HTMLElement | null;
-    const target = dialogRef.current?.querySelector<HTMLElement>("input, button");
-    (target ?? dialogRef.current)?.focus();
-    // 提交按钮禁用时浏览器可能把焦点移到 body，仍需让 Escape 只作用于确认层。
-    const onEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      if (!cancelRef.current.busy) cancelRef.current.onCancel();
-    };
-    document.addEventListener("keydown", onEscape, true);
-    return () => {
-      document.removeEventListener("keydown", onEscape, true);
-      if (previous?.isConnected) previous.focus();
-    };
-  }, [open]);
-  useEffect(() => {
-    if (open && !busy && !dialogRef.current?.contains(document.activeElement)) {
-      dialogRef.current?.querySelector<HTMLElement>("input:not(:disabled), button:not(:disabled)")?.focus();
-    }
-  }, [busy, open]);
   if (!open) return null;
   const needKeyword = !!confirmKeyword;
   const ok = !needKeyword || typed === confirmKeyword;
   return (
     <div className="dialog-backdrop" onClick={() => { if (!busy) onCancel(); }}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
-        className={`dialog${danger ? " danger" : ""}`} onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); if (!busy) onCancel(); }
-          if (e.key === "Tab") {
-            const targets = [...(dialogRef.current?.querySelectorAll<HTMLElement>("input:not(:disabled), button:not(:disabled), [tabindex='0']") ?? [])];
-            const first = targets[0]; const last = targets[targets.length - 1];
-            if (!first) { e.preventDefault(); return; }
-            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-          }
-        }}>
+        className={`dialog${danger ? " danger" : ""}`} onClick={(e) => e.stopPropagation()}>
         <h3 id={titleId} style={{ marginTop: 0 }}>{title}</h3>
         <div className="muted" style={{ marginBottom: 14 }}>
           {body}
@@ -265,8 +237,9 @@ export function OpsMenu({ label, items }: { label: string; items: Array<{ label:
               {idx === dangerStart && dangerStart > 0 && <div className="menu-sep" />}
               <button
                 className={item.danger ? "danger" : ""}
-                onClick={() => {
+              onClick={() => {
                   setOpen(false);
+                  ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
                   item.onClick();
                 }}
               >

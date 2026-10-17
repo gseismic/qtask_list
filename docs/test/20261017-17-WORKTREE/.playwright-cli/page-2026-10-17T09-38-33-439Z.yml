@@ -1,0 +1,16 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: Q
+      - generic [ref=e6]:
+        - generic [ref=e7]: qtask_list
+        - generic [ref=e8]: Dashboard 登录
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - generic [ref=e11]: 用户名
+        - textbox "用户名" [ref=e12]: 回归管理员
+      - generic [ref=e13]:
+        - generic [ref=e14]: 密码
+        - textbox "密码" [active] [ref=e15]
+      - button "登录" [ref=e16] [cursor=pointer]
+      - paragraph [ref=e17]

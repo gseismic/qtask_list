@@ -1,0 +1,184 @@
+F.FFF..FFF                                                               [100%]
+=================================== FAILURES ===================================
+____________ test_discovery_reads_only_registries_without_scanning _____________
+
+isolated_redis = <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.UnixDomainSocketConnection(db=0,username=None,p...rsion=7.1.0,redis_connect_func=None,credential_provider=None,protocol=2,path=/tmp/qtask-tests-rb8hspki/redis.sock)>)>)>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7870da269160>
+
+    def test_discovery_reads_only_registries_without_scanning(isolated_redis, monkeypatch):
+        r = isolated_redis
+        r.zadd("qtask:queues", {"registered:z": 1, "registered:a": 2})
+        r.zadd("qtask:workers:registered:a", {"online": 1})
+        r.set("registered:a:worker:online", "1", ex=60)
+        raw = json.dumps({"task_id": "unregistered", "payload": "{}"})
+        r.lpush("unregistered", raw)
+        r.lpush("unregistered:processing:worker", raw)
+        r.set("unregistered:worker:worker", "1", ex=60)
+        r.zadd("qtask:hist:unregistered", {"unregistered": 1})
+        r.zadd("qtask:workers:unregistered", {"worker": 1})
+    
+        def unexpected_scan(*args, **kwargs):
+            pytest.fail("自动发现不应扫描 Redis 键空间")
+    
+        monkeypatch.setattr(r, "scan_iter", unexpected_scan)
+        monkeypatch.setattr(r, "scan", unexpected_scan)
+        admin = QueueAdmin(redis_client=r)
+>       assert admin.queue_names() == ["registered:a", "registered:z"]
+               ^^^^^^^^^^^^^^^^^^^
+
+/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_registry_discovery.py:31: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/admin.py:100: in queue_names
+    for key in self.r.scan_iter("qtask:hist:*"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('qtask:hist:*',), kwargs = {}
+
+    def unexpected_scan(*args, **kwargs):
+>       pytest.fail("自动发现不应扫描 Redis 键空间")
+E       Failed: 自动发现不应扫描 Redis 键空间
+
+/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_registry_discovery.py:26: Failed
+___ test_registered_workers_report_stale_processing_and_remove_empty_entries ___
+
+isolated_redis = <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.UnixDomainSocketConnection(db=0,username=None,p...rsion=7.1.0,redis_connect_func=None,credential_provider=None,protocol=2,path=/tmp/qtask-tests-rb8hspki/redis.sock)>)>)>
+
+    def test_registered_workers_report_stale_processing_and_remove_empty_entries(isolated_redis):
+        r = isolated_redis
+        r.zadd("qtask:queues", {"jobs": 1})
+        r.zadd("qtask:workers:jobs", {"online": 1, "stale": 1, "finished": 1})
+        r.set("jobs:worker:online", "1", ex=60)
+        r.lpush("jobs:processing:stale", "pending task")
+        r.set("jobs:worker:unregistered", "1", ex=60)
+        admin = QueueAdmin(redis_client=r)
+        workers = admin.list_workers()
+>       assert [(row["worker_id"], row["active"], row["processing"]) for row in workers] == [
+            ("online", True, 0), ("stale", False, 1),
+        ]
+E       AssertionError: assert [('online', T...ed', True, 0)] == [('online', T...e', False, 1)]
+E         
+E         Left contains one more item: ('unregistered', True, 0)
+E         Use -v to get more diff
+
+/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_registry_discovery.py:65: AssertionError
+_ test_idle_worker_heartbeat_registers_queue_and_recovers_after_external_clear _
+
+isolated_redis = <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.UnixDomainSocketConnection(db=0,username=None,p...rsion=7.1.0,redis_connect_func=None,credential_provider=None,protocol=2,path=/tmp/qtask-tests-rb8hspki/redis.sock)>)>)>
+
+    def test_idle_worker_heartbeat_registers_queue_and_recovers_after_external_clear(isolated_redis):
+        r = isolated_redis
+        worker = Worker("redis://isolated/0", "jobs", redis_client=r,
+                        worker_id="idle", clock=FrozenClock(1000))
+        admin = QueueAdmin(redis_client=r)
+        worker._refresh_heartbeat()
+>       assert admin.queue_names() == ["jobs"]
+E       AssertionError: assert [] == ['jobs']
+E         
+E         Right contains one more item: 'jobs'
+E         Use -v to get more diff
+
+/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_registry_discovery.py:80: AssertionError
+_____ test_worker_exit_keeps_registry_until_processing_is_recovered[False] _____
+
+isolated_redis = <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.UnixDomainSocketConnection(db=0,username=None,p...rsion=7.1.0,redis_connect_func=None,credential_provider=None,protocol=2,path=/tmp/qtask-tests-rb8hspki/redis.sock)>)>)>
+pending = False
+
+    @pytest.mark.parametrize("pending", [False, True])
+    def test_worker_exit_keeps_registry_until_processing_is_recovered(isolated_redis, pending):
+        r = isolated_redis
+        worker = Worker("redis://isolated/0", "jobs", redis_client=r, worker_id="leaving")
+        worker._refresh_heartbeat()
+        if pending:
+            r.lpush(worker.queue.processing, json.dumps({"task_id": "orphan", "payload": "{}"}))
+        worker._cleanup_worker_state()
+        admin = QueueAdmin(redis_client=r)
+        assert r.exists(worker._heartbeat_key) == 0
+>       assert admin.queue_names() == ["jobs"]
+E       AssertionError: assert [] == ['jobs']
+E         
+E         Right contains one more item: 'jobs'
+E         Use -v to get more diff
+
+/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_registry_discovery.py:103: AssertionError
+_____ test_worker_registration_type_error_leaves_no_partial_state[workers] _____
+
+isolated_redis = <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.UnixDomainSocketConnection(db=0,username=None,p...rsion=7.1.0,redis_connect_func=None,credential_provider=None,protocol=2,path=/tmp/qtask-tests-rb8hspki/redis.sock)>)>)>
+conflict = 'workers'
+
+    @pytest.mark.parametrize("conflict", ["queues", "workers", "heartbeat"])
+    def test_worker_registration_type_error_leaves_no_partial_state(isolated_redis, conflict):
+        r = isolated_redis
+        worker = Worker("redis://isolated/0", "jobs", redis_client=r, worker_id="new")
+        key = {"queues": "qtask:queues", "workers": "qtask:workers:jobs",
+               "heartbeat": worker._heartbeat_key}[conflict]
+        if conflict == "heartbeat":
+            r.lpush(key, "wrong type")
+        else:
+            r.set(key, "wrong type")
+        with pytest.raises(redis.ResponseError):
+            worker._refresh_heartbeat()
+>       assert r.keys("*") == [key]
+E       AssertionError: assert ['qtask:worke...s:worker:new'] == ['qtask:workers:jobs']
+E         
+E         Left contains one more item: 'jobs:worker:new'
+E         Use -v to get more diff
+
+/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_registry_discovery.py:125: AssertionError
+____ test_worker_registration_type_error_leaves_no_partial_state[heartbeat] ____
+
+isolated_redis = <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.UnixDomainSocketConnection(db=0,username=None,p...rsion=7.1.0,redis_connect_func=None,credential_provider=None,protocol=2,path=/tmp/qtask-tests-rb8hspki/redis.sock)>)>)>
+conflict = 'heartbeat'
+
+    @pytest.mark.parametrize("conflict", ["queues", "workers", "heartbeat"])
+    def test_worker_registration_type_error_leaves_no_partial_state(isolated_redis, conflict):
+        r = isolated_redis
+        worker = Worker("redis://isolated/0", "jobs", redis_client=r, worker_id="new")
+        key = {"queues": "qtask:queues", "workers": "qtask:workers:jobs",
+               "heartbeat": worker._heartbeat_key}[conflict]
+        if conflict == "heartbeat":
+            r.lpush(key, "wrong type")
+        else:
+            r.set(key, "wrong type")
+>       with pytest.raises(redis.ResponseError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'redis.exceptions.ResponseError'>
+
+/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_registry_discovery.py:123: Failed
+_____ test_concurrent_worker_registration_rejects_overlapping_queue_names ______
+
+isolated_redis = <redis.client.Redis(<redis.connection.ConnectionPool(<redis.connection.UnixDomainSocketConnection(db=0,username=None,p...rsion=7.1.0,redis_connect_func=None,credential_provider=None,protocol=2,path=/tmp/qtask-tests-rb8hspki/redis.sock)>)>)>
+
+    def test_concurrent_worker_registration_rejects_overlapping_queue_names(isolated_redis):
+        r = isolated_redis
+        workers = [Worker("redis://isolated/0", name, redis_client=r, worker_id="new")
+                   for name in ("jobs", "jobs:delay")]
+        ready = Barrier(2)
+    
+        def register(worker):
+            ready.wait(timeout=5)
+            try:
+                worker._refresh_heartbeat()
+                return True
+            except ValueError as error:
+                assert "namespace conflict" in str(error)
+                return False
+    
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(register, workers))
+>       assert sorted(results) == [False, True]
+E       assert [True, True] == [False, True]
+E         
+E         At index 0 diff: True != False
+E         Use -v to get more diff
+
+/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_registry_discovery.py:145: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_registry_discovery.py::test_discovery_reads_only_registries_without_scanning
+FAILED tests/test_registry_discovery.py::test_registered_workers_report_stale_processing_and_remove_empty_entries
+FAILED tests/test_registry_discovery.py::test_idle_worker_heartbeat_registers_queue_and_recovers_after_external_clear
+FAILED tests/test_registry_discovery.py::test_worker_exit_keeps_registry_until_processing_is_recovered[False]
+FAILED tests/test_registry_discovery.py::test_worker_registration_type_error_leaves_no_partial_state[workers]
+FAILED tests/test_registry_discovery.py::test_worker_registration_type_error_leaves_no_partial_state[heartbeat]
+FAILED tests/test_registry_discovery.py::test_concurrent_worker_registration_rejects_overlapping_queue_names
+7 failed, 3 passed in 0.17s

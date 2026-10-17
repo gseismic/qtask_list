@@ -1,0 +1,138 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: Q
+      - generic [ref=f1e7]:
+        - generic [ref=f1e8]: qtask_list
+        - generic [ref=f1e9]: 管理后台
+    - navigation [ref=f1e10]:
+      - link "📊 总览" [ref=f1e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f1e12]: 📊
+        - generic [ref=f1e13]: 总览
+      - link "📋 队列" [ref=f1e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f1e15]: 📋
+        - generic [ref=f1e16]: 队列
+      - link "🔍 任务" [ref=f1e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f1e18]: 🔍
+        - generic [ref=f1e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f1e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f1e21]: 🧑‍🏭
+        - generic [ref=f1e22]: Worker
+      - link "🔔 告警 2" [ref=f1e48] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f1e24]: 🔔
+        - generic [ref=f1e25]: 告警
+        - generic [ref=f1e49]: "2"
+      - link "📖 教程" [ref=f1e26] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f1e27]: 📖
+        - generic [ref=f1e28]: 教程
+    - generic [ref=f1e29]: v0.2.0 · Redis 任务队列
+  - generic [ref=f1e30]:
+    - banner [ref=f1e31]:
+      - generic "Redis 连接正常" [ref=f1e50]: 已连接
+      - generic "2026/10/16 19:17:43" [ref=f1e335]: 更新于 19:17:43
+      - button "刷新" [ref=f1e34] [cursor=pointer]
+      - generic [ref=f1e35]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f1e36]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f1e37] [cursor=pointer]
+    - generic [ref=f1e265]:
+      - heading "总览" [level=1] [ref=f1e266]
+      - paragraph [ref=f1e267]: 查看当前待处理量与异常；完成量和速率来自本次访问近一小时的浏览器观测，切换页面会保留采样。
+      - generic [ref=f1e268]:
+        - combobox "总览 namespace" [ref=f1e269]:
+          - option "全部 namespace" [selected]
+          - option "handoff_browser"
+        - textbox "搜索队列名" [ref=f1e270]
+        - generic [ref=f1e271]: 当前范围 3 / 3 个队列
+      - generic [ref=f1e272]:
+        - button "活跃队列 2/3. 点击查看进行中队列 →" [ref=f1e273] [cursor=pointer]:
+          - generic [ref=f1e274]: 活跃队列
+          - generic [ref=f1e275]: 2/3
+          - generic [ref=f1e276]: 当前范围内有待处理任务的队列
+          - generic [aria-hidden] [ref=f1e277]: 点击查看进行中队列 →
+        - button "总待处理 5. 点击查看进行中队列 →" [ref=f1e278] [cursor=pointer]:
+          - generic [ref=f1e279]: 总待处理
+          - generic [ref=f1e280]: "5"
+          - generic [ref=f1e281]: 排队 + 执行 + 延迟 + 旧重试
+          - generic [aria-hidden] [ref=f1e282]: 点击查看进行中队列 →
+        - generic [ref=f1e283]:
+          - generic [ref=f1e284]: 合计观测速率
+          - generic [ref=f1e285]: —
+          - generic [ref=f1e286]: 观测至少 30 秒后估算
+        - button "异常队列 2. 筛选并定位异常队列 →" [active] [ref=f1e287] [cursor=pointer]:
+          - generic [ref=f1e288]: 异常队列
+          - generic [ref=f1e289]: "2"
+          - generic [ref=f1e290]: 死信 / 无 Worker / 停滞 / 失联 / 过期
+          - generic [aria-hidden] [ref=f1e291]: 筛选并定位异常队列 →
+      - generic [ref=f1e292]:
+        - generic [ref=f1e293]:
+          - heading "待处理告警" [level=2] [ref=f1e294]
+          - link "查看全部 →" [ref=f1e295] [cursor=pointer]:
+            - /url: /alerts
+        - generic [ref=f1e296]:
+          - generic [ref=f1e297]: 无人消费
+          - strong [ref=f1e298]: handoff_browser:external
+          - generic [ref=f1e299]: ready 有 1 条任务，但没有在线 Worker
+          - link "定位" [ref=f1e300] [cursor=pointer]:
+            - /url: /queues/handoff_browser%3Aexternal?state=ready
+        - generic [ref=f1e301]:
+          - generic [ref=f1e302]: 无人消费
+          - strong [ref=f1e303]: handoff_browser:search
+          - generic [ref=f1e304]: ready 有 4 条任务，但没有在线 Worker
+          - link "定位" [ref=f1e305] [cursor=pointer]:
+            - /url: /queues/handoff_browser%3Asearch?state=ready
+      - generic [ref=f1e306]:
+        - heading "队列运行矩阵" [level=2] [ref=f1e307]
+        - generic [ref=f1e308]:
+          - button "全部" [ref=f1e309] [cursor=pointer]
+          - button "进行中" [ref=f1e310] [cursor=pointer]
+          - button "仅异常" [ref=f1e311] [cursor=pointer]
+      - paragraph [ref=f1e312]: 待处理构成： 排队 执行 延迟 旧重试 · ETA 仅估算无延迟队列
+      - generic "队列运行矩阵，可横向滚动" [ref=f1e317]:
+        - generic [ref=f1e318]:
+          - generic [aria-hidden] [ref=f1e319]:
+            - generic [ref=f1e320]: 队列
+            - generic [ref=f1e321]: 待处理构成
+            - generic [ref=f1e322]: 待处理
+            - generic [ref=f1e323]: 观测完成
+            - generic [ref=f1e324]: 条/min
+            - generic [ref=f1e325]: 预计/状态
+            - generic [ref=f1e326]: 异常
+          - generic [ref=f1e327]:
+            - button "▾ handoff_browser · 2 个队列 · 待处理 5 · 观测完成 — ⚠ 2" [expanded] [ref=f1e336] [cursor=pointer]:
+              - generic [ref=f1e329]: ▾
+              - generic [ref=f1e330]: handoff_browser
+              - generic [ref=f1e331]: · 2 个队列
+              - generic [ref=f1e332]: · 待处理 5
+              - generic [ref=f1e333]: · 观测完成 —
+              - generic [ref=f1e334]: ⚠ 2
+            - link "handoff_browser:external 排队 1 · 执行 0 · 延迟 0 · 旧重试 0 1 — — 无 Worker 无 Worker 指标需回填" [ref=f1e337] [cursor=pointer]:
+              - generic "handoff_browser:external" [ref=f1e338]
+              - img "排队 1 · 执行 0 · 延迟 0 · 旧重试 0" [ref=f1e339]
+              - generic [ref=f1e341]: "1"
+              - generic [ref=f1e342]: —
+              - generic [ref=f1e343]: —
+              - generic [ref=f1e344]: 无 Worker
+              - generic [ref=f1e345]:
+                - generic [ref=f1e346]: 无 Worker
+                - generic "旧队列需运行 rebuild-observation 回填监控索引" [ref=f1e347]: 指标需回填
+            - link "handoff_browser:search 排队 4 · 执行 0 · 延迟 0 · 旧重试 0 4 — — 无 Worker 无 Worker 指标需回填" [ref=f1e348] [cursor=pointer]:
+              - generic "handoff_browser:search" [ref=f1e349]
+              - img "排队 4 · 执行 0 · 延迟 0 · 旧重试 0" [ref=f1e350]
+              - generic [ref=f1e352]: "4"
+              - generic [ref=f1e353]: —
+              - generic [ref=f1e354]: —
+              - generic [ref=f1e355]: 无 Worker
+              - generic [ref=f1e356]:
+                - generic [ref=f1e357]: 无 Worker
+                - generic "旧队列需运行 rebuild-observation 回填监控索引" [ref=f1e358]: 指标需回填

@@ -34,7 +34,10 @@ def get_auth_settings() -> AuthSettings:
     enabled = bool(password) or forced
     username = os.environ.get("QTASK_DASHBOARD_USER", "admin")
     secret = os.environ.get("QTASK_DASHBOARD_SECRET", "") or password
-    session_ttl = int(os.environ.get("QTASK_DASHBOARD_SESSION_TTL", "86400"))
+    try:
+        session_ttl = int(os.environ.get("QTASK_DASHBOARD_SESSION_TTL", "86400"))
+    except ValueError:
+        session_ttl = 0
     secure_cookie = _truthy(os.environ.get("QTASK_DASHBOARD_SECURE_COOKIE"))
 
     return AuthSettings(
@@ -54,7 +57,7 @@ def auth_config_error(settings: Optional[AuthSettings] = None) -> Optional[str]:
     if not settings.password:
         return "QTASK_DASHBOARD_AUTH 已启用，但未设置 QTASK_DASHBOARD_PASSWORD"
     if settings.session_ttl <= 0:
-        return "QTASK_DASHBOARD_SESSION_TTL 必须大于 0"
+        return "QTASK_DASHBOARD_SESSION_TTL 必须为正整数"
     return None
 
 
@@ -64,9 +67,9 @@ def verify_credentials(username: str, password: str) -> bool:
         return True
     if auth_config_error(settings):
         return False
-    return hmac.compare_digest(username, settings.username) and hmac.compare_digest(
-        password,
-        settings.password,
+    return hmac.compare_digest(username.encode("utf-8"), settings.username.encode("utf-8")) and hmac.compare_digest(
+        password.encode("utf-8"),
+        settings.password.encode("utf-8"),
     )
 
 
@@ -89,7 +92,7 @@ def validate_session_token(token: Optional[str], now: Optional[int] = None) -> b
     settings = get_auth_settings()
     if not settings.enabled:
         return True
-    if not token or "." not in token or auth_config_error(settings):
+    if not token or not token.isascii() or "." not in token or auth_config_error(settings):
         return False
 
     encoded, signature = token.rsplit(".", 1)
@@ -106,7 +109,7 @@ def validate_session_token(token: Optional[str], now: Optional[int] = None) -> b
     return (
         payload.get("sub") == settings.username
         and isinstance(payload.get("exp"), int)
-        and int(payload["exp"]) >= current_time
+        and int(payload["exp"]) > current_time
     )
 
 

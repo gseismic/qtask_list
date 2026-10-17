@@ -2,6 +2,7 @@ import sqlite3
 import os
 import time
 import json
+import math
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -14,13 +15,26 @@ from .history import READ_TASK_RECORD_LUA, decode_task_record
 class Monitor:
     """Redis 内存监控器"""
 
-    def __init__(self, r: Any, threshold_mb: Optional[int] = None):
+    def __init__(self, r: Any, threshold_mb: float | None = None, *, use_maxmemory: bool = False):
+        if threshold_mb is not None and (not math.isfinite(threshold_mb) or threshold_mb < 0):
+            raise ValueError("memory threshold must be finite and >= 0")
         self.r = r
         self.threshold_mb = threshold_mb
+        self.use_maxmemory = use_maxmemory
+
+    def _memory_limit(self, info: Dict[str, Any]) -> tuple[float | None, str | None]:
+        limits = []
+        if self.threshold_mb:
+            limits.append((self.threshold_mb * 1024 * 1024, "configured"))
+        maximum = float(info.get("maxmemory") or 0)
+        if self.use_maxmemory and maximum > 0:
+            limits.append((maximum, "maxmemory"))
+        return min(limits) if limits else (None, None)
 
     def get_memory_info(self) -> Dict[str, Any]:
         """获取 Redis 内存统计信息"""
         info: Dict[str, Any] = self.r.info("memory")
+        limit, source = self._memory_limit(info)
         return {
             "used_memory_human": info.get("used_memory_human"),
             "used_memory_peak_human": info.get("used_memory_peak_human"),
@@ -28,21 +42,26 @@ class Monitor:
             "maxmemory_human": info.get("maxmemory_human"),
             "used_memory": info.get("used_memory"),
             "maxmemory": info.get("maxmemory"),
-            "status": "healthy" if self.check_health() else "warning",
+            "status": ("unconfigured" if limit is None else
+                       "warning" if info.get("used_memory", 0) >= limit else "healthy"),
+            "threshold_bytes": limit,
+            "threshold_source": source,
         }
 
     def check_health(self) -> bool:
         """检查内存是否在健康阈值内"""
-        if not self.threshold_mb:
+        if not self.threshold_mb and not self.use_maxmemory:
             return True
-
         info: Dict[str, Any] = self.r.info("memory")
+        limit, _source = self._memory_limit(info)
+        if limit is None:
+            return True
         used = info.get("used_memory", 0)
 
-        if used > self.threshold_mb * 1024 * 1024:
+        if used >= limit:
             logger.warning(
                 f"Redis memory usage ({info.get('used_memory_human')}) exceeds "
-                f"threshold ({self.threshold_mb} MB)!"
+                f"threshold ({limit / 1024 / 1024:g} MB)!"
             )
             return False
         return True

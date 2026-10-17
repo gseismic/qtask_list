@@ -1,0 +1,12 @@
+{
+  "url": "http://127.0.0.1:48937",
+  "redis_socket": "/tmp/qtask-handoff-browser-76em2zd2/redis.sock",
+  "task_ids": [
+    "4b701bde-5f35-4c8a-b05c-59b6e929f265",
+    "legacy_order_42",
+    "v1",
+    "旧任务-42",
+    "unindexed-legacy-id"
+  ],
+  "queue": "handoff_browser:search"
+}

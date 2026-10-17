@@ -96,18 +96,18 @@ export function toUnix(value: string): number | undefined {
   return Number.isFinite(timestamp) ? timestamp / 1000 : undefined;
 }
 
-export function TaskTable({ queue, filters, limit, onLimitChange, onOpenTask, reloadKey = 0,
-  autoRefresh, onPauseAutoRefresh, emptyHint,
+export function TaskTable({ queue, filters, limit = 50, onOpenTask, reloadKey = 0,
+  autoRefresh, onPauseAutoRefresh, emptyHint, onExactTaskMatch,
 }: {
   queue: string | null;
   filters: TaskFilters;
-  limit: number;
-  onLimitChange: (limit: number) => void;
+  limit?: number;
   onOpenTask: (task: TaskRow) => void;
   reloadKey?: number;
   autoRefresh: boolean;
   onPauseAutoRefresh: () => void;
   emptyHint?: React.ReactNode;
+  onExactTaskMatch?: (taskId: string) => void;
 }) {
   const { interval, refreshVersion } = useAppData();
   const queryKey = JSON.stringify([queue, filters.state, filters.search, filters.action,
@@ -128,13 +128,15 @@ export function TaskTable({ queue, filters, limit, onLimitChange, onOpenTask, re
       return queue === null ? api.tasks(options) : api.queueTasks({ queue, ...options });
     },
   });
-  const rawListCanExpand = queue !== null && !filters.search && !filters.action &&
-    ["ready", "processing", "retry", "dlq", "delay"].includes(filters.state) &&
-    page.rows !== null && page.rows.length >= limit && limit < 500;
-  const loadMore = () => {
-    if (page.nextCursor) page.loadMore();
-    else { onPauseAutoRefresh(); onLimitChange(Math.min(limit + 50, 500)); }
-  };
+  const searchMatch = useRef({ search: "", opened: false });
+  useEffect(() => {
+    const search = filters.search.trim();
+    if (searchMatch.current.search !== search) searchMatch.current = { search, opened: false };
+    if (onExactTaskMatch && search && page.exactTaskId === search && !searchMatch.current.opened) {
+      searchMatch.current.opened = true;
+      onExactTaskMatch(search);
+    }
+  }, [filters.search, page.exactTaskId, onExactTaskMatch]);
   if (page.loading && page.rows === null) return <Skeleton lines={10} height={16} />;
   return <>
     {page.error && <ErrorBanner error={page.error} onRetry={page.refresh} />}
@@ -152,7 +154,9 @@ export function TaskTable({ queue, filters, limit, onLimitChange, onOpenTask, re
         <tbody>{(page.rows ?? []).map((row, index) => {
           const state = taskState(row, String(row._state ?? filters.state));
           return <tr key={row.task_id ?? index} className="rowlink" tabIndex={0}
-            onClick={() => onOpenTask(row)} onKeyDown={(event) => { if (event.key === "Enter") onOpenTask(row); }}>
+            onClick={() => onOpenTask(row)} onKeyDown={(event) => {
+              if (event.key === "Enter") { event.preventDefault(); onOpenTask(row); }
+            }}>
             <td className="mono" title={row.task_id}>{shortId(row.task_id)}</td>
             <td className="mono">{row.action || "—"}</td>
             {queue === null && <td className="mono">{String(row._queue ?? row.queue ?? "—")}</td>}
@@ -167,8 +171,8 @@ export function TaskTable({ queue, filters, limit, onLimitChange, onOpenTask, re
       </div>}
     </div>
     {page.scanLimited && <p className="muted">本页已达到扫描上限，可继续搜索。</p>}
-    {(page.nextCursor || rawListCanExpand) && <div style={{ marginTop: 10 }}>
-      <button className="btn" onClick={loadMore} disabled={page.loading || page.loadingMore}>
+    {page.nextCursor && <div style={{ marginTop: 10 }}>
+      <button className="btn" onClick={page.loadMore} disabled={page.loading || page.loadingMore}>
         {page.loading || page.loadingMore ? "加载中…" : `加载更多（已显示 ${page.rows?.length ?? 0} 条）`}
       </button>
     </div>}

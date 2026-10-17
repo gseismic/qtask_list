@@ -60,6 +60,7 @@ class TestCLI:
         assert result.exit_code == 0
 
     def test_status_with_queue(self, runner, r):
+        r.zadd("qtask:queues", {"stockev_list:test": time.time()})
         r.lpush("stockev_list:test", make_msg("status-1", {"action": "status"}))
 
         result = runner.invoke(app, ["status"])
@@ -75,10 +76,13 @@ class TestCLI:
 
     def test_status_namespace_problem_filter_and_json(self, runner, r):
         # 值班脚本应只接收目标 namespace 的可行动异常，JSON 不混入表格文本。
+        r.zadd("qtask:queues", {name: time.time() for name in (
+            "stockev_list:status_bad", "stockev_list:status_ok", "testns:status_other",
+        )})
+        r.zadd("qtask:workers:stockev_list:status_ok", {"live": time.time()})
         r.lpush("stockev_list:status_bad", make_msg("status-bad"))
         r.lpush("stockev_list:status_ok", make_msg("status-ok"))
         r.set("stockev_list:status_ok:worker:live", str(time.time()), ex=120)
-        r.zadd("qtask:workers:stockev_list:status_ok", {"live": time.time()})
         r.lpush("testns:status_other", make_msg("status-other"))
 
         result = runner.invoke(app, ["status", "--namespace", "stockev_list", "--problems-only", "--json"])
@@ -95,6 +99,7 @@ class TestCLI:
     def test_status_table_and_single_json_include_operational_fields(self, runner, r):
         # 人工巡检应直接看到重试等待、过期和 Worker 数，单队列 JSON 供脚本复用。
         queue = "stockev_list:status_fields"
+        r.zadd("qtask:queues", {queue: time.time()})
         r.lpush(queue, make_msg("status-fields"))
         r.zadd(f"qtask:deadline:{queue}", {"status-fields": time.time() - 10})
         table = runner.invoke(app, ["status"])
@@ -395,6 +400,7 @@ class TestCLICleanHistory:
 
     def test_clean_history_all_queues(self, runner, r):
         old = time.time() - 16 * 86400
+        r.zadd("qtask:queues", {"stockev_list:clean_all_a": old, "testns:clean_all_b": old})
         for task_id in ("clean-all-1", "clean-all-2"):
             r.hset(f"qtask:task:{task_id}", mapping={
                 "task_id": task_id,

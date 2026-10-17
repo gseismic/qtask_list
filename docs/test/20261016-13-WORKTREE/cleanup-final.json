@@ -1,0 +1,6 @@
+{
+  "isolation": "private Unix socket Redis",
+  "redis_keys": 0,
+  "queue_response": [],
+  "same_dashboard_process": true
+}

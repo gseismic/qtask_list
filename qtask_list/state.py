@@ -841,17 +841,27 @@ if has_identity then
     generation = math.max(owner_generation + 1, 1)
 end
 
+local previous_replays = redis.call('HGET', KEYS[6], 'replayed_by') or ''
+local replayed_by = new_task_id
+if previous_replays ~= '' then
+    local ok, ids = pcall(cjson.decode, previous_replays)
+    if ok and type(ids) == 'table' and string.sub(previous_replays, 1, 1) == '[' then
+        table.insert(ids, new_task_id)
+        replayed_by = cjson.encode(ids)
+    else
+        replayed_by = previous_replays .. ',' .. new_task_id
+    end
+end
 if require_source then
     local removed = redis.call('LREM', KEYS[1], 1, source_message)
     if removed == 0 then return {'source_not_found'} end
 end
-
 local now = redis_now()
 redis.call(
     'HSET', KEYS[6],
     'operational_message', '0',
     'location', 'history',
-    'replayed_by', new_task_id,
+    'replayed_by', replayed_by,
     'updated_at', tostring(now)
 )
 redis.call('EXPIRE', KEYS[6], ttl_seconds)
@@ -987,7 +997,6 @@ CHECK_QUEUE_NAMESPACE_LUA = (
     + "assert_queue_namespace(ARGV[1])\nreturn 1"
 )
 
-
 REGISTER_PROCESSING_KEY_LUA = (
     _KEY_TYPES_LUA
     + "assert_key_type('qtask:queues', 'zset')\n"
@@ -1000,11 +1009,154 @@ return 1
 """
 )
 
+REGISTER_WORKER_LUA = (
+    _KEY_TYPES_LUA
+    + _QUEUE_NAMESPACE_LUA
+    + r"""
+assert_key_type(KEYS[1], 'zset')
+assert_key_type(KEYS[2], 'zset')
+assert_key_type(KEYS[3], 'string')
+assert_queue_namespace(ARGV[1])
+local now = tonumber(ARGV[2])
+local ttl = tonumber(ARGV[4])
+if not now or now ~= now or now == math.huge or now == -math.huge then
+    error('qtask invalid heartbeat timestamp')
+end
+if not ttl or ttl < 1 or ttl > 2147483647 or ttl ~= math.floor(ttl) then
+    error('qtask invalid heartbeat ttl')
+end
+redis.call('ZADD', KEYS[1], ARGV[2], ARGV[1])
+redis.call('ZADD', KEYS[2], ARGV[2], ARGV[3])
+redis.call('SET', KEYS[3], ARGV[2], 'EX', ARGV[4])
+return 1
+"""
+)
+
 PRUNE_WORKER_LUA = r"""
 if redis.call('EXISTS', KEYS[1]) == 0 and redis.call('LLEN', KEYS[2]) == 0 then
     return redis.call('ZREM', KEYS[3], ARGV[1])
 end
 return 0
+"""
+
+
+DELETE_QUEUE_LUA = _KEY_TYPES_LUA + _QUEUE_NAMESPACE_LUA + r"""
+local queue = ARGV[1]
+local owner_prefix = ARGV[2]
+local gc_prefix = ARGV[3]
+assert_key_type('qtask:queues', 'zset')
+assert_queue_namespace(queue)
+local hist = 'qtask:hist:' .. queue
+local workers = 'qtask:workers:' .. queue
+local processing = 'qtask:processing:' .. queue
+assert_key_type(hist, 'zset')
+assert_key_type(workers, 'zset')
+assert_key_type(processing, 'zset')
+
+local function glob_literal(value)
+    return (string.gsub(value, '[\\*?%[%]]', '\\%0'))
+end
+local function matching(pattern)
+    local keys = {}
+    local cursor = '0'
+    repeat
+        local page = redis.call('SCAN', cursor, 'MATCH', pattern, 'COUNT', 500)
+        cursor = page[1]
+        for _, key in ipairs(page[2]) do keys[key] = true end
+    until cursor == '0'
+    return keys
+end
+local escaped = glob_literal(queue)
+-- 心跳复核与删除在同一脚本中；其间不能插入登记、领取或投递。
+if next(matching(escaped .. ':worker:*')) ~= nil then
+    return redis.error_reply('qtask stop active workers before deleting the queue')
+end
+local lists = {[queue] = true, [queue .. ':retry'] = true,
+               [queue .. ':dlq'] = true, [queue .. ':processing'] = true}
+for _, key in ipairs(redis.call('ZRANGE', processing, 0, -1)) do lists[key] = true end
+for _, worker in ipairs(redis.call('ZRANGE', workers, 0, -1)) do
+    lists[queue .. ':processing:' .. worker] = true
+end
+for key in pairs(matching(escaped .. ':processing:*')) do lists[key] = true end
+local delay = queue .. ':delay'
+assert_key_type(delay, 'zset')
+for key in pairs(lists) do assert_key_type(key, 'list') end
+
+local ids = {}
+local function remember(raw)
+    local ok, message = pcall(cjson.decode, raw)
+    if ok and type(message) == 'table' and message['task_id'] then
+        ids[tostring(message['task_id'])] = true
+    end
+end
+for key in pairs(lists) do
+    local count = redis.call('LLEN', key)
+    for offset = 0, count - 1, 500 do
+        for _, raw in ipairs(redis.call('LRANGE', key, offset, offset + 499)) do remember(raw) end
+    end
+end
+local function scan_set(key, visit)
+    local cursor = '0'
+    repeat
+        local page = redis.call('ZSCAN', key, cursor, 'COUNT', 500)
+        cursor = page[1]
+        for index = 1, #page[2], 2 do visit(page[2][index]) end
+    until cursor == '0'
+end
+scan_set(delay, remember)
+scan_set(hist, function(id) ids[id] = true end)
+
+local records = {}
+local garbage = {}
+-- 所有类型、所属队列和回收日志均先校验，避免 Lua 错误留下部分删除。
+for id in pairs(ids) do
+    local key = 'qtask:task:' .. id
+    assert_key_type(key, 'hash,string')
+    local kind = redis.call('TYPE', key)['ok']
+    local owner, dedicated, storage, ref
+    if kind == 'hash' then
+        local fields = redis.call('HMGET', key, '_queue', 'payload_dedicated', 'payload_storage_id', 'payload_ref')
+        owner, dedicated, storage, ref = fields[1], fields[2], fields[3], fields[4]
+    elseif kind == 'string' then
+        local ok, data = pcall(cjson.decode, redis.call('GET', key))
+        if ok and type(data) == 'table' then
+            owner, dedicated = data['_queue'], tostring(data['payload_dedicated'] or '')
+            storage, ref = data['payload_storage_id'], data['payload_ref']
+        end
+    end
+    if owner and owner ~= '' and owner ~= queue then
+        error('qtask queue deletion ownership conflict: ' .. id)
+    end
+    if kind ~= 'none' then records[key] = true end
+    if dedicated == '1' and storage and storage ~= '' and ref and ref ~= '' then
+        local log = gc_prefix .. ':' .. storage
+        assert_key_type(log, 'zset')
+        garbage[log] = garbage[log] or {}
+        garbage[log][ref] = true
+    end
+end
+local keys = {[delay] = true, [hist] = true, [workers] = true, [processing] = true,
+              ['qtask:metrics:' .. queue] = true, ['qtask:deadline:' .. queue] = true}
+for key in pairs(lists) do keys[key] = true end
+for _, pattern in ipairs({escaped .. ':dedup:*', glob_literal(owner_prefix) .. '*',
+                          escaped .. ':supersede:*', escaped .. ':lease:*',
+                          escaped .. ':maintenance:*'}) do
+    for key in pairs(matching(pattern)) do keys[key] = true end
+end
+local clock = redis.call('TIME')
+local now = tonumber(clock[1]) + tonumber(clock[2]) / 1000000
+for log, objects in pairs(garbage) do
+    for ref in pairs(objects) do redis.call('ZADD', log, now, ref) end
+end
+local history_records, deleted_keys = 0, 0
+for key in pairs(records) do
+    local removed = redis.call('DEL', key)
+    history_records = history_records + removed
+    deleted_keys = deleted_keys + removed
+end
+for key in pairs(keys) do deleted_keys = deleted_keys + redis.call('DEL', key) end
+redis.call('ZREM', 'qtask:queues', queue)
+return {deleted_keys, history_records}
 """
 
 

@@ -54,10 +54,6 @@ def cleanup(client):
     for queue in client.zrange("qtask:queues", 0, -1):
         if queue.startswith("qtask_dash_test:"):
             client.zrem("qtask:queues", queue)
-    dashboard_main.admin._legacy_queue_cache.clear()
-    dashboard_main.admin._legacy_queue_discovered_at = float("-inf")
-    dashboard_main.admin._legacy_worker_cache.clear()
-    dashboard_main.admin._legacy_worker_discovered_at = float("-inf")
 
 
 def make_msg(task_id: str, payload: dict | None = None) -> str:
@@ -69,6 +65,7 @@ def seed_expired_tasks(client, queue: str, count: int, prefix: str, status: str 
     now = time.time()
     task_ids = []
     pipe = client.pipeline()
+    pipe.zadd("qtask:queues", {queue: now})
     for index in range(count):
         task_id = f"{prefix}-{index:03d}"
         task_ids.append(task_id)
@@ -115,6 +112,7 @@ def message_ids(client, key: str) -> list[str]:
 
 def test_dashboard_lists_queues_and_state_tasks(client, r):
     queue = "qtask_dash_test:day-kline:fetch"
+    r.zadd("qtask:queues", {queue: time.time()})
     r.lpush(queue, make_msg("ready-1", {"action": "scrape_day_kline", "symbol": "sh600000"}))
     r.lpush(f"{queue}:dlq", make_msg("dlq-1", {"action": "scrape_day_kline"}))
 
@@ -145,6 +143,85 @@ def test_dashboard_ignores_foreign_redis_lists(client, r):
         assert not any(item["name"] == foreign_key for item in response.json())
     finally:
         r.delete(foreign_key)
+
+
+def test_dashboard_observes_external_registry_changes_without_restart(client, r):
+    """外部注册项增删立即生效；遗留数据不能重新发现已删除队列。"""
+    queue = "qtask_dash_test:external-delete"
+    r.zadd("qtask:queues", {queue: time.time()})
+    r.lpush(queue, make_msg("external-delete-task"))
+    r.zadd(f"qtask:hist:{queue}", {"external-delete-task": time.time()})
+    assert queue in {row["name"] for row in client.get("/api/queues").json()}
+    with r.client() as external:
+        external.zrem("qtask:queues", queue)
+        response = client.get("/api/queues")
+        assert response.status_code == 200
+        assert queue not in {row["name"] for row in response.json()}
+        external.zadd("qtask:queues", {queue: time.time()})
+    assert queue in {row["name"] for row in client.get("/api/queues").json()}
+
+
+@pytest.mark.parametrize("endpoint", ["/api/tasks", "/api/queue/{queue}/tasks"])
+@pytest.mark.parametrize("task_id", ["4b701bde-5f35-4c8a-b05c-59b6e929f265", "legacy_order_42",
+                                      "v1", "旧任务-42"])
+def test_task_search_confirms_exact_id_without_format_guessing(client, r, endpoint, task_id):
+    queue = "qtask_dash_test:exact-search"
+    r.zadd("qtask:queues", {queue: time.time()})
+    r.hset(f"qtask:task:{task_id}", mapping={"task_id": task_id, "status": "pending",
+                                            "action": "browser_test_dlq", "created_at": time.time()})
+    r.zadd(f"qtask:hist:{queue}", {task_id: time.time()})
+    try:
+        response = client.get(endpoint.format(queue=queue), params={"search": f" {task_id} "})
+        assert response.status_code == 200
+        assert response.json()["exact_task_id"] == task_id
+    finally:
+        r.delete(f"qtask:task:{task_id}")
+
+
+@pytest.mark.parametrize("search", ["browser_test_dlq", "missing_task_id", "", "   "])
+def test_task_keyword_search_has_no_exact_id(client, r, search):
+    queue = "qtask_dash_test:keyword-search"
+    r.zadd("qtask:queues", {queue: time.time()})
+    task_id = "keyword-search-task"
+    r.hset(f"qtask:task:{task_id}", mapping={"task_id": task_id, "status": "pending",
+                                            "action": "browser_test_dlq", "created_at": time.time()})
+    r.zadd(f"qtask:hist:{queue}", {task_id: time.time()})
+    response = client.get("/api/tasks", params={"search": search})
+    assert response.status_code == 200
+    assert response.json()["exact_task_id"] is None
+    if search == "browser_test_dlq":
+        assert [row["task_id"] for row in response.json()["tasks"]] == [task_id]
+
+
+def test_exact_id_lookup_is_independent_of_list_filters_and_history_index(client, r):
+    task_id = "unindexed-legacy-id"
+    r.set(f"qtask:task:{task_id}", json.dumps({"task_id": task_id, "status": "completed"}))
+    try:
+        response = client.get("/api/tasks", params={"search": task_id, "status": "processing",
+                                                    "action": "other", "created_after": time.time()})
+        assert response.status_code == 200
+        assert response.json()["tasks"] == []
+        assert response.json()["exact_task_id"] == task_id
+    finally:
+        r.delete(f"qtask:task:{task_id}")
+
+
+def test_task_search_only_resolves_exact_id_on_first_page(client, r):
+    queue = "qtask_dash_test:exact-search-pages"
+    r.zadd("qtask:queues", {queue: time.time()})
+    task_id = "exact-search-task"
+    now = time.time()
+    for offset, identifier in enumerate([task_id, "exact-search-other"]):
+        r.hset(f"qtask:task:{identifier}", mapping={"task_id": identifier, "action": task_id,
+                                                   "status": "pending", "created_at": now - offset})
+        r.zadd(f"qtask:hist:{queue}", {identifier: now - offset})
+    params = {"search": task_id, "limit": 1}
+    first = client.get("/api/tasks", params=params).json()
+    assert first["exact_task_id"] == task_id
+    assert first["next_cursor"]
+    second = client.get("/api/tasks", params={**params, "cursor": first["next_cursor"]}).json()
+    assert second["exact_task_id"] is None
+    assert len(second["tasks"]) == 1
 
 
 def test_dashboard_requeues_single_dlq_task(client, r):

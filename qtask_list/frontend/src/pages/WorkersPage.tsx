@@ -17,6 +17,8 @@ export function WorkersPage() {
   const memPct =
     mem?.used_memory && mem?.maxmemory && mem.maxmemory > 0 ? Math.round((mem.used_memory / mem.maxmemory) * 100) : null;
   const memDanger = mem?.status === "warning";
+  const memoryEnabled = mem?.threshold_bytes != null;
+  const thresholdText = memoryEnabled ? `${((mem?.threshold_bytes ?? 0) / 1024 / 1024).toLocaleString("zh-CN", { maximumFractionDigits: 2 })} MiB` : "未启用";
 
   const recover = async (queue: string, workerId: string) => {
     if (busy) return;
@@ -50,7 +52,7 @@ export function WorkersPage() {
           label="Redis 内存"
           value={memPct !== null ? `${memPct}%` : (mem?.used_memory_human ?? "—")}
           danger={memDanger}
-          hint={mem?.maxmemory_human ? `峰值 ${mem.used_memory_peak_human ?? "—"} · 上限 ${mem.maxmemory_human}` : "未设置 maxmemory"}
+          hint={`峰值 ${mem?.used_memory_peak_human ?? "—"} · 告警阈值 ${thresholdText}`}
         />
       </div>}
 
@@ -129,9 +131,11 @@ export function WorkersPage() {
           <dt>峰值</dt>
           <dd className="num">{mem?.used_memory_peak_human ?? "—"}</dd>
           <dt>上限 maxmemory</dt>
-          <dd className="num">{mem?.maxmemory_human ?? "未设置"}</dd>
+          <dd className="num">{mem?.maxmemory ? mem.maxmemory_human : "未设置"}</dd>
+          <dt>告警阈值</dt>
+          <dd className="num">{thresholdText}{mem?.threshold_source === "maxmemory" ? "（Redis 上限）" : memoryEnabled ? "（配置阈值）" : "；未配置阈值或 maxmemory"}</dd>
           <dt>状态</dt>
-          <dd>{health.status === "error" ? <span className="badge c-danger">不可用</span> : memDanger ? <span className="badge c-danger">超过告警阈值</span> : <span className="badge c-success">正常</span>}</dd>
+          <dd>{error ? <span className="badge c-warning">数据已过时</span> : health.status === "error" ? <span className="badge c-danger">不可用</span> : !memoryEnabled ? <span className="badge c-muted">内存告警未启用</span> : memDanger ? <span className="badge c-danger">达到告警阈值</span> : <span className="badge c-success">正常</span>}</dd>
         </div>
       </div>}
 

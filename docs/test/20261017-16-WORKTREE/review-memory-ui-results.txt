@@ -1,0 +1,24 @@
+### Result
+{"memory":{"used_memory_human":"4.08M","used_memory_peak_human":"9.75M","used_memory_lua_human":"200.00K","maxmemory_human":"1.00M","used_memory":4279760,"maxmemory":1048576,"status":"healthy"},"displayedState":"正常","redirectCheck":{"next":"/\\review-redirect.invalid/","safeNext":"/\\review-redirect.invalid/","target":"http://review-redirect.invalid/"}}
+### Ran Playwright code
+```js
+await (async page => {
+  const origin = 'http://127.0.0.1:33147';
+  await page.goto(`${origin}/workers`);
+  await page.locator('.topbar select').selectOption('0');
+  await page.waitForFunction(() => document.querySelectorAll('.kv dd').length === 4);
+  const health = await page.evaluate(() => fetch('/api/health').then(response => response.json()));
+  const state = await page.locator('.kv dd').last().innerText();
+  const nextUrl = '/\\review-redirect.invalid/';
+  const redirectCheck = await page.evaluate(nextUrl => {
+    const safeNext = nextUrl.startsWith('/') && !nextUrl.startsWith('//') ? nextUrl : '/';
+    return { next: nextUrl, safeNext, target: new URL(safeNext, location.origin).href };
+  }, nextUrl);
+  await page.screenshot({ path: '/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/docs/test/20261017-16-WORKTREE/browser/review-memory-over-limit-healthy.png' });
+  return { memory: health.memory, displayedState: state, redirectCheck };
+}
+)(page);
+```
+### Page
+- Page URL: http://127.0.0.1:33147/workers
+- Page Title: qtask_list Dashboard

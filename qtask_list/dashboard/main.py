@@ -1,11 +1,12 @@
 import os
+import math
 from datetime import datetime
 from typing import Any, Dict, Optional
 
 import redis
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -22,18 +23,43 @@ from qtask_list.dashboard.auth import (
 from qtask_list.admin import QueueAdmin, QueueState
 from qtask_list.archiver import Monitor
 from qtask_list.models import DuplicateAction, IdentityPolicy
+from qtask_list.errors import RemoteStorageError
 from qtask_list.storage import RemoteStorage
 from qtask_list.security import redis_endpoint_label
 
 
 app = FastAPI(title="qtask_list Dashboard")
 
+
+@app.exception_handler(redis.RedisError)
+async def redis_failure(_request: Request, _error: redis.RedisError):
+    return JSONResponse(status_code=503, content={"detail": "Redis 操作失败，请刷新核对结果后再重试"})
+
+
+@app.exception_handler(RemoteStorageError)
+async def storage_failure(_request: Request, error: RemoteStorageError):
+    return JSONResponse(status_code=503 if error.retryable else 502,
+                        content={"detail": f"外部存储操作失败（{error.code}），请核对配置及任务状态后重试"})
+
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 STORAGE_URL = os.environ.get("QTASK_STORAGE_URL", "")
 redis_client: Any = redis.from_url(REDIS_URL, decode_responses=True)
 storage = RemoteStorage(STORAGE_URL) if STORAGE_URL else None
 admin = QueueAdmin(redis_url=REDIS_URL, redis_client=redis_client, storage=storage)
-monitor = Monitor(redis_client)
+
+
+def _create_monitor(client: Any) -> Monitor:
+    raw = os.environ.get("QTASK_DASHBOARD_MEMORY_THRESHOLD_MB", "").strip()
+    try:
+        threshold = float(raw) if raw else None
+    except ValueError as exc:
+        raise ValueError("QTASK_DASHBOARD_MEMORY_THRESHOLD_MB 必须是有限正数") from exc
+    if threshold is not None and (not math.isfinite(threshold) or threshold <= 0):
+        raise ValueError("QTASK_DASHBOARD_MEMORY_THRESHOLD_MB 必须是有限正数")
+    return Monitor(client, threshold_mb=threshold, use_maxmemory=True)
+
+
+monitor = _create_monitor(redis_client)
 
 BASE_DIR = os.path.dirname(__file__)
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
@@ -109,6 +135,7 @@ class ReplayTaskRequest(BaseModel):
     replace_payload: bool = False
     replace_logical_key: bool = False
     action: Optional[str] = None
+    max_attempts: Optional[int] = Field(default=None, ge=1, strict=True)
 
 
 class LoginRequest(BaseModel):
@@ -122,9 +149,9 @@ def login_page(request: Request):
     if not settings.enabled or is_request_authenticated(request):
         return RedirectResponse("/")
     return templates.TemplateResponse(
-        "login.html",
-        {
-            "request": request,
+        request=request,
+        name="login.html",
+        context={
             "username": settings.username,
             "config_error": auth_config_error(settings),
         },
@@ -212,12 +239,14 @@ def api_actions(
     return sorted(actions)
 
 
+@app.get("/api/queues/detail")
 @app.get("/api/queue/{name}")
 def api_queue(name: str, _auth: None = Depends(require_auth)):
     stats = admin.queue_stats(name)
     return {"name": name, "stats": stats, "workers": admin.list_workers(name)}
 
 
+@app.get("/api/queues/tasks")
 @app.get("/api/queue/{name}/tasks")
 def api_queue_tasks(
     name: str,
@@ -232,36 +261,24 @@ def api_queue_tasks(
     completed_before: Optional[float] = Query(None, description="Unix timestamp"),
     _auth: None = Depends(require_auth),
 ):
-    if action or search or state in {QueueState.all, QueueState.history, QueueState.completed,
-                 QueueState.failed, QueueState.skipped, QueueState.cancelled,
-                 QueueState.retry_wait, QueueState.deadline_missed, QueueState.expired}:
-        try:
-            page = admin.search_tasks_page(
-                [name], state=state, action=action, search=search, limit=limit, cursor=cursor,
-                created_after=created_after, created_before=created_before,
-                completed_after=completed_after, completed_before=completed_before,
-            )
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return {"queue": name, "state": state.value, **page}
-    tasks = admin.list_tasks(
-        name,
-        state=state,
-        limit=limit,
-        search=search,
-        created_after=created_after,
-        created_before=created_before,
-        completed_after=completed_after,
-        completed_before=completed_before,
-    )
-    return {"queue": name, "state": state.value, "tasks": tasks, "count": len(tasks)}
+    try:
+        page = admin.search_tasks_page(
+            [name], state=state, action=action, search=search, limit=limit, cursor=cursor,
+            created_after=created_after, created_before=created_before,
+            completed_after=completed_after, completed_before=completed_before,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"queue": name, "state": state.value, **page}
 
 
+@app.get("/api/queues/diagnose")
 @app.get("/api/queue/{name}/diagnose")
 def api_queue_diagnose(name: str, _auth: None = Depends(require_auth)):
     return admin.diagnose(name)
 
 
+@app.post("/api/queues/tasks")
 @app.post("/api/queue/{name}/tasks")
 def api_push_task(
     name: str,
@@ -296,11 +313,13 @@ def api_push_task(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@app.post("/api/queues/retry")
 @app.post("/api/queue/{name}/retry")
 def api_retry_queue(name: str, _auth: None = Depends(require_auth)):
     return admin.move_retry(name)
 
 
+@app.post("/api/queues/requeue-dlq")
 @app.post("/api/queue/{name}/requeue-dlq")
 def api_requeue_dlq(
     name: str,
@@ -309,9 +328,15 @@ def api_requeue_dlq(
 ):
     if request.task_id is None and not request.confirm_bulk:
         raise HTTPException(status_code=400, detail="批量 replay DLQ 需要 confirm_bulk=true")
-    return admin.requeue_dlq(name, task_id=request.task_id)
+    try:
+        return admin.requeue_dlq(name, task_id=request.task_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@app.get("/api/queues/expired")
 @app.get("/api/queue/{name}/expired")
 def api_queue_expired(
     name: str,
@@ -327,6 +352,7 @@ class RequeueExpiredRequest(BaseModel):
     start_deadline_at: datetime
 
 
+@app.post("/api/queues/requeue-expired")
 @app.post("/api/queue/{name}/requeue-expired")
 def api_requeue_expired(
     name: str,
@@ -343,6 +369,7 @@ def api_requeue_expired(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@app.post("/api/queues/recover")
 @app.post("/api/queue/{name}/recover")
 def api_recover_queue(
     name: str,
@@ -357,6 +384,7 @@ def api_recover_queue(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@app.post("/api/queues/clear")
 @app.post("/api/queue/{name}/clear")
 def api_clear_queue(
     name: str,
@@ -412,6 +440,7 @@ def api_tasks(
     return {**page, "filters": {"queue": queue, "status": status, "action": action, "search": search}}
 
 
+@app.get("/api/tasks/detail")
 @app.get("/api/task/{task_id}")
 def api_task(task_id: str, _auth: None = Depends(require_auth)):
     task = admin.get_task(task_id)
@@ -420,6 +449,7 @@ def api_task(task_id: str, _auth: None = Depends(require_auth)):
     raise HTTPException(status_code=404, detail="Task not found")
 
 
+@app.get("/api/tasks/payload")
 @app.get("/api/task/{task_id}/payload")
 def api_task_payload(
     task_id: str,
@@ -430,6 +460,7 @@ def api_task_payload(
     return admin.resolve_payload(task_id, queue, state)
 
 
+@app.post("/api/tasks/requeue")
 @app.post("/api/task/{task_id}/requeue")
 def api_task_requeue(
     task_id: str,
@@ -447,6 +478,7 @@ def api_task_requeue(
     return result
 
 
+@app.post("/api/tasks/replay")
 @app.post("/api/task/{task_id}/replay")
 def api_task_replay(
     task_id: str,
@@ -463,11 +495,13 @@ def api_task_replay(
             replace_payload=request.replace_payload,
             replace_logical_key=request.replace_logical_key,
             action=request.action,
+            max_attempts=request.max_attempts,
         )
     except (KeyError, ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@app.delete("/api/tasks/detail")
 @app.delete("/api/task/{task_id}")
 def api_task_delete(
     task_id: str,
@@ -480,6 +514,7 @@ def api_task_delete(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@app.delete("/api/queues/detail")
 @app.delete("/api/queue/{name}")
 def api_delete_queue(
     name: str,
@@ -499,7 +534,7 @@ def index(request: Request):
     settings = get_auth_settings()
     if settings.enabled and not is_request_authenticated(request):
         return RedirectResponse("/login")
-    return FileResponse(SPA_INDEX)
+    return FileResponse(SPA_INDEX, headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/{full_path:path}", include_in_schema=False)
@@ -513,10 +548,11 @@ def spa_fallback(full_path: str, request: Request):
         return RedirectResponse("/login")
     candidate = os.path.realpath(os.path.join(SPA_DIR, full_path))
     if candidate.startswith(os.path.realpath(SPA_DIR) + os.sep) and os.path.isfile(candidate):
-        return FileResponse(candidate)
-    return FileResponse(SPA_INDEX)
+        return FileResponse(candidate, headers={"Cache-Control": "no-cache"})
+    return FileResponse(SPA_INDEX, headers={"Cache-Control": "no-cache"})
 
 
+@app.post("/api/queues/clean-history")
 @app.post("/api/queue/{name}/clean-history")
 def api_clean_history(
     name: str,

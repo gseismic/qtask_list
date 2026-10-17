@@ -1,0 +1,17 @@
+{
+  "memory": {
+    "used_memory_human": "4.08M",
+    "used_memory_peak_human": "9.75M",
+    "used_memory_lua_human": "200.00K",
+    "maxmemory_human": "1.00M",
+    "used_memory": 4279760,
+    "maxmemory": 1048576,
+    "status": "healthy"
+  },
+  "displayedState": "正常",
+  "redirectCheck": {
+    "next": "/\\review-redirect.invalid/",
+    "safeNext": "/\\review-redirect.invalid/",
+    "target": "http://review-redirect.invalid/"
+  }
+}

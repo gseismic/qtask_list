@@ -1,0 +1,55 @@
+- generic [ref=f3e3]:
+  - complementary [ref=f3e4]:
+    - generic [ref=f3e5]:
+      - generic [ref=f3e6]: Q
+      - generic [ref=f3e7]:
+        - generic [ref=f3e8]: qtask_list
+        - generic [ref=f3e9]: 管理后台
+    - navigation [ref=f3e10]:
+      - link "📊 总览" [ref=f3e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f3e12]: 📊
+        - generic [ref=f3e13]: 总览
+      - link "📋 队列" [ref=f3e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f3e15]: 📋
+        - generic [ref=f3e16]: 队列
+      - link "🔍 任务" [ref=f3e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f3e18]: 🔍
+        - generic [ref=f3e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f3e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f3e21]: 🧑‍🏭
+        - generic [ref=f3e22]: Worker
+      - link "🔔 告警" [ref=f3e73] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f3e24]: 🔔
+        - generic [ref=f3e25]: 告警
+      - link "📖 教程" [ref=f3e27] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f3e28]: 📖
+        - generic [ref=f3e29]: 教程
+    - generic [ref=f3e30]: v0.2.0 · Redis 任务队列
+  - generic [ref=f3e31]:
+    - banner [ref=f3e32]:
+      - generic "Redis 连接正常" [ref=f3e33]: 已连接
+      - generic "2026/10/16 13:12:15" [ref=f3e75]: 更新于 13:12:15
+      - button "刷新" [active] [ref=f3e36] [cursor=pointer]
+      - generic [ref=f3e37]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f3e38]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f3e39] [cursor=pointer]
+    - generic [ref=f3e40]:
+      - heading "队列" [level=1] [ref=f3e41]
+      - paragraph [ref=f3e42]: 按 namespace 管理队列。色条显示当前排队、执行、延迟与旧重试构成；速率与 ETA 为浏览器观测估计。
+      - generic [ref=f3e76]:
+        - generic [ref=f3e77]: 📭
+        - generic [ref=f3e78]: 没有队列，去投递第一条任务
+        - text: 用
+        - code [ref=f3e79]: qtask push
+        - text: 投递，或启动你的 Worker 后回来看这里。

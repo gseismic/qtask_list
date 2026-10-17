@@ -14,7 +14,8 @@ import redis
 import zstandard
 
 from .clock import Clock, SystemClock
-from .history import READ_TASK_RECORD_LUA, decode_task_record, read_task_record
+from .errors import RemoteStorageError
+from .history import READ_HISTORY_PAGE_LUA, READ_TASK_RECORD_LUA, decode_task_record, read_task_record
 from .models import (
     DuplicateAction,
     EnqueueResult,
@@ -24,7 +25,7 @@ from .models import (
     TaskSpec,
 )
 from .queue import SmartQueue
-from .state import PRUNE_WORKER_LUA
+from .state import DELETE_QUEUE_LUA, PRUNE_WORKER_LUA
 from .storage import RemoteStorage
 
 
@@ -72,10 +73,6 @@ class QueueAdmin:
         self.ttl_days = ttl_days
         self.history_mode = HistoryMode(history_mode)
         self.clock = clock or SystemClock()
-        self._legacy_queue_cache: set[str] = set()
-        self._legacy_queue_discovered_at = float("-inf")
-        self._legacy_worker_cache: set[tuple[str, str]] = set()
-        self._legacy_worker_discovered_at = float("-inf")
 
     # ==================== Queue Discovery ====================
 
@@ -90,36 +87,8 @@ class QueueAdmin:
         ]
 
     def queue_names(self) -> List[str]:
-        queues = set(self.r.zrange("qtask:queues", 0, -1))
-        # 旧版队列无注册表；全键空间发现最多每小时执行一次。
-        if time.monotonic() - self._legacy_queue_discovered_at < 3600:
-            return sorted(queues | self._legacy_queue_cache)
-        self._legacy_queue_discovered_at = time.monotonic()
-        legacy: set[str] = set()
-        for key in self.r.scan_iter("qtask:hist:*"):
-            legacy.add(key.replace("qtask:hist:", ""))
-
-        for key in self.r.scan_iter("*"):
-            if self._is_state_key(key) or ":hist:" in key or ":task:" in key:
-                continue
-            try:
-                if self.r.type(key) == "list" and self._list_contains_qtask_message(key):
-                    legacy.add(key)
-            except redis.RedisError:
-                continue
-
-        for suffix in [":retry", ":dlq", ":processing"]:
-            for key in self.r.scan_iter(f"*{suffix}"):
-                if self._list_contains_qtask_message(key):
-                    legacy.add(key[: -len(suffix)])
-        for key in self.r.scan_iter("*:delay"):
-            if self._zset_contains_qtask_message(key):
-                legacy.add(key[: -len(":delay")])
-        for key in self.r.scan_iter("*:processing:*"):
-            if self._list_contains_qtask_message(key):
-                legacy.add(key.split(":processing:", 1)[0])
-        self._legacy_queue_cache = legacy
-        return sorted(queues | legacy)
+        """实时读取已登记的逻辑队列；不根据状态键或历史推测队列存在。"""
+        return sorted(self.r.zrange("qtask:queues", 0, -1))
 
     def queue_stats(
         self, queue_name: str, *, workers: Optional[List[Dict[str, Any]]] = None
@@ -291,11 +260,20 @@ class QueueAdmin:
         cursor: Optional[str] = None,
         scan_limit: int = 5000,
     ) -> Dict[str, Any]:
-        """按历史创建时间游标扫描；queues=None 固定查询开始时的全部队列。"""
+        """按历史创建时间游标扫描；queues=None 固定查询开始时的全部队列。
+
+        第一页的 exact_task_id 确认去除首尾空白后 search 对应的任务记录，
+        用于独立于列表筛选的精确定位；支持旧字符串 ID，未命中或分页时为 None。
+        """
         if limit < 1 or limit > 500 or scan_limit < limit:
             raise ValueError("invalid search limits")
         selected = QueueState(state)
         mode = "all" if queues is None else "explicit"
+        container_states = {QueueState.ready, QueueState.processing, QueueState.retry,
+                            QueueState.dlq, QueueState.delay}
+        raw_position = None
+        history_done = False
+        raw_done = selected not in container_states
         if cursor:
             try:
                 if len(cursor) > 32768:
@@ -308,60 +286,77 @@ class QueueAdmin:
                     if len(decoded) > 65536 or not decompressor.eof or decompressor.unused_data:
                         raise ValueError("invalid compressed cursor")
                 marker = json.loads(decoded)
-                if not isinstance(marker, dict):
+                if not isinstance(marker, dict) or marker.get("version") != 2:
                     raise ValueError("invalid cursor structure")
                 snapshot = marker.get("names")
-                if snapshot is None:
-                    # PLAN-020 游标仍可在原队列集合不变时继续使用。
-                    names = sorted(set(self.queue_names() if queues is None else queues))
-                else:
-                    if (
-                        not isinstance(snapshot, list)
-                        or any(not isinstance(name, str) or not name for name in snapshot)
-                        or snapshot != sorted(set(snapshot))
-                        or marker.get("mode") != mode
-                    ):
-                        raise ValueError("invalid cursor queues")
-                    names = snapshot
-                    if queues is not None and names != sorted(set(queues)):
-                        raise ValueError("cursor queues changed")
+                if (
+                    not isinstance(snapshot, list)
+                    or any(not isinstance(name, str) or not name for name in snapshot)
+                    or snapshot != sorted(set(snapshot))
+                    or marker.get("mode") != mode
+                ):
+                    raise ValueError("invalid cursor queues")
+                names = snapshot
+                if queues is not None and names != sorted(set(queues)):
+                    raise ValueError("cursor queues changed")
                 fingerprint = hashlib.sha256(json.dumps(
                     [names, selected.value, action, search, created_after, created_before,
                      completed_after, completed_before], ensure_ascii=False
                 ).encode()).hexdigest()
                 if marker["fingerprint"] != fingerprint:
                     raise ValueError("cursor filters changed")
-                offsets = [int(value) for value in marker["offsets"]]
-                if len(offsets) != len(names) or any(
-                    value < 0 or value > 1_000_000_000 for value in offsets
-                ):
-                    raise ValueError("invalid cursor offsets")
+                anchors = marker["anchors"]
+                if not isinstance(anchors, list) or len(anchors) != len(names):
+                    raise ValueError("invalid cursor anchors")
+                for anchor in anchors:
+                    if anchor is not None and (
+                        not isinstance(anchor, list) or len(anchor) != 2
+                        or not isinstance(anchor[0], (int, float)) or not math.isfinite(anchor[0])
+                        or not isinstance(anchor[1], str)
+                    ):
+                        raise ValueError("invalid cursor anchor")
                 cutoff = float(marker["cutoff"])
-                if not math.isfinite(cutoff) or cutoff <= 0:
+                if not math.isfinite(cutoff):
                     raise ValueError("invalid cursor timestamp")
+                history_done = marker.get("history_done") is True
+                raw_done = marker.get("raw_done") is True or selected not in container_states
+                raw_position = marker.get("raw")
+                if raw_position is not None and (
+                    not isinstance(raw_position, dict)
+                    or type(raw_position.get("queue")) is not int
+                    or not 0 <= raw_position["queue"] < len(names)
+                    or not isinstance(raw_position.get("key"), str)
+                    or type(raw_position.get("offset")) is not int
+                    or not 0 <= raw_position["offset"] <= 1_000_000_000
+                    or not isinstance(raw_position.get("stamp", ""), str)
+                ):
+                    raise ValueError("invalid container cursor")
             except (KeyError, TypeError, ValueError, OverflowError, binascii.Error, zlib.error) as exc:
-                raise ValueError("invalid search cursor") from exc
+                raise ValueError("invalid search cursor; 请刷新第一页后重试") from exc
         else:
             names = sorted(set(self.queue_names() if queues is None else queues))
             fingerprint = hashlib.sha256(json.dumps(
                 [names, selected.value, action, search, created_after, created_before,
                  completed_after, completed_before], ensure_ascii=False
             ).encode()).hexdigest()
-            offsets = [0] * len(names)
+            anchors = [None] * len(names)
             cutoff = self.clock.now()
 
         buffers: list[list[tuple[str, float, Optional[Dict[str, Any]]]]] = [[] for _ in names]
         positions = [0] * len(names)
-        exhausted = [False] * len(names)
+        exhausted = [history_done] * len(names)
         fetch_sizes = [1] * len(names)
 
         def fill(index: int) -> None:
             if positions[index] < len(buffers[index]) or exhausted[index]:
                 return
-            ids_scores = self.r.zrevrangebyscore(
-                f"qtask:hist:{names[index]}", cutoff, "-inf",
-                start=offsets[index], num=fetch_sizes[index], withscores=True,
+            anchor = anchors[index]
+            snapshot = self.r.eval(
+                READ_HISTORY_PAGE_LUA, 1, f"qtask:hist:{names[index]}", cutoff,
+                anchor[0] if anchor is not None else "", anchor[1] if anchor is not None else "",
+                fetch_sizes[index],
             )
+            ids_scores = list(zip(snapshot[::2], snapshot[1::2]))
             fetch_sizes[index] = 50
             task_ids = [str(task_id) for task_id, _score in ids_scores]
             records = {str(row.get("task_id")): row for row in self._read_history_records(task_ids)}
@@ -386,11 +381,14 @@ class QueueAdmin:
             ))
             task_id, _score, record = buffers[index][positions[index]]
             positions[index] += 1
-            offsets[index] += 1
+            anchors[index] = [_score, task_id]
             scanned += 1
             if positions[index] == len(buffers[index]):
                 fill(index)
             if not record:
+                continue
+            if selected in container_states and not record.get("location"):
+                # 缺少位置的旧记录由真实容器补充，不能按 pending 猜成 ready。
                 continue
             outcome = str(record.get("outcome") or record.get("status") or "")
             location = str(record.get("location") or "")
@@ -426,24 +424,122 @@ class QueueAdmin:
                 continue
             rows.append(record)
 
-        has_more = any(positions[index] < len(buffers[index]) or not exhausted[index] for index in range(len(names)))
+        history_done = not any(positions[index] < len(buffers[index]) or not exhausted[index]
+                               for index in range(len(names)))
+        if history_done and not raw_done and len(rows) < limit and scanned < scan_limit:
+            extra, raw_position, inspected = self._unindexed_tasks_page(
+                names, selected, limit - len(rows), scan_limit - scanned, raw_position,
+                action=action, search=search, cutoff=cutoff,
+                created_after=created_after, created_before=created_before,
+                completed_after=completed_after, completed_before=completed_before,
+            )
+            rows.extend(extra)
+            scanned += inspected
+            raw_done = raw_position is None
+        if not names:
+            raw_done = True
+        has_more = not history_done or not raw_done
         next_cursor = None
         if has_more:
             payload = {
                 "fingerprint": fingerprint, "names": names, "mode": mode,
-                "offsets": offsets, "cutoff": cutoff,
+                "version": 2, "anchors": anchors, "cutoff": cutoff,
+                "history_done": history_done, "raw_done": raw_done, "raw": raw_position,
             }
             next_cursor = "z." + base64.urlsafe_b64encode(
                 zlib.compress(json.dumps(payload, separators=(",", ":")).encode())
             ).decode().rstrip("=")
+        # 与列表筛选独立的精确 ID 定位，兼容旧字符串 ID；分页无需重复定位。
+        exact_id = search.strip() if search and not cursor else ""
+        exact_record = self.get_task(exact_id) if exact_id else None
         return {
             "tasks": rows,
+            "exact_task_id": exact_id if exact_record and exact_record.get("task_id") == exact_id else None,
             "count": len(rows),
             "next_cursor": next_cursor,
             "has_more": has_more,
             "scan_limited": scanned >= scan_limit and has_more,
             "scanned": scanned,
         }
+
+    def _unindexed_tasks_page(
+        self, names: list[str], state: QueueState, limit: int, budget: int,
+        position: dict[str, Any] | None, *, action: str | None, search: str | None,
+        cutoff: float, created_after: float | None, created_before: float | None,
+        completed_after: float | None, completed_before: float | None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None, int]:
+        """补充没有可用审计索引的消息；原始容器变动时拒绝无声错页。"""
+        rows: list[dict[str, Any]] = []
+        scanned = 0
+        first_queue = position["queue"] if position else 0
+        for queue_index in range(first_queue, len(names)):
+            name = names[queue_index]
+            keys = self._state_keys(name, state)
+            resume = position if queue_index == first_queue else None
+            first_key = 0
+            if resume and resume["key"]:
+                if resume["key"] not in keys:
+                    raise ValueError("队列内容已变化，请刷新第一页")
+                first_key = keys.index(resume["key"])
+            for key in keys[first_key:]:
+                offset = resume["offset"] if resume and resume["key"] == key else 0
+                is_delay = state == QueueState.delay
+                pipe = self.r.pipeline(transaction=True)
+                if is_delay:
+                    pipe.zcard(key)
+                    pipe.zrange(key, 0, 0, withscores=True)
+                    pipe.zrange(key, -1, -1, withscores=True)
+                else:
+                    pipe.llen(key)
+                    pipe.lindex(key, 0)
+                    pipe.lindex(key, -1)
+                summary = pipe.execute()
+                total = int(summary[0])
+                stamp = hashlib.sha256(json.dumps(summary, ensure_ascii=False).encode()).hexdigest()
+                if resume and resume["key"] == key and resume.get("stamp") != stamp:
+                    raise ValueError("队列内容已变化，请刷新第一页")
+                resume = None
+                while offset < total:
+                    next_position = {"queue": queue_index, "key": key, "offset": offset, "stamp": stamp}
+                    if len(rows) >= limit or scanned >= budget:
+                        return rows, next_position, scanned
+                    take = min(50, budget - scanned)
+                    if is_delay:
+                        messages = self.r.zrange(key, offset, offset + take - 1, withscores=True)
+                    else:
+                        messages = [(raw, None) for raw in reversed(
+                            self.r.lrange(key, -offset - take, -offset - 1)
+                        )]
+                    if not messages:
+                        break
+                    decoded = [self._decode_message(raw, name, state.value, key) for raw, _ in messages]
+                    pipe = self.r.pipeline(transaction=True)
+                    for row in decoded:
+                        task_id = str(row.get("task_id") or "")
+                        pipe.zscore(f"qtask:hist:{name}", task_id)
+                    membership = pipe.execute()
+                    records = self._supplement_task_records(decoded)
+                    for index, (row, (_raw, score)) in enumerate(zip(decoded, messages)):
+                        if len(rows) >= limit or scanned >= budget:
+                            return rows, {**next_position, "offset": offset}, scanned
+                        offset += 1
+                        scanned += 1
+                        if membership[index] is not None and records.get(str(row.get("task_id")), {}).get("location"):
+                            continue
+                        if score is not None:
+                            row["run_at"] = score
+                        created_at = self._float_or_none(row.get("created_at"))
+                        if created_at is not None and created_at > cutoff:
+                            continue
+                        if action and row.get("action") != action:
+                            continue
+                        if not self._matches_time_filters(row, created_after, created_before,
+                                                         completed_after, completed_before):
+                            continue
+                        if search and search.lower() not in json.dumps(row, ensure_ascii=False, default=str).lower():
+                            continue
+                        rows.append(row)
+        return rows, None, scanned
 
     def list_tasks(
         self,
@@ -493,7 +589,7 @@ class QueueAdmin:
             return rows
         rows = self._read_state(queue_name, selected_state, limit)
 
-        self._supplement_action_from_history(rows)
+        self._supplement_task_records(rows)
 
         return rows[:limit]
 
@@ -586,19 +682,24 @@ class QueueAdmin:
             return self.resolve_payload(task_id, queue_name, QueueState.history.value)
         return {"task_id": task_id, "payload": None, "_note": "未在队列中找到此任务"}
 
-    def _supplement_action_from_history(self, rows: List[Dict[str, Any]]) -> None:
-        """对 action 为空且 task_id 非空的行，从 history hash 批量补充 action。"""
-        missing = [row for row in rows if not row.get("action") and row.get("task_id")]
+    def _supplement_task_records(self, rows: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """批量补齐审计字段，容器位置保持本次真实读取的位置。"""
+        missing = [row for row in rows if row.get("task_id")]
         if not missing:
-            return
+            return {}
 
         records = {str(item.get("task_id")): item for item in self._read_history_records(
             [str(row["task_id"]) for row in missing]
         )}
         for row in missing:
-            action = records.get(str(row["task_id"]), {}).get("action")
-            if action:
-                row["action"] = action
+            record = records.get(str(row["task_id"]), {})
+            for field in ("action", "attempt", "max_attempts", "created_at", "updated_at",
+                          "outcome", "status", "available_at", "delay_reason", "last_error",
+                          "last_error_code", "reason", "reason_code", "logical_key",
+                          "start_deadline_at", "expires_at", "replay_of"):
+                if record.get(field) is not None and (field != "action" or record[field]):
+                    row[field] = record[field]
+        return records
 
     def _find_raw_message(self, queue_name: str, task_id: str, state: QueueState) -> Optional[str]:
         for key in self._state_keys(queue_name, state):
@@ -824,6 +925,8 @@ class QueueAdmin:
         replace_payload: bool = False,
         replace_logical_key: bool = False,
         action: str | None = None,
+        max_attempts: int | None = None,
+        require_dlq: bool = False,
     ) -> Dict[str, Any]:
         """创建新实例 replay，返回新 task_id；原终态记录不变。"""
         record = self.get_task(task_id)
@@ -835,7 +938,17 @@ class QueueAdmin:
         kwargs: dict[str, Any] = {
             "start_deadline_at": self._coerce_datetime(start_deadline_at),
             "action": action,
+            "require_dlq": require_dlq,
         }
+        budget = max_attempts
+        if budget is None and record and record.get("max_attempts") not in (None, ""):
+            budget = record["max_attempts"]
+            if isinstance(budget, str) and budget.isdecimal():
+                budget = int(budget)
+        if budget is not None:
+            if isinstance(budget, bool) or not isinstance(budget, int) or budget < 1:
+                raise ValueError("max_attempts must be a positive integer")
+            kwargs["max_attempts"] = budget
         if replace_payload:
             if payload is None:
                 raise ValueError("replace_payload=True requires payload")
@@ -858,7 +971,7 @@ class QueueAdmin:
                 "skipped",
                 "cancelled",
             }:
-                result = self.replay_task(task_id, queue_name=queue_name)
+                result = self.replay_task(task_id, queue_name=queue_name, require_dlq=True)
                 return {"moved": int(result["accepted"]), **result}
             moved = int(
                 self.requeue_task(
@@ -869,8 +982,40 @@ class QueueAdmin:
                 )["moved"]
             )
             return {"moved": moved}
-        count = self._smart_queue(queue_name).requeue_dlq(reset_retry=reset_retry)
-        return {"moved": count}
+        self._smart_queue(queue_name)._assert_queue_namespace()
+        messages = list(reversed(self.r.lrange(f"{queue_name}:dlq", 0, -1)))
+        moved = skipped = attempted = 0
+        errors: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for raw_message in messages:
+            attempted += 1
+            identifier = self._message_task_id(raw_message)
+            try:
+                if not identifier:
+                    raise ValueError("消息不含 task_id，未进行重放")
+                if identifier in seen:
+                    raise ValueError("同一 task_id 有重复消息，未重复生成任务")
+                seen.add(identifier)
+                result = self.requeue_task(queue_name, identifier, QueueState.dlq, reset_retry=reset_retry)
+                if not result["moved"]:
+                    raise ValueError(str(result.get("reason") or result.get("note") or "任务已变化或未被接受"))
+                moved += int(result["moved"])
+            except RemoteStorageError as exc:
+                skipped += 1
+                if len(errors) < 20:
+                    errors.append({"task_id": identifier, "reason": f"外部存储操作失败（{exc.code}），请核对配置后重试"})
+            except (ValueError, KeyError, RuntimeError) as exc:
+                skipped += 1
+                if len(errors) < 20:
+                    errors.append({"task_id": identifier, "reason": str(exc)})
+            except redis.RedisError:
+                skipped += 1
+                if len(errors) < 20:
+                    errors.append({"task_id": identifier, "reason": "Redis 操作失败；已停止本次批量处理，请核对后重试"})
+                break
+        return {"moved": moved, "skipped": skipped, "attempted": attempted,
+                "not_attempted": len(messages) - attempted, "errors": errors,
+                "errors_truncated": skipped > len(errors)}
 
     def requeue_task(
         self,
@@ -903,13 +1048,14 @@ class QueueAdmin:
                 "skipped",
                 "cancelled",
             }:
-                replay = self.replay_task(task_id, queue_name=queue_name)
+                replay = self.replay_task(task_id, queue_name=queue_name, require_dlq=True)
                 return {
                     "moved": int(replay["accepted"]),
                     "task_id": task_id,
                     "new_task_id": replay.get("task_id"),
                     "queue": queue_name,
                     "from_state": state.value,
+                    "reason": replay.get("reason"),
                 }
 
         for key in self._state_keys(queue_name, state):
@@ -928,6 +1074,10 @@ class QueueAdmin:
             else:
                 for raw_msg in self.r.lrange(key, 0, -1):
                     if self._message_task_id(raw_msg) == task_id:
+                        if state == QueueState.dlq:
+                            data = self._parse_json(raw_msg)
+                            if isinstance(data, dict) and data.get("version") == 2:
+                                raise ValueError("V2 任务缺少可重放的审计记录或 payload descriptor，原消息已保留")
                         new_msg = (
                             self._reset_message_retry(raw_msg) if reset_retry and state == QueueState.dlq else raw_msg
                         )
@@ -1148,57 +1298,17 @@ class QueueAdmin:
         }
 
     def delete_queue(self, queue_name: str) -> Dict[str, int]:
-        """彻底删除队列及其所有关联数据（含历史记录），不可撤销。"""
-        if any(self.r.scan_iter(f"{queue_name}:worker:*")):
-            raise ValueError("stop active workers before deleting the queue")
+        """原子复核心跳并删除所属数据；并发投递或登记只能发生在操作前后。"""
         queue = self._smart_queue(queue_name)
-        cleared = queue.clear(
-            include_dlq=True,
-            identity_policy=IdentityPolicy.RELEASE,
-            include_processing=True,
-        )
-        deleted_keys = int(cleared["messages"])
-        keys_to_delete = [queue_name, f"{queue_name}:retry", f"{queue_name}:dlq", f"{queue_name}:delay"]
-        keys_to_delete.extend(self.processing_keys(queue_name))
-        for key in self.r.scan_iter(f"{queue_name}:worker:*"):
-            keys_to_delete.append(key)
-        for pattern in (
-            f"{queue_name}:dedup:*",
-            f"{queue.owner_prefix}*",
-            f"{queue_name}:supersede:*",
-            f"{queue_name}:lease:*",
-        ):
-            keys_to_delete.extend(self.r.scan_iter(pattern))
-        keys_to_delete.append(f"qtask:metrics:{queue_name}")
-        keys_to_delete.append(f"qtask:deadline:{queue_name}")
-        keys_to_delete.append(f"qtask:workers:{queue_name}")
-        keys_to_delete.append(f"qtask:processing:{queue_name}")
-
-        if keys_to_delete:
-            deleted_keys += int(self.r.delete(*keys_to_delete) or 0)
-
-        hist_key = f"qtask:hist:{queue_name}"
-        history_records = 0
-        task_ids = self.r.zrange(hist_key, 0, -1)
-        if task_ids:
-            pipe = self.r.pipeline()
-            for task_id in task_ids:
-                pipe.delete(f"qtask:task:{task_id}")
-            pipe.delete(hist_key)
-            results = pipe.execute()
-            history_records = len(task_ids)
-            deleted_keys += sum(1 for r in results if r)
-        else:
-            deleted_keys += int(self.r.delete(hist_key) or 0)
-
-        self.r.zrem("qtask:queues", queue_name)
-        # 删除后不能继续从每小时旧队列发现缓存中返回已不存在的队列。
-        self._legacy_queue_cache.discard(queue_name)
-        self._legacy_worker_cache = {
-            item for item in self._legacy_worker_cache if item[0] != queue_name
-        }
-
-        return {"deleted_keys": deleted_keys, "history_records": history_records}
+        try:
+            deleted, records = self.r.eval(
+                DELETE_QUEUE_LUA, 0, queue_name, queue.owner_prefix, queue.storage_gc_key,
+            )
+        except redis.ResponseError as exc:
+            if "active workers" in str(exc) or "ownership conflict" in str(exc):
+                raise ValueError(str(exc)) from exc
+            raise
+        return {"deleted_keys": int(deleted), "history_records": int(records)}
 
     def clean_history(
         self,
@@ -1459,7 +1569,7 @@ class QueueAdmin:
         if not removed:
             return {"moved": 0, "task_id": task_id, "queue": queue_name}
         try:
-            replay = queue.replay_task(task_id, start_deadline_at=start_deadline_at)
+            replay = self.replay_task(task_id, queue_name=queue_name, start_deadline_at=start_deadline_at)
         except Exception as exc:
             return {
                 "moved": 0,
@@ -1468,9 +1578,9 @@ class QueueAdmin:
                 "note": f"旧任务已取消，但 replay 失败: {exc}",
             }
         return {
-            "moved": int(replay.accepted),
+            "moved": int(replay["accepted"]),
             "task_id": task_id,
-            "new_task_id": replay.task_id,
+            "new_task_id": replay["task_id"],
             "queue": queue_name,
             "from_state": state.value,
         }
@@ -1513,6 +1623,7 @@ class QueueAdmin:
             "_state": state,
             "_source": source_key,
             "_raw": raw_msg,
+            "location": state,
         }
         try:
             data = json.loads(raw_msg)
@@ -1524,7 +1635,13 @@ class QueueAdmin:
             item["_raw"] = data
             return item
 
-        if int(data.get("version", 1) or 1) == 2:
+        try:
+            version = int(data.get("version", 1) or 1)
+            attempt = int(data.get("attempt", 0) or 0)
+        except (ValueError, TypeError, OverflowError) as exc:
+            item.update(task_id=str(data.get("task_id") or ""), decode_error=str(exc))
+            return item
+        if version == 2:
             descriptor = data.get("payload", {})
             payload = descriptor
             if isinstance(descriptor, dict) and descriptor.get("kind") == "inline":
@@ -1537,8 +1654,11 @@ class QueueAdmin:
                     "payload_kind": descriptor.get("kind", "")
                     if isinstance(descriptor, dict)
                     else "",
-                    "attempt": int(data.get("attempt", 0) or 0),
-                    "retry": max(int(data.get("attempt", 0) or 0) - 1, 0),
+                    "attempt": attempt,
+                    "retry": max(attempt - 1, 0),
+                    "max_attempts": data.get("max_attempts"),
+                    "created_at": data.get("created_at"),
+                    "updated_at": data.get("updated_at") or data.get("created_at"),
                     "logical_key": data.get("logical_key"),
                     "scheduled_for": data.get("scheduled_for"),
                     "start_deadline_at": data.get("start_deadline_at"),
@@ -1808,50 +1928,12 @@ class QueueAdmin:
             raise ValueError("datetime value must be timezone-aware")
         return result
 
-    def _list_contains_qtask_message(self, key: str) -> bool:
-        try:
-            candidates = [self.r.lindex(key, 0), self.r.lindex(key, -1)]
-        except redis.RedisError:
-            return False
-        return any(self._looks_like_task_message(raw_msg) for raw_msg in candidates if raw_msg)
-
-    def _zset_contains_qtask_message(self, key: str) -> bool:
-        try:
-            candidates = self.r.zrange(key, 0, 0)
-        except redis.RedisError:
-            return False
-        return any(self._looks_like_task_message(raw_msg) for raw_msg in candidates)
-
-    @staticmethod
-    def _looks_like_task_message(raw_msg: Any) -> bool:
-        try:
-            data = json.loads(raw_msg)
-        except (json.JSONDecodeError, TypeError):
-            return False
-        if not isinstance(data, dict):
-            return False
-        return bool(data.get("task_id")) and "payload" in data
-
     @staticmethod
     def _float_or_none(value: Any) -> Optional[float]:
         try:
             return float(value)
         except (TypeError, ValueError):
             return None
-
-    @staticmethod
-    def _is_state_key(key: str) -> bool:
-        return any(
-            marker in key
-            for marker in [
-                ":processing",
-                ":retry",
-                ":dlq",
-                ":delay",
-                ":worker:",
-                ":dedup:",
-            ]
-        )
 
 
 def task_matches_payload(task: Dict[str, Any], pairs: Iterable[Tuple[str, Any]]) -> bool:

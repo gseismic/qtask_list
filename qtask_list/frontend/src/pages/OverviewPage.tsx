@@ -62,6 +62,20 @@ export function OverviewPage() {
   const visibleAlerts = alerts.filter((alert) => alert.rule === "redismem" || scopedRows.some((row) =>
     alert.locate.queue === row.name || alert.target === row.name || alert.target.startsWith(`${row.name} /`)));
   const setFilter = (filter: FilterKey) => setPreference((previous) => ({ ...previous, filter }));
+  const showAbnormalQueues = () => {
+    const expandedGroups = Object.fromEntries(scopedRows
+      .filter((row) => row.abnormal)
+      .map((row) => [namespaceOf(row.name), false]));
+    setPreference((previous) => ({
+      ...previous,
+      filter: "abnormal",
+      collapsed: { ...previous.collapsed, ...expandedGroups },
+    }));
+    requestAnimationFrame(() => document.getElementById("overview-matrix")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    }));
+  };
 
   return <div className="page">
     <h1 className="page-title">总览</h1>
@@ -83,12 +97,13 @@ export function OverviewPage() {
       </div>
       <div className="kpi-row">
         <KpiCard label="活跃队列" value={`${activeCount}/${scopedRows.length}`} hint="当前范围内有待处理任务的队列"
-          onClick={() => setFilter("active")} />
-        <KpiCard label="总待处理" value={fmtInt(totalRemaining)} hint="排队 + 执行 + 延迟 + 旧重试" onClick={() => setFilter("active")} />
+          actionHint="点击查看进行中队列 →" onClick={() => navigate("/queues?filter=active")} />
+        <KpiCard label="总待处理" value={fmtInt(totalRemaining)} hint="排队 + 执行 + 延迟 + 旧重试"
+          actionHint="点击查看进行中队列 →" onClick={() => navigate("/queues?filter=active")} />
         <KpiCard label="合计观测速率" value={fmtRate(sampledRows.length ? totalRate : null)}
           hint={sampledRows.length ? `已采样 ${sampledRows.length}/${scopedRows.length} 个队列 · 条/min` : "观测至少 30 秒后估算"} />
         <KpiCard label="异常队列" value={abnormalCount} danger={abnormalCount > 0} hint="死信 / 无 Worker / 停滞 / 失联 / 过期"
-          onClick={() => setFilter("abnormal")} />
+          actionHint="筛选并定位异常队列 →" onClick={showAbnormalQueues} />
       </div>
       {visibleAlerts.length > 0 && <div className="card overview-alerts">
         <div className="section-head"><h2>待处理告警</h2><Link to="/alerts">查看全部 →</Link></div>
@@ -99,7 +114,7 @@ export function OverviewPage() {
             `/queues/${encodeURIComponent(alert.locate.queue)}?state=${alert.locate.state ?? "all"}` : "/workers"}>定位</Link>
         </div>)}
       </div>}
-      <div className="section-head">
+      <div id="overview-matrix" className="section-head overview-matrix-anchor">
         <h2>队列运行矩阵</h2>
         <div className="seg">{([["all", "全部"], ["active", "进行中"], ["abnormal", "仅异常"]] as const).map(([key, label]) =>
           <button key={key} className={preference.filter === key ? "on" : ""} onClick={() => setFilter(key)}>{label}</button>)}</div>

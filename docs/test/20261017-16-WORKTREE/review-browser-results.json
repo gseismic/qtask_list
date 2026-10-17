@@ -1,0 +1,81 @@
+{
+  "metadata": {
+    "cells": [
+      "78c80cea…ccdd",
+      "review_action",
+      "0",
+      "排队中",
+      "—",
+      "—"
+    ]
+  },
+  "drawerFocus": {
+    "focusInside": false,
+    "activeElement": "<button class=\"btn sm\">刷新第一页</button>"
+  },
+  "overdueState": {
+    "rowLabel": "排队中",
+    "drawerLabel": "过期"
+  },
+  "retryState": {
+    "rowLabel": "延迟",
+    "drawerLabel": "等待重试"
+  },
+  "rawPagination": {
+    "displayed": 500,
+    "loadMoreButtons": 0,
+    "readyCount": 1
+  },
+  "sparseTimeFilter": {
+    "status": 500,
+    "alert": [
+      "⚠ Internal Server Error重试"
+    ]
+  },
+  "slashQueue": {
+    "title": "review/slash",
+    "errors": [
+      "⚠ Not Found重试"
+    ]
+  },
+  "bulkReplay": {
+    "status": 200,
+    "result": {
+      "moved": 0
+    },
+    "dialogClosed": true,
+    "errors": []
+  },
+  "smoke": [
+    {
+      "path": "/",
+      "title": "总览"
+    },
+    {
+      "path": "/queues",
+      "title": "队列"
+    },
+    {
+      "path": "/tasks",
+      "title": "任务"
+    },
+    {
+      "path": "/workers",
+      "title": "Worker 监控"
+    },
+    {
+      "path": "/alerts",
+      "title": "告警中心"
+    },
+    {
+      "path": "/guide",
+      "title": "教程"
+    }
+  ],
+  "crossOrigin": {
+    "pageOrigin": "https://review-origin.invalid",
+    "error": "TypeError: Failed to fetch",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36"
+  },
+  "pageErrors": []
+}

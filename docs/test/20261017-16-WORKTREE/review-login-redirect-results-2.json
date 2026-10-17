@@ -1,0 +1,6 @@
+{
+  "initialUrl": "http://127.0.0.1:33147/login?next=%2F%5Creview-redirect.invalid%2F",
+  "destination": "http://review-redirect.invalid/",
+  "expectedOrigin": "http://127.0.0.1:33147",
+  "externalRequestIntercepted": true
+}

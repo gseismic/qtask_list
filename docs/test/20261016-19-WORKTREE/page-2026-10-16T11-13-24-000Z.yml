@@ -1,0 +1,99 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: Q
+      - generic [ref=e7]:
+        - generic [ref=e8]: qtask_list
+        - generic [ref=e9]: 管理后台
+    - navigation [ref=e10]:
+      - link "📊 总览" [ref=e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e12]: 📊
+        - generic [ref=e13]: 总览
+      - link "📋 队列" [ref=e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=e15]: 📋
+        - generic [ref=e16]: 队列
+      - link "🔍 任务" [ref=e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=e18]: 🔍
+        - generic [ref=e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=e21]: 🧑‍🏭
+        - generic [ref=e22]: Worker
+      - link "🔔 告警 2" [ref=e23] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=e24]: 🔔
+        - generic [ref=e25]: 告警
+        - generic [ref=e26]: "2"
+      - link "📖 教程" [ref=e27] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=e28]: 📖
+        - generic [ref=e29]: 教程
+    - generic [ref=e30]: v0.2.0 · Redis 任务队列
+  - generic [ref=e31]:
+    - banner [ref=e32]:
+      - generic "Redis 连接正常" [ref=e33]: 已连接
+      - generic "2026/10/16 19:13:20" [ref=e145]: 更新于 19:13:20
+      - button "刷新" [ref=e36] [cursor=pointer]
+      - generic [ref=e37]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=e38]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=e39] [cursor=pointer]
+    - generic [ref=e146]:
+      - generic [ref=e147]:
+        - heading "handoff_browser:external" [level=1] [ref=e148]
+        - link "← 队列列表" [ref=e149] [cursor=pointer]:
+          - /url: /queues
+      - button "排队中 1" [ref=e151] [cursor=pointer]
+      - generic [ref=e152]:
+        - button "操作 ▾" [ref=e154] [cursor=pointer]
+        - button "⚠ 危险操作 ▾" [ref=e157] [cursor=pointer]
+      - generic [ref=e158]:
+        - button "全部" [ref=e159] [cursor=pointer]
+        - button "排队中1" [ref=e160] [cursor=pointer]
+        - button "执行中" [ref=e161] [cursor=pointer]
+        - button "手动重试" [ref=e162] [cursor=pointer]
+        - button "等待重试" [ref=e163] [cursor=pointer]
+        - button "延迟" [ref=e164] [cursor=pointer]
+        - button "死信" [ref=e165] [cursor=pointer]
+        - button "完成" [ref=e166] [cursor=pointer]
+        - button "失败" [ref=e167] [cursor=pointer]
+        - button "跳过" [ref=e168] [cursor=pointer]
+        - button "取消" [ref=e169] [cursor=pointer]
+        - button "过期" [ref=e170] [cursor=pointer]
+        - button "历史" [ref=e171] [cursor=pointer]
+      - generic [ref=e172]:
+        - textbox "搜索任务" [ref=e173]:
+          - /placeholder: 搜索 task_id / action / payload
+        - button "高级筛选" [ref=e174] [cursor=pointer]
+        - generic "跟随顶栏刷新间隔；加载更多后暂停以保持当前列表" [ref=e175]:
+          - checkbox "自动刷新" [checked] [ref=e176]
+          - text: 自动刷新
+      - generic [ref=e177]: 当前该状态 1 条
+      - generic [ref=e178]:
+        - button "刷新第一页" [ref=e179] [cursor=pointer]
+        - status [ref=e180]: 自动刷新 · 更新于 19:13:22
+        - generic [ref=e181]: 加载更多后暂停自动刷新
+      - table [ref=e183]:
+        - rowgroup [ref=e184]:
+          - row [ref=e185]:
+            - columnheader "task_id" [ref=e186]
+            - columnheader "action" [ref=e187]
+            - columnheader "attempt" [ref=e188]
+            - columnheader "状态" [ref=e189]
+            - columnheader "发布时间" [ref=e190]
+            - columnheader "更新时间" [ref=e191]
+        - rowgroup [ref=e192]:
+          - row [ref=e193] [cursor=pointer]:
+            - cell "external…only" [ref=e194]
+            - cell "—" [ref=e195]
+            - cell "—" [ref=e196]
+            - cell "排队中" [ref=e197]
+            - cell "—" [ref=e200]
+            - cell "—" [ref=e201]

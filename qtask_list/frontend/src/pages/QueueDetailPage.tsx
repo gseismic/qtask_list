@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import type { DiagnoseInfo, QueueStats, TaskRow } from "../types";
@@ -8,6 +8,8 @@ import { TaskFilterBar, TaskTable, type TaskFilters } from "../components/TaskTa
 import { PushTaskDialog } from "../components/PushTaskDialog";
 import { TaskDrawer } from "../components/TaskDrawer";
 import { useAppData } from "../appData";
+import { summarizeBulkResult } from "../operations";
+import { useModalFocus } from "../modal";
 
 const EMPTY_HINTS: Partial<Record<StateKey, string>> = {
   dlq: "dlq 队列是空的——任务重试耗尽才会进入这里。",
@@ -39,15 +41,18 @@ export function QueueDetailPage() {
     completedAfter: "",
     completedBefore: "",
   });
-  const [limit, setLimit] = useState(50);
   const [reloadKey, setReloadKey] = useState(0);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [openTask, setOpenTask] = useState<TaskRow | null>(null);
   const [diagnose, setDiagnose] = useState<DiagnoseInfo | null>(null);
+  const diagnoseRef = useRef<HTMLDivElement>(null);
+  useModalFocus(diagnoseRef, { open: diagnose !== null, onClose: () => setDiagnose(null) });
   const [pushOpen, setPushOpen] = useState(false);
   const [confirm, setConfirm] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [opError, setOpError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const openConfirm = (kind: string) => { setOpError(null); setNotice(null); setConfirm(kind); };
 
   useEffect(() => {
     if (STATE_KEYS.includes(stateParam)) setFilters((f) => ({ ...f, state: stateParam }));
@@ -88,8 +93,9 @@ export function QueueDetailPage() {
     setBusy(true);
     setOpError(null);
     try {
-      await fn();
-      setConfirm(null);
+      const summary = summarizeBulkResult(await fn());
+      if (summary?.warning) setOpError(summary.message);
+      else { setConfirm(null); setNotice(summary?.message ?? null); }
       setReloadKey((k) => k + 1);
       reload();
     } catch (e) {
@@ -135,25 +141,26 @@ export function QueueDetailPage() {
 
       {error && <ErrorBanner error={error} onRetry={reload} />}
       {opError && !confirm && <ErrorBanner error={opError} onRetry={() => setOpError(null)} />}
+      {notice && <div className="success-banner" role="status">{notice}</div>}
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
         <OpsMenu
           label="操作"
           items={[
             { label: "投递任务…", onClick: () => setPushOpen(true) },
-            { label: "drain 手动重试（retry → ready）", onClick: () => setConfirm("retry") },
-            { label: "重放全部 DLQ", onClick: () => setConfirm("requeueDlq") },
-            { label: "恢复失联 processing", onClick: () => setConfirm("recover") },
+            { label: "drain 手动重试（retry → ready）", onClick: () => openConfirm("retry") },
+            { label: "重放全部 DLQ", onClick: () => openConfirm("requeueDlq") },
+            { label: "恢复失联 processing", onClick: () => openConfirm("recover") },
             { label: "诊断", onClick: loadDiagnose },
-            { label: "清理 15 天前历史", onClick: () => setConfirm("cleanHistory") },
+            { label: "清理 15 天前历史", onClick: () => openConfirm("cleanHistory") },
           ]}
         />
         <span style={{ flex: 1 }} />
         <OpsMenu
           label="⚠ 危险操作"
           items={[
-            { label: "清空队列…", danger: true, onClick: () => setConfirm("clear") },
-            { label: "删除队列…", danger: true, onClick: () => setConfirm("delete") },
+            { label: "清空队列…", danger: true, onClick: () => openConfirm("clear") },
+            { label: "删除队列…", danger: true, onClick: () => openConfirm("delete") },
           ]}
         />
       </div>
@@ -206,8 +213,6 @@ export function QueueDetailPage() {
       <TaskTable
         queue={queueName}
         filters={filters}
-        limit={limit}
-        onLimitChange={setLimit}
         onOpenTask={setOpenTask}
         reloadKey={reloadKey}
         autoRefresh={autoRefresh}
@@ -226,7 +231,8 @@ export function QueueDetailPage() {
 
       {diagnose && (
         <div className="overlay" style={{ justifyContent: "center" }} onClick={() => setDiagnose(null)}>
-          <div className="dialog" style={{ width: 560 }} onClick={(e) => e.stopPropagation()}>
+          <div ref={diagnoseRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`诊断 · ${queueName}`}
+            className="dialog" style={{ width: 560 }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>诊断 · {queueName}</h3>
             <ul>
               {diagnose.suggestions.map((s, i) => (
@@ -283,7 +289,7 @@ export function QueueDetailPage() {
         title="重放全部 DLQ"
         confirmText="重放"
         busy={busy}
-        body={<p>DLQ 中所有任务将重置重试计数并回到 ready。</p>}
+        body={<p>将尝试处理全部死信任务。成功时创建新任务或恢复原消息；无法处理的任务保留，并显示原因。</p>}
         onCancel={() => setConfirm(null)}
         onConfirm={() => runOp(() => api.requeueDlq(queueName, null))}
       />

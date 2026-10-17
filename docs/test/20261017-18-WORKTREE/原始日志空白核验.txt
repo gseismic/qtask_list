@@ -1,0 +1,185 @@
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:22: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:28: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:54: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:60: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:86: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:92: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:118: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:124: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:150: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:156: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:182: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:188: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:214: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:220: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:240: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:248: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:270: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:278: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:300: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:308: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:330: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:338: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:360: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:368: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:390: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:394: trailing whitespace.
++    
+docs/test/20261016-13-WORKTREE/before-fix-pytest.txt:402: trailing whitespace.
++E         
+docs/test/20261016-13-WORKTREE/browser-console-final.txt:3: new blank line at EOF.
+docs/test/20261016-13-WORKTREE/browser-console.txt:3: new blank line at EOF.
+docs/test/20261016-13-WORKTREE/full-pytest-final.txt:7: trailing whitespace.
++  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/remote_storage/server.py:262: DeprecationWarning: 
+docs/test/20261016-13-WORKTREE/full-pytest-final.txt:9: trailing whitespace.
++  
+docs/test/20261016-13-WORKTREE/full-pytest-final.txt:12: trailing whitespace.
++          
+docs/test/20261016-13-WORKTREE/full-pytest-final.txt:16: trailing whitespace.
++  /home/lsl/miniconda3/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+docs/test/20261016-13-WORKTREE/full-pytest-final.txt:18: trailing whitespace.
++  
+docs/test/20261016-13-WORKTREE/full-pytest-final.txt:21: trailing whitespace.
++          
+docs/test/20261016-13-WORKTREE/full-pytest.txt:7: trailing whitespace.
++  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/remote_storage/server.py:262: DeprecationWarning: 
+docs/test/20261016-13-WORKTREE/full-pytest.txt:9: trailing whitespace.
++  
+docs/test/20261016-13-WORKTREE/full-pytest.txt:12: trailing whitespace.
++          
+docs/test/20261016-13-WORKTREE/full-pytest.txt:16: trailing whitespace.
++  /home/lsl/miniconda3/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+docs/test/20261016-13-WORKTREE/full-pytest.txt:18: trailing whitespace.
++  
+docs/test/20261016-13-WORKTREE/full-pytest.txt:21: trailing whitespace.
++          
+docs/test/20261016-18-WORKTREE/before-change.txt:19: trailing whitespace.
++    
+docs/test/20261016-18-WORKTREE/before-change.txt:22: trailing whitespace.
++    
+docs/test/20261016-18-WORKTREE/before-change.txt:29: trailing whitespace.
++/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/tests/test_registry_discovery.py:31: 
+docs/test/20261016-18-WORKTREE/before-change.txt:30: trailing whitespace.
++_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+docs/test/20261016-18-WORKTREE/before-change.txt:34: trailing whitespace.
++_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+docs/test/20261016-18-WORKTREE/before-change.txt:60: trailing whitespace.
++E         
+docs/test/20261016-18-WORKTREE/before-change.txt:77: trailing whitespace.
++E         
+docs/test/20261016-18-WORKTREE/before-change.txt:99: trailing whitespace.
++E         
+docs/test/20261016-18-WORKTREE/before-change.txt:123: trailing whitespace.
++E         
+docs/test/20261016-18-WORKTREE/before-change.txt:157: trailing whitespace.
++    
+docs/test/20261016-18-WORKTREE/before-change.txt:166: trailing whitespace.
++    
+docs/test/20261016-18-WORKTREE/before-change.txt:171: trailing whitespace.
++E         
+docs/test/20261016-18-WORKTREE/browser-console.txt:3: new blank line at EOF.
+docs/test/20261016-18-WORKTREE/full-tests.txt:7: trailing whitespace.
++  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/remote_storage/server.py:262: DeprecationWarning: 
+docs/test/20261016-18-WORKTREE/full-tests.txt:9: trailing whitespace.
++  
+docs/test/20261016-18-WORKTREE/full-tests.txt:12: trailing whitespace.
++          
+docs/test/20261016-18-WORKTREE/full-tests.txt:16: trailing whitespace.
++  /home/lsl/miniconda3/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+docs/test/20261016-18-WORKTREE/full-tests.txt:18: trailing whitespace.
++  
+docs/test/20261016-18-WORKTREE/full-tests.txt:21: trailing whitespace.
++          
+docs/test/20261016-18-WORKTREE/pruning-before-fix.txt:15: trailing whitespace.
++    
+docs/test/20261016-18-WORKTREE/pruning-before-fix.txt:22: trailing whitespace.
++    
+docs/test/20261016-18-WORKTREE/targeted-tests-first.txt:13: trailing whitespace.
++  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/remote_storage/server.py:262: DeprecationWarning: 
+docs/test/20261016-18-WORKTREE/targeted-tests-first.txt:15: trailing whitespace.
++  
+docs/test/20261016-18-WORKTREE/targeted-tests-first.txt:18: trailing whitespace.
++          
+docs/test/20261016-18-WORKTREE/targeted-tests-first.txt:22: trailing whitespace.
++  /home/lsl/miniconda3/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+docs/test/20261016-18-WORKTREE/targeted-tests-first.txt:24: trailing whitespace.
++  
+docs/test/20261016-18-WORKTREE/targeted-tests-first.txt:27: trailing whitespace.
++          
+docs/test/20261016-19-WORKTREE/browser-console.txt:3: new blank line at EOF.
+docs/test/20261017-17-WORKTREE/browser-core-results-2.txt:5: new blank line at EOF.
+docs/test/20261017-17-WORKTREE/browser-core-results-3.txt:5: new blank line at EOF.
+docs/test/20261017-17-WORKTREE/browser-names-results.txt:5: new blank line at EOF.
+docs/test/20261017-17-WORKTREE/dlq-race-before-fix.txt:17: trailing whitespace.
++    
+docs/test/20261017-17-WORKTREE/dlq-race-before-fix.txt:21: trailing whitespace.
++    
+docs/test/20261017-17-WORKTREE/dlq-race-before-fix.txt:42: trailing whitespace.
++    
+docs/test/20261017-17-WORKTREE/dlq-race-before-fix.txt:46: trailing whitespace.
++    
+docs/test/20261017-17-WORKTREE/dlq-race-before-fix.txt:52: trailing whitespace.
++    
+docs/test/20261017-17-WORKTREE/dlq-race-before-fix.txt:57: trailing whitespace.
++    
+docs/test/20261017-17-WORKTREE/pytest-final-2.txt:8: trailing whitespace.
++  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/remote_storage/server.py:262: DeprecationWarning: 
+docs/test/20261017-17-WORKTREE/pytest-final-2.txt:10: trailing whitespace.
++  
+docs/test/20261017-17-WORKTREE/pytest-final-2.txt:13: trailing whitespace.
++          
+docs/test/20261017-17-WORKTREE/pytest-final-2.txt:17: trailing whitespace.
++  /home/lsl/miniconda3/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+docs/test/20261017-17-WORKTREE/pytest-final-2.txt:19: trailing whitespace.
++  
+docs/test/20261017-17-WORKTREE/pytest-final-2.txt:22: trailing whitespace.
++          
+docs/test/20261017-17-WORKTREE/pytest-final.txt:8: trailing whitespace.
++  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/remote_storage/server.py:262: DeprecationWarning: 
+docs/test/20261017-17-WORKTREE/pytest-final.txt:10: trailing whitespace.
++  
+docs/test/20261017-17-WORKTREE/pytest-final.txt:13: trailing whitespace.
++          
+docs/test/20261017-17-WORKTREE/pytest-final.txt:17: trailing whitespace.
++  /home/lsl/miniconda3/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+docs/test/20261017-17-WORKTREE/pytest-final.txt:19: trailing whitespace.
++  
+docs/test/20261017-17-WORKTREE/pytest-final.txt:22: trailing whitespace.
++          
+docs/test/20261017-17-WORKTREE/pytest.txt:7: trailing whitespace.
++  /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/remote_storage/server.py:262: DeprecationWarning: 
+docs/test/20261017-17-WORKTREE/pytest.txt:9: trailing whitespace.
++  
+docs/test/20261017-17-WORKTREE/pytest.txt:12: trailing whitespace.
++          
+docs/test/20261017-17-WORKTREE/pytest.txt:16: trailing whitespace.
++  /home/lsl/miniconda3/lib/python3.12/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+docs/test/20261017-17-WORKTREE/pytest.txt:18: trailing whitespace.
++  
+docs/test/20261017-17-WORKTREE/pytest.txt:21: trailing whitespace.
++          

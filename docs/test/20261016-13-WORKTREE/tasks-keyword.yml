@@ -1,0 +1,124 @@
+- generic [ref=f2e3]:
+  - complementary [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - generic [ref=f2e6]: Q
+      - generic [ref=f2e7]:
+        - generic [ref=f2e8]: qtask_list
+        - generic [ref=f2e9]: 管理后台
+    - navigation [ref=f2e10]:
+      - link "📊 总览" [ref=f2e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f2e12]: 📊
+        - generic [ref=f2e13]: 总览
+      - link "📋 队列" [ref=f2e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f2e15]: 📋
+        - generic [ref=f2e16]: 队列
+      - link "🔍 任务" [ref=f2e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f2e18]: 🔍
+        - generic [ref=f2e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f2e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f2e21]: 🧑‍🏭
+        - generic [ref=f2e22]: Worker
+      - link "🔔 告警 2" [ref=f2e23] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f2e24]: 🔔
+        - generic [ref=f2e25]: 告警
+        - generic [ref=f2e26]: "2"
+      - link "📖 教程" [ref=f2e27] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f2e28]: 📖
+        - generic [ref=f2e29]: 教程
+    - generic [ref=f2e30]: v0.2.0 · Redis 任务队列
+  - generic [ref=f2e31]:
+    - banner [ref=f2e32]:
+      - generic "Redis 连接正常" [ref=f2e33]: 已连接
+      - generic "2026/10/16 13:07:03" [ref=f2e35]: 更新于 13:07:03
+      - button "刷新" [ref=f2e36] [cursor=pointer]
+      - generic [ref=f2e37]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f2e38]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f2e39] [cursor=pointer]
+    - generic [ref=f2e40]:
+      - heading "任务" [level=1] [ref=f2e41]
+      - paragraph [ref=f2e42]: 跨队列排查任务。task_id 精确命中时直接打开详情；高级筛选会保存在地址中。
+      - generic [ref=f2e43]:
+        - combobox "任务队列" [ref=f2e44]:
+          - option "全部队列" [selected]
+          - option "handoff_browser:external"
+          - option "handoff_browser:registered-empty"
+          - option "handoff_browser:search"
+        - textbox "搜索任务" [active] [ref=f2e45]:
+          - /placeholder: 搜索 task_id / action / payload
+          - text: browser_test_dlq
+        - combobox "任务状态" [ref=f2e46]:
+          - option "全部" [selected]
+          - option "排队中"
+          - option "执行中"
+          - option "手动重试"
+          - option "等待重试"
+          - option "延迟"
+          - option "死信"
+          - option "完成"
+          - option "失败"
+          - option "跳过"
+          - option "取消"
+          - option "过期"
+          - option "历史"
+        - button "高级筛选" [ref=f2e47] [cursor=pointer]
+        - generic "跟随顶栏刷新间隔；加载更多后暂停以保持当前列表" [ref=f2e48]:
+          - checkbox "自动刷新" [checked] [ref=f2e49]
+          - text: 自动刷新
+      - generic [ref=f2e50]:
+        - button "刷新第一页" [ref=f2e51] [cursor=pointer]
+        - status [ref=f2e52]: 自动刷新 · 更新于 13:07:04
+        - generic [ref=f2e53]: 加载更多后暂停自动刷新
+      - table [ref=f2e55]:
+        - rowgroup [ref=f2e56]:
+          - row [ref=f2e57]:
+            - columnheader "task_id" [ref=f2e58]
+            - columnheader "action" [ref=f2e59]
+            - columnheader "队列" [ref=f2e60]
+            - columnheader "attempt" [ref=f2e61]
+            - columnheader "状态" [ref=f2e62]
+            - columnheader "发布时间" [ref=f2e63]
+            - columnheader "更新时间" [ref=f2e64]
+        - rowgroup [ref=f2e65]:
+          - row [ref=f2e66] [cursor=pointer]:
+            - cell "4b701bde…f265" [ref=f2e67]
+            - cell "browser_test_dlq" [ref=f2e68]
+            - cell "handoff_browser:search" [ref=f2e69]
+            - cell "—" [ref=f2e70]
+            - cell "排队中" [ref=f2e71]
+            - cell "2026-10-16 13:06:04" [ref=f2e74]
+            - cell "2026-10-16 13:06:04" [ref=f2e75]
+          - row [ref=f2e76] [cursor=pointer]:
+            - cell "legacy_o…r_42" [ref=f2e77]
+            - cell "browser_test_dlq" [ref=f2e78]
+            - cell "handoff_browser:search" [ref=f2e79]
+            - cell "—" [ref=f2e80]
+            - cell "排队中" [ref=f2e81]
+            - cell "2026-10-16 13:06:03" [ref=f2e84]
+            - cell "2026-10-16 13:06:03" [ref=f2e85]
+          - row [ref=f2e86] [cursor=pointer]:
+            - cell "v1" [ref=f2e87]
+            - cell "browser_test_dlq" [ref=f2e88]
+            - cell "handoff_browser:search" [ref=f2e89]
+            - cell "—" [ref=f2e90]
+            - cell "排队中" [ref=f2e91]
+            - cell "2026-10-16 13:06:02" [ref=f2e94]
+            - cell "2026-10-16 13:06:02" [ref=f2e95]
+          - row [ref=f2e96] [cursor=pointer]:
+            - cell "旧任务-42" [ref=f2e97]
+            - cell "browser_test_dlq" [ref=f2e98]
+            - cell "handoff_browser:search" [ref=f2e99]
+            - cell "—" [ref=f2e100]
+            - cell "排队中" [ref=f2e101]
+            - cell "2026-10-16 13:06:01" [ref=f2e104]
+            - cell "2026-10-16 13:06:01" [ref=f2e105]

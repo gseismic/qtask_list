@@ -21,7 +21,7 @@
 ```bash
 pip install -e .                  # 基础安装
 pip install -e ".[dev]"           # 开发依赖 (pytest, ruff, mypy)
-pip install -e ".[dashboard]"     # Dashboard 支持 (fastapi, uvicorn)
+pip install -e ".[dashboard]"     # Dashboard 支持 (fastapi, uvicorn, jinja2)
 pip install -e ".[storage]"       # RemoteStorage 服务端支持
 pip install -e ".[all]"           # 全部可选依赖，包含开发工具
 ```
@@ -296,11 +296,23 @@ admin.diagnose("stockev:day-kline:fetch")
 
 `QueueAdmin.recover(..., worker_id=...)` 只处理该 Worker 的 processing，仍在迁移时原子复核心跳；其他失联 Worker 和 legacy processing 不在该范围内。省略该参数保持队列级恢复行为。请使用 `list_workers()` 返回的标识；指定标识不得为空、包含冒号、Redis glob 字符或控制字符，最长 256 个 UTF-8 字节。
 
+队列与 Worker 的自动发现统一使用注册表：`queue_names()` 仅读取 `qtask:queues`，`list_workers()` 仅读取相应 `qtask:workers:<queue>`，不扫描 Redis 键空间，也不缓存发现结果。投递任务及 Worker 心跳会登记队列；空闲 Worker 也可立即显示。Worker 退出后如有残留 processing，会保留注册项供诊断和恢复。未登记的旧状态键、心跳或历史不会自动出现在全局列表。
+
+清空消息会保留已登记的逻辑队列；删除队列会移除注册项。外部删除注册项后，现有 Dashboard/CLI 的下一次查询立即反映变化；仍在运行的 Worker 会在下一次心跳重新登记自己的队列。
+
+删除队列在同一次 Redis Lua 中复核 Worker 心跳、验证数据归属和类型、删除所属消息与记录、安排专属外存回收并注销队列。有活跃 Worker 时拒绝删除；并发投递只会发生在整个删除操作之前或之后。该管理操作会同步遍历队列数据和相关命名空间，大队列应在维护窗口执行。
+
 跨队列搜索使用 `QueueAdmin.search_tasks_page(queues=None, search=..., limit=50, cursor=...)`；`queues=None` 在第一页固定当前队列集合，后续游标沿该快照翻页。也可显式传入队列列表。响应包含 `tasks`、`next_cursor`、`has_more`、`scan_limited`；默认每页扫描预算为 5000 条，达到上限时使用游标继续检索。Dashboard 固定使用这个预算。`all` 包含 Redis 中仍保留的终态历史，SQLite 归档不在该搜索范围。`QueueAdmin.list_tasks()` 的筛选扫描最多遍历 5000 条，超过后报错并提示改用分页接口。
+
+历史分页使用创建时间和任务 ID 作为稳定边界，删除已读记录不会跳过下一页。各原始容器状态也支持继续翻页，并补充没有历史索引的消息；这类诊断续页期间容器发生变化时要求刷新第一页。旧格式游标同样需要刷新，不再以 500 条作为列表终点。
 
 总览的 `completed_total` 等字段是状态转换累计数，`history` 是当前 Redis 历史索引条数。旧队列需要在暂停投递和消费的维护窗口运行 `qtask rebuild-observation <queue>` 回填截止时间及等待重试索引；界面会标记未回填队列。
 
 DLQ 重放（`admin.requeue_dlq` / `qtask requeue`）创建新的 `task_id`，原失败记录保持不变，并通过 `replay_of` / `replayed_by` 保留血缘；新实例从 `attempt=0` 开始。`reset_retry` 与 CLI `--keep-retry` 仅为兼容参数，V2 replay 不会复活原终态。从活跃 Worker 的 processing 重放会被拒绝，需先执行 recover。
+
+Dashboard、CLI 和 `QueueAdmin.replay_task()` 默认继承原记录的 `max_attempts`；可用 `max_attempts` 显式覆盖。`SmartQueue.replay_task()` 未传该参数时仍使用当前队列配置。重复重放会追加全部新实例的血缘。批量 DLQ 重放返回 `moved`、`skipped`、`attempted`、`not_attempted` 和最多 20 项失败原因；截止已过或缺少 V2 审计记录的消息保留，不能降级成普通 payload 投递。界面保留部分完成的确认框，CLI 对部分完成以非零状态退出。
+
+DLQ 入口要求原消息仍在 DLQ 中，并在同一 Lua 中成功移除后才生成实例；批量快照中的消息若已被另一操作移走，会计入跳过。库调用 `replay_task(..., require_dlq=True)` 可显式要求这一条件；默认 False 保留从历史记录主动重放的行为。
 
 ### TaskHistory — 任务历史
 
@@ -574,6 +586,10 @@ Dashboard 是 React 单页应用（构建产物已随包发布，无需 Node 环
 总览的完成量和速率由本次访问的浏览器采样，在 SPA 页面间切换会保留，完整重新加载页面后重新采样。至少观测 30 秒后显示速率；没有调度器提供的“本轮期望量”时无法计算批次完成百分比。只有持续 ready 积压、在线 Worker 且连续 2 分钟无完成时才显示“疑似停滞”；空闲、无 Worker、完成进展或超过 60 秒的观测中断会重置停滞计时。未知旧指标显示为未知。
 
 顶栏刷新作用于全局监控和当前任务视图。任务列表默认按顶栏间隔更新第一页，加载更多时自动取消该列表的自动刷新以保留当前位置；手动刷新第一页或重新勾选后可查看最新结果。列表和详情显示各自最近成功更新时间，请求失败时保留当前查询的旧数据并标明过时。全局与单队列任务均支持精确 action 和发布/完成时间筛选。
+
+队列与任务的管理 API 提供查询参数入口，如 `GET /api/queues/detail?name=...`、`GET /api/queues/tasks?name=...`、`POST /api/queues/requeue-dlq?name=...`、`GET /api/tasks/detail?task_id=...`、`POST /api/tasks/replay?task_id=...`。名称和 ID 应按查询参数编码，支持 `/`、`%`、中文等字符；原有单数路径入口仍可使用。
+
+Dashboard 内存告警默认使用 Redis `maxmemory`；可设置 `QTASK_DASHBOARD_MEMORY_THRESHOLD_MB` 为有限正数（MB）。两者同时存在时取较小值，均未配置时明确显示“未启用”，不判断为正常。该配置只影响 Dashboard，Worker 的 `monitor_threshold_mb` 配置保持独立。
 
 告警“已处理”只保存在本浏览器，确认后立即更新；完整重新加载页面后持续故障的确认仍有效。监测到故障恢复后再复发时重新提示。未打开后台期间发生的恢复与复发无法由浏览器单独判断，多人共享或后台持久化告警仍需要服务端模型。
 

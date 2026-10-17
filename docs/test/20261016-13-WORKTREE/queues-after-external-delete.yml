@@ -1,0 +1,77 @@
+- generic [ref=f3e3]:
+  - complementary [ref=f3e4]:
+    - generic [ref=f3e5]:
+      - generic [ref=f3e6]: Q
+      - generic [ref=f3e7]:
+        - generic [ref=f3e8]: qtask_list
+        - generic [ref=f3e9]: 管理后台
+    - navigation [ref=f3e10]:
+      - link "📊 总览" [ref=f3e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f3e12]: 📊
+        - generic [ref=f3e13]: 总览
+      - link "📋 队列" [ref=f3e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=f3e15]: 📋
+        - generic [ref=f3e16]: 队列
+      - link "🔍 任务" [ref=f3e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=f3e18]: 🔍
+        - generic [ref=f3e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=f3e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=f3e21]: 🧑‍🏭
+        - generic [ref=f3e22]: Worker
+      - link "🔔 告警 1" [ref=f3e85] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=f3e24]: 🔔
+        - generic [ref=f3e25]: 告警
+        - generic [ref=f3e26]: "1"
+      - link "📖 教程" [ref=f3e27] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=f3e28]: 📖
+        - generic [ref=f3e29]: 教程
+    - generic [ref=f3e30]: v0.2.0 · Redis 任务队列
+  - generic [ref=f3e31]:
+    - banner [ref=f3e32]:
+      - generic "Redis 连接正常" [ref=f3e33]: 已连接
+      - generic "2026/10/16 13:08:18" [ref=f3e86]: 更新于 13:08:18
+      - button "刷新" [active] [ref=f3e36] [cursor=pointer]
+      - generic [ref=f3e37]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=f3e38]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=f3e39] [cursor=pointer]
+    - generic [ref=f3e40]:
+      - heading "队列" [level=1] [ref=f3e41]
+      - paragraph [ref=f3e42]: 按 namespace 管理队列。色条显示当前排队、执行、延迟与旧重试构成；速率与 ETA 为浏览器观测估计。
+      - generic [ref=f3e43]:
+        - combobox [ref=f3e44]:
+          - option "全部" [selected]
+          - option "handoff_browser"
+        - generic [ref=f3e45]:
+          - button "全部" [ref=f3e46] [cursor=pointer]
+          - button "进行中" [ref=f3e47] [cursor=pointer]
+          - button "仅异常" [ref=f3e48] [cursor=pointer]
+        - textbox "搜索队列名" [ref=f3e49]
+        - generic [ref=f3e50]: 共 2 个
+      - generic [ref=f3e51]:
+        - generic [ref=f3e52]:
+          - generic [ref=f3e53]:
+            - generic "handoff_browser:search" [ref=f3e54]
+            - generic [ref=f3e55]: 异常
+          - img "排队 4 · 执行 0 · 延迟 0 · 旧重试 0" [ref=f3e57]
+          - generic [ref=f3e59]: 待处理 4 · 观测期完成 — · 速率 — · 无 Worker
+          - generic [ref=f3e60]:
+            - button "详情" [ref=f3e61] [cursor=pointer]
+            - button "操作 ▾" [ref=f3e63] [cursor=pointer]
+        - generic [ref=f3e76]:
+          - generic "handoff_browser:registered-empty" [ref=f3e78]
+          - img "无待处理任务" [ref=f3e79]
+          - generic [ref=f3e80]: 待处理 0 · 观测期完成 — · 速率 — · ETA —
+          - generic [ref=f3e81]:
+            - button "详情" [ref=f3e82] [cursor=pointer]
+            - button "操作 ▾" [ref=f3e84] [cursor=pointer]

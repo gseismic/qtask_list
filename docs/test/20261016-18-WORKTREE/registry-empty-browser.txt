@@ -1,0 +1,6 @@
+### Result
+{"passed":true,"queues":0}
+### Ran Playwright code
+```js
+await (async page => { const loaded = page.waitForResponse(r => r.url().endsWith("/api/queues")); await page.getByRole("button", { name: "刷新", exact: true }).click(); await loaded; await page.getByText("没有队列，去投递第一条任务", { exact: true }).waitFor(); return { passed: true, queues: await page.locator(".qc-name").count() }; })(page);
+```

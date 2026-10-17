@@ -1,0 +1,264 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: Q
+      - generic [ref=e7]:
+        - generic [ref=e8]: qtask_list
+        - generic [ref=e9]: 管理后台
+    - navigation [ref=e10]:
+      - link "📊 总览" [ref=e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e12]: 📊
+        - generic [ref=e13]: 总览
+      - link "📋 队列" [ref=e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=e15]: 📋
+        - generic [ref=e16]: 队列
+      - link "🔍 任务" [ref=e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=e18]: 🔍
+        - generic [ref=e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=e21]: 🧑‍🏭
+        - generic [ref=e22]: Worker
+      - link "🔔 告警 14" [ref=e23] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=e24]: 🔔
+        - generic [ref=e25]: 告警
+        - generic [ref=e26]: "14"
+      - link "📖 教程" [ref=e27] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=e28]: 📖
+        - generic [ref=e29]: 教程
+    - generic [ref=e30]: v0.2.0 · Redis 任务队列
+  - generic [ref=e31]:
+    - banner [ref=e32]:
+      - generic "Redis 连接正常" [ref=e33]: 已连接
+      - generic "2026/10/17 17:31:18" [ref=e35]: 更新于 17:31:18
+      - button "刷新" [ref=e36] [cursor=pointer]
+      - generic [ref=e37]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=e38]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=e39] [cursor=pointer]
+    - generic [ref=e40]:
+      - heading "总览" [level=1] [ref=e41]
+      - paragraph [ref=e42]: 查看当前待处理量与异常；完成量和速率来自本次访问近一小时的浏览器观测，切换页面会保留采样。
+      - generic [ref=e43]:
+        - combobox "总览 namespace" [ref=e44]:
+          - option "全部 namespace" [selected]
+          - option "(默认)"
+          - option "handoff_browser"
+          - option "review"
+        - textbox "搜索队列名" [ref=e45]
+        - generic [ref=e46]: 当前范围 14 / 14 个队列
+      - generic [ref=e47]:
+        - button "活跃队列 10/14. 点击查看进行中队列 →" [ref=e48] [cursor=pointer]:
+          - generic [ref=e49]: 活跃队列
+          - generic [ref=e50]: 10/14
+          - generic [ref=e51]: 当前范围内有待处理任务的队列
+          - generic [aria-hidden] [ref=e52]: 点击查看进行中队列 →
+        - button "总待处理 514. 点击查看进行中队列 →" [ref=e53] [cursor=pointer]:
+          - generic [ref=e54]: 总待处理
+          - generic [ref=e55]: "514"
+          - generic [ref=e56]: 排队 + 执行 + 延迟 + 旧重试
+          - generic [aria-hidden] [ref=e57]: 点击查看进行中队列 →
+        - generic [ref=e58]:
+          - generic [ref=e59]: 合计观测速率
+          - generic [ref=e60]: —
+          - generic [ref=e61]: 观测至少 30 秒后估算
+        - button "异常队列 11. 筛选并定位异常队列 →" [ref=e62] [cursor=pointer]:
+          - generic [ref=e63]: 异常队列
+          - generic [ref=e64]: "11"
+          - generic [ref=e65]: 死信 / 无 Worker / 停滞 / 失联 / 过期
+          - generic [aria-hidden] [ref=e66]: 筛选并定位异常队列 →
+      - generic [ref=e67]:
+        - generic [ref=e68]:
+          - heading "待处理告警" [level=2] [ref=e69]
+          - link "查看全部 →" [ref=e70] [cursor=pointer]:
+            - /url: /alerts
+        - generic [ref=e71]:
+          - generic [ref=e72]: 无人消费
+          - strong [ref=e73]: handoff_browser:external
+          - generic [ref=e74]: ready 有 1 条任务，但没有在线 Worker
+          - link "定位" [ref=e75] [cursor=pointer]:
+            - /url: /queues/handoff_browser%3Aexternal?state=ready
+        - generic [ref=e76]:
+          - generic [ref=e77]: 无人消费
+          - strong [ref=e78]: handoff_browser:search
+          - generic [ref=e79]: ready 有 4 条任务，但没有在线 Worker
+          - link "定位" [ref=e80] [cursor=pointer]:
+            - /url: /queues/handoff_browser%3Asearch?state=ready
+        - generic [ref=e81]:
+          - generic [ref=e82]: 无人消费
+          - strong [ref=e83]: review%2Fname
+          - generic [ref=e84]: ready 有 1 条任务，但没有在线 Worker
+          - link "定位" [ref=e85] [cursor=pointer]:
+            - /url: /queues/review%252Fname?state=ready
+      - generic [ref=e86]:
+        - heading "队列运行矩阵" [level=2] [ref=e87]
+        - generic [ref=e88]:
+          - button "全部" [ref=e89] [cursor=pointer]
+          - button "进行中" [ref=e90] [cursor=pointer]
+          - button "仅异常" [ref=e91] [cursor=pointer]
+      - paragraph [ref=e92]: 待处理构成： 排队 执行 延迟 旧重试 · ETA 仅估算无延迟队列
+      - generic "队列运行矩阵，可横向滚动" [ref=e97]:
+        - generic [ref=e98]:
+          - generic [aria-hidden] [ref=e99]:
+            - generic [ref=e100]: 队列
+            - generic [ref=e101]: 待处理构成
+            - generic [ref=e102]: 待处理
+            - generic [ref=e103]: 观测完成
+            - generic [ref=e104]: 条/min
+            - generic [ref=e105]: 预计/状态
+            - generic [ref=e106]: 异常
+          - generic [ref=e107]:
+            - button "▾ (默认) · 3 个队列 · 待处理 3 · 观测完成 — ⚠ 3" [expanded] [ref=e108] [cursor=pointer]:
+              - generic [ref=e109]: ▾
+              - generic [ref=e110]: (默认)
+              - generic [ref=e111]: · 3 个队列
+              - generic [ref=e112]: · 待处理 3
+              - generic [ref=e113]: · 观测完成 —
+              - generic [ref=e114]: ⚠ 3
+            - link "review/slash 排队 1 · 执行 0 · 延迟 0 · 旧重试 0 1 — — 无 Worker 无 Worker" [ref=e115] [cursor=pointer]:
+              - generic "review/slash" [ref=e116]
+              - img "排队 1 · 执行 0 · 延迟 0 · 旧重试 0" [ref=e117]
+              - generic [ref=e119]: "1"
+              - generic [ref=e120]: —
+              - generic [ref=e121]: —
+              - generic [ref=e122]: 无 Worker
+              - generic [ref=e123]: 无 Worker
+            - link "review%2Fname 排队 1 · 执行 0 · 延迟 0 · 旧重试 0 1 — — 无 Worker 无 Worker" [ref=e125] [cursor=pointer]:
+              - generic "review%2Fname" [ref=e126]
+              - img "排队 1 · 执行 0 · 延迟 0 · 旧重试 0" [ref=e127]
+              - generic [ref=e129]: "1"
+              - generic [ref=e130]: —
+              - generic [ref=e131]: —
+              - generic [ref=e132]: 无 Worker
+              - generic [ref=e133]: 无 Worker
+            - link "中文/队列 排队 1 · 执行 0 · 延迟 0 · 旧重试 0 1 — — 无 Worker 无 Worker" [ref=e135] [cursor=pointer]:
+              - generic "中文/队列" [ref=e136]
+              - img "排队 1 · 执行 0 · 延迟 0 · 旧重试 0" [ref=e137]
+              - generic [ref=e139]: "1"
+              - generic [ref=e140]: —
+              - generic [ref=e141]: —
+              - generic [ref=e142]: 无 Worker
+              - generic [ref=e143]: 无 Worker
+          - generic [ref=e145]:
+            - button "▾ handoff_browser · 3 个队列 · 待处理 5 · 观测完成 — ⚠ 2" [expanded] [ref=e146] [cursor=pointer]:
+              - generic [ref=e147]: ▾
+              - generic [ref=e148]: handoff_browser
+              - generic [ref=e149]: · 3 个队列
+              - generic [ref=e150]: · 待处理 5
+              - generic [ref=e151]: · 观测完成 —
+              - generic [ref=e152]: ⚠ 2
+            - link "handoff_browser:external 排队 1 · 执行 0 · 延迟 0 · 旧重试 0 1 — — 无 Worker 无 Worker 指标需回填" [ref=e153] [cursor=pointer]:
+              - generic "handoff_browser:external" [ref=e154]
+              - img "排队 1 · 执行 0 · 延迟 0 · 旧重试 0" [ref=e155]
+              - generic [ref=e157]: "1"
+              - generic [ref=e158]: —
+              - generic [ref=e159]: —
+              - generic [ref=e160]: 无 Worker
+              - generic [ref=e161]:
+                - generic [ref=e162]: 无 Worker
+                - generic "旧队列需运行 rebuild-observation 回填监控索引" [ref=e163]: 指标需回填
+            - link "handoff_browser:search 排队 4 · 执行 0 · 延迟 0 · 旧重试 0 4 — — 无 Worker 无 Worker 指标需回填" [ref=e164] [cursor=pointer]:
+              - generic "handoff_browser:search" [ref=e165]
+              - img "排队 4 · 执行 0 · 延迟 0 · 旧重试 0" [ref=e166]
+              - generic [ref=e168]: "4"
+              - generic [ref=e169]: —
+              - generic [ref=e170]: —
+              - generic [ref=e171]: 无 Worker
+              - generic [ref=e172]:
+                - generic [ref=e173]: 无 Worker
+                - generic "旧队列需运行 rebuild-observation 回填监控索引" [ref=e174]: 指标需回填
+            - link "handoff_browser:registered-empty 无待处理任务 0 — — — 指标需回填 空闲" [ref=e175] [cursor=pointer]:
+              - generic "handoff_browser:registered-empty" [ref=e176]
+              - img "无待处理任务" [ref=e177]
+              - generic [ref=e178]: "0"
+              - generic [ref=e179]: —
+              - generic [ref=e180]: —
+              - generic [ref=e181]: —
+              - generic [ref=e182]:
+                - generic "旧队列需运行 rebuild-observation 回填监控索引" [ref=e183]: 指标需回填
+                - generic [ref=e184]: 空闲
+          - generic [ref=e185]:
+            - button "▾ review · 8 个队列 · 待处理 506 · 观测完成 — ⚠ 6" [expanded] [ref=e186] [cursor=pointer]:
+              - generic [ref=e187]: ▾
+              - generic [ref=e188]: review
+              - generic [ref=e189]: · 8 个队列
+              - generic [ref=e190]: · 待处理 506
+              - generic [ref=e191]: · 观测完成 —
+              - generic [ref=e192]: ⚠ 6
+            - link "review:bulk 无待处理任务 0 — — — DLQ 2" [ref=e193] [cursor=pointer]:
+              - generic "review:bulk" [ref=e194]
+              - img "无待处理任务" [ref=e195]
+              - generic [ref=e196]: "0"
+              - generic [ref=e197]: —
+              - generic [ref=e198]: —
+              - generic [ref=e199]: —
+              - generic [ref=e200]: DLQ 2
+            - link "review:large 排队 501 · 执行 0 · 延迟 0 · 旧重试 0 501 — — 无 Worker 无 Worker" [ref=e202] [cursor=pointer]:
+              - generic "review:large" [ref=e203]
+              - img "排队 501 · 执行 0 · 延迟 0 · 旧重试 0" [ref=e204]
+              - generic [ref=e206]: "501"
+              - generic [ref=e207]: —
+              - generic [ref=e208]: —
+              - generic [ref=e209]: 无 Worker
+              - generic [ref=e210]: 无 Worker
+            - link "review:overdue 排队 1 · 执行 0 · 延迟 0 · 旧重试 0 1 — — 无 Worker 过期 1 无 Worker" [ref=e212] [cursor=pointer]:
+              - generic "review:overdue" [ref=e213]
+              - img "排队 1 · 执行 0 · 延迟 0 · 旧重试 0" [ref=e214]
+              - generic [ref=e216]: "1"
+              - generic [ref=e217]: —
+              - generic [ref=e218]: —
+              - generic [ref=e219]: 无 Worker
+              - generic [ref=e220]:
+                - generic [ref=e221]: 过期 1
+                - generic [ref=e222]: 无 Worker
+            - link "review:replay 无待处理任务 0 — — — DLQ 1" [ref=e223] [cursor=pointer]:
+              - generic "review:replay" [ref=e224]
+              - img "无待处理任务" [ref=e225]
+              - generic [ref=e226]: "0"
+              - generic [ref=e227]: —
+              - generic [ref=e228]: —
+              - generic [ref=e229]: —
+              - generic [ref=e230]: DLQ 1
+            - link "review:table 排队 1 · 执行 0 · 延迟 0 · 旧重试 0 1 — — 无 Worker 无 Worker" [ref=e232] [cursor=pointer]:
+              - generic "review:table" [ref=e233]
+              - img "排队 1 · 执行 0 · 延迟 0 · 旧重试 0" [ref=e234]
+              - generic [ref=e236]: "1"
+              - generic [ref=e237]: —
+              - generic [ref=e238]: —
+              - generic [ref=e239]: 无 Worker
+              - generic [ref=e240]: 无 Worker
+            - link "review:workers 排队 0 · 执行 2 · 延迟 0 · 旧重试 0 2 — — — 失联 2" [ref=e242] [cursor=pointer]:
+              - generic "review:workers" [ref=e243]
+              - img "排队 0 · 执行 2 · 延迟 0 · 旧重试 0" [ref=e244]
+              - generic [ref=e246]: "2"
+              - generic [ref=e247]: —
+              - generic [ref=e248]: —
+              - generic [ref=e249]: —
+              - generic [ref=e250]: 失联 2
+            - link "review:retry 排队 0 · 执行 0 · 延迟 1 · 旧重试 0 1 — — 等待重试 等待" [ref=e252] [cursor=pointer]:
+              - generic "review:retry" [ref=e253]
+              - img "排队 0 · 执行 0 · 延迟 1 · 旧重试 0" [ref=e254]
+              - generic [ref=e256]: "1"
+              - generic [ref=e257]: —
+              - generic [ref=e258]: —
+              - generic [ref=e259]: 等待重试
+              - generic [ref=e260]: 等待
+            - link "review:sparse 无待处理任务 0 — — — 指标需回填 空闲" [ref=e262] [cursor=pointer]:
+              - generic "review:sparse" [ref=e263]
+              - img "无待处理任务" [ref=e264]
+              - generic [ref=e265]: "0"
+              - generic [ref=e266]: —
+              - generic [ref=e267]: —
+              - generic [ref=e268]: —
+              - generic [ref=e269]:
+                - generic "旧队列需运行 rebuild-observation 回填监控索引" [ref=e270]: 指标需回填
+                - generic [ref=e271]: 空闲

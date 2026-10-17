@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api } from "../api";
 import { useAppData } from "../appData";
 import type { TaskRow } from "../types";
 import { STATE_KEYS, type StateKey } from "../types";
@@ -10,7 +9,6 @@ import { TaskDrawer } from "../components/TaskDrawer";
 export function TasksPage() {
   const { queues, reload } = useAppData();
   const [params, setParams] = useSearchParams();
-  const [limit, setLimit] = useState(50);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [openTask, setOpenTask] = useState<TaskRow | null>(null);
   const queue = params.get("queue") || "";
@@ -35,15 +33,7 @@ export function TasksPage() {
   }, [setParams]);
   const queueNames = useMemo(() => (queues ?? []).map((item) => String(item.name)), [queues]);
 
-  useEffect(() => {
-    const id = filters.search.trim();
-    if (!/^[a-zA-Z0-9_-]{8,}$/.test(id)) return;
-    let stopped = false;
-    api.task(id).then((task) => {
-      if (!stopped && task.task_id === id) setOpenTask({ task_id: id });
-    }).catch(() => undefined);
-    return () => { stopped = true; };
-  }, [filters.search]);
+  const openTaskById = useCallback((id: string) => setOpenTask({ task_id: id }), []);
 
   return <div className="page">
     <h1 className="page-title">任务</h1>
@@ -61,12 +51,13 @@ export function TasksPage() {
         {queue && !queueNames.includes(queue) && <option value={queue}>{queue}</option>}
         {queueNames.map((name) => <option key={name} value={name}>{name}</option>)}
       </select>} />
-    <TaskTable queue={queue || null} filters={filters} limit={limit} onLimitChange={setLimit}
+    <TaskTable queue={queue || null} filters={filters}
       onOpenTask={(task) => task.task_id && setOpenTask(task)} autoRefresh={autoRefresh}
+      onExactTaskMatch={openTaskById}
       onPauseAutoRefresh={() => setAutoRefresh(false)} />
     {openTask?.task_id && <TaskDrawer key={openTask.task_id} taskId={openTask.task_id}
       stateHint={String(openTask._state ?? openTask.state ?? "")}
       onClose={() => setOpenTask(null)} onChanged={reload}
-      onOpenTask={(id) => setOpenTask({ task_id: id })} />}
+      onOpenTask={openTaskById} />}
   </div>;
 }

@@ -33,3 +33,13 @@
 ### 临时绕过方式
 
 使用已知的精确 task_id 打开任务详情；按 action 检索时可使用页面的精确 action 筛选项，避免将普通关键词解释为 task_id。
+
+## 2026-10-16 13:12（Asia/Shanghai）处理与验证事件
+
+- 模型：Codex / model-unknown（环境声明基于 GPT-6，未提供具体模型 ID）。
+- 状态：未解决 → 已解决。依据：普通关键词不再发送详情请求，真实新旧 ID 自动打开和并发查询切换均通过回归。
+- 修复版本：WORKTREE；基准提交 3ff689706e788264b02839c4e2db9bd8a4644d50。相关未提交文件：qtask_list/admin.py、qtask_list/frontend/src/{components/TaskTable.tsx,pages/TasksPage.tsx,types.ts,useTaskPage.ts}、tests/test_dashboard_api.py、tests/manual/handoff_tasks_search.js 和 handoff_dashboard_server.py，以及更新的 SPA index.html/JS 产物。内容尚未固定为提交；引入提交仍未知。
+- 处理：列表响应新增可空 exact_task_id，在第一页按真实任务记录确认精确命中；前端使用当前查询的确认结果打开详情，移除格式猜测和吞掉 404 的预请求。没有限制为 UUID，保留短 ID、旧字符串 ID 和直接定位不依赖历史索引/列表筛选的行为。关闭详情后刷新和轮询不会重开，旧响应不能干扰新查询。
+- 验证：普通 action 关键词、不存在的普通 ID/UUID 均无详情请求；有效 UUID、legacy_order_42、v1、旧任务-42、指定队列及无索引 ID 正常打开。最终真实浏览器搜索脚本 15 项断言通过，0 请求失败、0 页面异常、0 控制台错误；前端 15 项行为测试及构建通过；最终全量 Python 246 passed。
+- 关联计划：[PLAN-20261016-001-model-unknown-dashboard-handoff-fixes](../plans/PLAN-20261016-001-model-unknown-dashboard-handoff-fixes.md)；[结果](../plans/PLAN-20261016-001-model-unknown-dashboard-handoff-fixes-OUTCOME.md)；[测试记录](../test/20261016-13-WORKTREE/测试记录.md)。
+- 交付边界：修复已在工作区验证；原有 8766 Dashboard 未重启，重启后加载 Python 修复。没有自动提交或推送。

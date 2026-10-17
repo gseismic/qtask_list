@@ -1,0 +1,109 @@
+
+> qtask-dashboard-frontend@0.2.0 test /home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/frontend
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: 所有队列操作和任务详情通过查询参数无损传输特殊名称与 ID
+ok 1 - 所有队列操作和任务详情通过查询参数无损传输特殊名称与 ID
+  ---
+  duration_ms: 14.597573
+  ...
+# Subtest: 批量部分完成、空批次和终止均明确表达结果
+ok 2 - 批量部分完成、空批次和终止均明确表达结果
+  ---
+  duration_ms: 0.314903
+  ...
+# Subtest: 成功状态中的无效 JSON 不能被管理操作当成成功响应
+ok 3 - 成功状态中的无效 JSON 不能被管理操作当成成功响应
+  ---
+  duration_ms: 0.820712
+  ...
+# Subtest: 真实登录模板仅允许同源跳转，反斜杠和跨源 URL 回退首页
+ok 4 - 真实登录模板仅允许同源跳转，反斜杠和跨源 URL 回退首页
+  ---
+  duration_ms: 3.478993
+  ...
+# Subtest: 按 ID 打开执行中任务时使用最新 location，忽略旧列表状态
+ok 5 - 按 ID 打开执行中任务时使用最新 location，忽略旧列表状态
+  ---
+  duration_ms: 0.161
+  ...
+# Subtest: 执行中的任务即使已过开始截止，也不能变成可重放的过期视图
+ok 6 - 执行中的任务即使已过开始截止，也不能变成可重放的过期视图
+  ---
+  duration_ms: 0.100183
+  ...
+# Subtest: 终态与可重放条件符合后端契约，保留旧记录状态回退
+ok 7 - 终态与可重放条件符合后端契约，保留旧记录状态回退
+  ---
+  duration_ms: 0.168782
+  ...
+# Subtest: 错误与截止读取真实 V2 字段，并兼容旧错误对象
+ok 8 - 错误与截止读取真实 V2 字段，并兼容旧错误对象
+  ---
+  duration_ms: 0.099252
+  ...
+# Subtest: 血缘同时支持逗号文本和旧 JSON 数组，保留每个新任务 ID
+ok 9 - 血缘同时支持逗号文本和旧 JSON 数组，保留每个新任务 ID
+  ---
+  duration_ms: 0.639493
+  ...
+# Subtest: 全局与单队列查询都保留 epoch 零边界和精确 action
+ok 10 - 全局与单队列查询都保留 epoch 零边界和精确 action
+  ---
+  duration_ms: 0.799288
+  ...
+# Subtest: Worker 行恢复请求明确携带 Worker 标识并保持安全恢复语义
+ok 11 - Worker 行恢复请求明确携带 Worker 标识并保持安全恢复语义
+  ---
+  duration_ms: 0.342457
+  ...
+# Subtest: 采满 30 秒才显示速率，待处理量不重复计算 retry_wait
+ok 12 - 采满 30 秒才显示速率，待处理量不重复计算 retry_wait
+  ---
+  duration_ms: 0.484742
+  ...
+# Subtest: 空闲后刚来任务不会继承过去的空闲时间而误报停滞
+ok 13 - 空闲后刚来任务不会继承过去的空闲时间而误报停滞
+  ---
+  duration_ms: 0.135601
+  ...
+# Subtest: 连续有积压两分钟且无完成才提示停滞，进展和观测中断会重置
+ok 14 - 连续有积压两分钟且无完成才提示停滞，进展和观测中断会重置
+  ---
+  duration_ms: 0.215549
+  ...
+# Subtest: 无 Worker、纯延迟与未知旧指标不会被推断为消费停滞
+ok 15 - 无 Worker、纯延迟与未知旧指标不会被推断为消费停滞
+  ---
+  duration_ms: 0.296295
+  ...
+# Subtest: 清理或指标重建导致累计计数回退时重新采样
+ok 16 - 清理或指标重建导致累计计数回退时重新采样
+  ---
+  duration_ms: 0.169245
+  ...
+# Subtest: 告警恢复的同一轮计算即移除旧告警，确认立即改变输出
+ok 17 - 告警恢复的同一轮计算即移除旧告警，确认立即改变输出
+  ---
+  duration_ms: 1.049845
+  ...
+# Subtest: 页面重载保留持续故障的确认，恢复后再复发才重新提示
+ok 18 - 页面重载保留持续故障的确认，恢复后再复发才重新提示
+  ---
+  duration_ms: 0.60426
+  ...
+# Subtest: 保留旧确认记录，非法本地存储安全降级，写入失败明确抛出
+ok 19 - 保留旧确认记录，非法本地存储安全降级，写入失败明确抛出
+  ---
+  duration_ms: 0.403542
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 515.79295

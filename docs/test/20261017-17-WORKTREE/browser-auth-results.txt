@@ -1,0 +1,1 @@
+{"passed":6,"checks":["网络中断显示反馈、恢复按钮并阻止重复提交","Unicode 用户名和密码登录；拒绝错误凭据；同源 next 保留参数和锚点；Cookie 生效","跨源 next 回退首页：/\\review-origin.invalid/steal","跨源 next 回退首页：//review-origin.invalid/steal","跨源 next 回退首页：https://review-origin.invalid/steal","退出会话后管理 API 返回 401"],"errors":[],"external":[]}

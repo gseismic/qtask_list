@@ -1,0 +1,71 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: Q
+      - generic [ref=e7]:
+        - generic [ref=e8]: qtask_list
+        - generic [ref=e9]: 管理后台
+    - navigation [ref=e10]:
+      - link "📊 总览" [ref=e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e12]: 📊
+        - generic [ref=e13]: 总览
+      - link "📋 队列" [ref=e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=e15]: 📋
+        - generic [ref=e16]: 队列
+      - link "🔍 任务" [ref=e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=e18]: 🔍
+        - generic [ref=e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=e21]: 🧑‍🏭
+        - generic [ref=e22]: Worker
+      - link "🔔 告警" [ref=e23] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=e24]: 🔔
+        - generic [ref=e25]: 告警
+      - link "📖 教程" [ref=e26] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=e27]: 📖
+        - generic [ref=e28]: 教程
+    - generic [ref=e29]: v0.2.0 · Redis 任务队列
+  - generic [ref=e30]:
+    - banner [ref=e31]:
+      - generic "等待数据" [ref=e32]: 等待…
+      - button "刷新" [ref=e34] [cursor=pointer]
+      - generic [ref=e35]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=e36]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=e37] [cursor=pointer]
+    - generic [ref=e38]:
+      - heading "任务" [level=1] [ref=e39]
+      - paragraph [ref=e40]: 跨队列排查任务。task_id 精确命中时直接打开详情；高级筛选会保存在地址中。
+      - generic [ref=e41]:
+        - combobox "任务队列" [ref=e42]:
+          - option "全部队列" [selected]
+        - textbox "搜索任务" [ref=e43]:
+          - /placeholder: 搜索 task_id / action / payload
+        - combobox "任务状态" [ref=e44]:
+          - option "全部" [selected]
+          - option "排队中"
+          - option "执行中"
+          - option "手动重试"
+          - option "等待重试"
+          - option "延迟"
+          - option "死信"
+          - option "完成"
+          - option "失败"
+          - option "跳过"
+          - option "取消"
+          - option "过期"
+          - option "历史"
+        - button "高级筛选" [ref=e45] [cursor=pointer]
+        - generic "跟随顶栏刷新间隔；加载更多后暂停以保持当前列表" [ref=e46]:
+          - checkbox "自动刷新" [checked] [ref=e47]
+          - text: 自动刷新

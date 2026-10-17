@@ -1,0 +1,6 @@
+### Result
+{"browser":"153.0.8010.36","viewport":{"width":1280,"height":720},"userAgent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36"}
+### Ran Playwright code
+```js
+await (async page => ({ browser: page.context().browser().version(), viewport: page.viewportSize(), userAgent: await page.evaluate(() => navigator.userAgent) }))(page);
+```

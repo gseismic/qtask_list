@@ -33,3 +33,22 @@ Dashboard 已扫描过旧版队列并缓存发现结果；在缓存刷新前，�
 ### 临时绕过方式
 
 重启 Dashboard 进程可清除其进程内缓存，之后队列列表恢复为空。此方法只规避界面旧数据，不代表缓存失效行为已修复。
+
+## 2026-10-16 13:12（Asia/Shanghai）处理与验证事件
+
+- 模型：Codex / model-unknown（环境声明基于 GPT-6，未提供具体模型 ID）。
+- 状态：未解决 → 已解决。依据：完成外部清理后的同实例 API 和真实浏览器回归。
+- 修复版本：WORKTREE；基准提交 3ff689706e788264b02839c4e2db9bd8a4644d50。相关未提交文件：qtask_list/admin.py、tests/test_dashboard_api.py；测试环境脚本 tests/manual/handoff_dashboard_server.py。内容尚未固定为提交；引入提交仍未知。
+- 处理：读取缓存时批量核实 ready/retry/dlq/delay/processing/历史索引及已知专属 processing 键；已知键全部消失时，所有失效候选共用一次 processing 补查，保留状态迁移后的真实旧队列。无有效数据的候选从本进程缓存移除；旧版新队列的每小时发现和注册表空队列语义保持不变。
+- 验证：外部删除七类旧队列存储、ready 转移到各状态、Worker 专属键切换、批量失效扫描次数、历史保留和注册表空队列回归通过。最终全量 Python 246 passed。最终浏览器进程内外部删除无注册表旧队列 3→2，删除另一旧队列及历史 2→1，私有 Redis 外部清空后 API/页面均为 0；没有重启进程或等待缓存超时。
+- 关联计划：[PLAN-20261016-001-model-unknown-dashboard-handoff-fixes](../plans/PLAN-20261016-001-model-unknown-dashboard-handoff-fixes.md)；[结果](../plans/PLAN-20261016-001-model-unknown-dashboard-handoff-fixes-OUTCOME.md)；[测试记录](../test/20261016-13-WORKTREE/测试记录.md)。
+- 交付边界：修复已在工作区验证；原有 8766 Dashboard 未重启，重启后加载修复。没有自动提交或推送。
+
+## 2026-10-16 18:58（Asia/Shanghai）按用户新要求简化发现
+
+- 模型：Codex / model-unknown（环境声明基于 GPT-6，未提供具体模型 ID）。状态保持已解决。
+- 来源：用户明确“不需要兼容性，直接按最合适的来”；该要求取代前次保留 V1 自动发现的设计约束。
+- 实现版本：WORKTREE，基准提交 3ff689706e788264b02839c4e2db9bd8a4644d50。相关未提交文件：qtask_list/admin.py、state.py、worker.py、tests/test_registry_discovery.py、test_dashboard_api.py、test_cli.py、tests/manual/handoff_dashboard_server.py、README.md。尚未固定为提交，引入提交仍未知。
+- 替代实现：queue_names 仅读取 qtask:queues，list_workers 仅读取相应 Worker 注册表；删除前次兼容扫描、小时缓存及失效校验。未注册状态键或历史不再加入全局列表。心跳原子补齐队列/Worker 登记，退出时保留有残留 processing 的 Worker，失效清理原子保护并发续租。
+- 验证：最终全量 Python 243 passed，前端 15 项、浏览器 18 项通过，ruff/mypy 通过。新测试禁止发现路径执行 SCAN，并覆盖外部注册项增删、残留数据不触发发现、空闲 Worker、孤儿恢复、类型错误与并发 namespace/续租。浏览器同进程外部移除注册项 3→2、重新登记 2→3、注册表清空 3→0 均即时生效，即使消息与历史仍存在。
+- 关联：[计划](../plans/PLAN-20261016-002-model-unknown-registry-discovery.md)、[结果](../plans/PLAN-20261016-002-model-unknown-registry-discovery-OUTCOME.md)、[测试记录](../test/20261016-18-WORKTREE/测试记录.md)。原 13:12 事件保留为历史，当前发现行为以本事件为准。现有 8766 Dashboard 未重启，需重启加载修改；未提交、未推送。

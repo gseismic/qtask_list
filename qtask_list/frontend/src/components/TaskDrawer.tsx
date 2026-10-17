@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useAppData } from "../appData";
 import { usePolling } from "../hooks";
+import { useModalFocus } from "../modal";
 import { canReplayTask, replayIds, taskDeadline, taskError, taskState } from "../taskView";
 import type { TaskRow } from "../types";
 import { STATE_LABELS, type StateKey } from "../types";
@@ -29,14 +30,9 @@ export function TaskDrawer({ taskId, stateHint, onClose, onChanged, onOpenTask }
   const [deadlineInput, setDeadlineInput] = useState("");
   const [success, setSuccess] = useState<{ message: string; taskId?: string } | null>(null);
   const mounted = useRef(true);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  useModalFocus(drawerRef, { busy, onClose });
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.defaultPrevented && !busy && !confirm) onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose, busy, confirm]);
 
   const queue = String(task?._queue ?? task?.queue ?? "");
   const state = task ? taskState(task, stateHint) : "unknown";
@@ -102,7 +98,7 @@ export function TaskDrawer({ taskId, stateHint, onClose, onChanged, onOpenTask }
   };
 
   return <div className="overlay" onClick={() => { if (!busy) onClose(); }}>
-    <div className="drawer" role="dialog" aria-modal="true" aria-label="任务详情" onClick={(event) => event.stopPropagation()}>
+    <div ref={drawerRef} tabIndex={-1} className="drawer" role="dialog" aria-modal="true" aria-label="任务详情" onClick={(event) => event.stopPropagation()}>
       <div className="drawer-head">
         <strong className="mono">{task?.action || "任务"}</strong>
         <span className="mono faint" title={taskId}>{shortId(taskId)}</span>

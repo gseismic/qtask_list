@@ -1,0 +1,109 @@
+{
+  "operational_metadata": {
+    "ready": {
+      "created_at": null,
+      "updated_at": null,
+      "attempt": 0,
+      "max_attempts": null
+    },
+    "processing": {
+      "created_at": null,
+      "updated_at": null,
+      "attempt": 1,
+      "max_attempts": null
+    },
+    "detail": {
+      "created_at": 1792225721.999884,
+      "updated_at": 1792225722.0031,
+      "attempt": 1,
+      "max_attempts": 1
+    }
+  },
+  "raw_list_501": {
+    "queue_count": 501,
+    "returned": 500,
+    "next_cursor": null,
+    "has_more": null,
+    "indexed_next_cursor": true
+  },
+  "sparse_time_filter": {
+    "queue_endpoint_status": 500,
+    "queue_endpoint_body": "Internal Server Error",
+    "global_endpoint_status": 200,
+    "global_scan_limited": true,
+    "global_has_more": true
+  },
+  "replay_policy_and_lineage": {
+    "first_accepted": true,
+    "second_accepted": true,
+    "first_task_id": "832b0bba-9e0e-4784-a228-99e5090a984c",
+    "second_task_id": "a06181a0-f44f-4882-a9de-d8b488a3f56a",
+    "source_replayed_by": "a06181a0-f44f-4882-a9de-d8b488a3f56a",
+    "source_max_attempts": 1,
+    "replay_max_attempts": 3
+  },
+  "bulk_expired_dlq": {
+    "http_status": 200,
+    "result": {
+      "moved": 0
+    },
+    "dlq_remaining": 1,
+    "original_task_id": "d14f9aad-5b48-4885-8ed6-7abe7848afc2"
+  },
+  "slash_queue_name": {
+    "registered": true,
+    "queue_api_status": 404,
+    "tasks_api_status": 404,
+    "global_search_count": 1
+  },
+  "unicode_login_password": {
+    "status": 500,
+    "body": "Internal Server Error"
+  },
+  "unicode_login_username": {
+    "status": 500,
+    "body": "Internal Server Error"
+  },
+  "delete_concurrent_enqueue": {
+    "delete_status": 200,
+    "accepted_task_id": "e2808b7c-efc0-44e7-ba0b-e08e4f1600c7",
+    "message_remaining": 1,
+    "history_remaining": false,
+    "registered": false
+  },
+  "delete_concurrent_active_worker": {
+    "delete_status": 200,
+    "active_before_final_delete": true,
+    "processing_remaining": 0,
+    "heartbeat_remaining": false,
+    "history_remaining": false,
+    "handler_ack_succeeds": false
+  },
+  "cursor_after_prior_page_deletion": {
+    "expected_remaining": [
+      "8f63afa5-d785-4b27-af2d-cd6593338565",
+      "103fdd35-cd0e-4def-8cae-d1a0165fb445"
+    ],
+    "returned_ids": [
+      "8f63afa5-d785-4b27-af2d-cd6593338565"
+    ],
+    "has_more": false,
+    "missing_ids": [
+      "103fdd35-cd0e-4def-8cae-d1a0165fb445"
+    ]
+  },
+  "cross_origin_default_auth_disabled": {
+    "preflight_status": 200,
+    "preflight_allow_origin": "*",
+    "post_status": 200,
+    "post_accepted": true,
+    "post_allow_origin": "*"
+  },
+  "redis_memory_over_limit": {
+    "health_status": "ok",
+    "used_memory": 1049680,
+    "maxmemory": 524288,
+    "memory_status": "healthy",
+    "dashboard_threshold_mb": null
+  }
+}

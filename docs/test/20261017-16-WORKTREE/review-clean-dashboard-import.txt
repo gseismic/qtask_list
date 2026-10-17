@@ -1,0 +1,13 @@
+Downloading zstandard (5.2MiB)
+ Downloaded zstandard
+Installed 26 packages in 34ms
+jinja2 installed: False
+Traceback (most recent call last):
+  File "<stdin>", line 5, in <module>
+  File "/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/qtask_list/dashboard/main.py", line 39, in <module>
+    templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/lsl/.cache/uv/archive-v0/f3T5-7R1cqIYSXoZ4UGpS/lib/python3.12/site-packages/starlette/templating.py", line 96, in __init__
+    assert jinja2 is not None, "jinja2 must be installed to use Jinja2Templates"
+           ^^^^^^^^^^^^^^^^^^
+AssertionError: jinja2 must be installed to use Jinja2Templates

@@ -1,0 +1,47 @@
+{
+  "owned_fixtures": [
+    {
+      "fixture": "browser",
+      "redis_socket": "/tmp/qtask-handoff-browser-76em2zd2/redis.sock",
+      "already_stopped": true,
+      "socket_removed": true,
+      "temporary_directory_removed": true
+    },
+    {
+      "fixture": "browser-2",
+      "redis_socket": "/tmp/qtask-handoff-browser-jxp0eze1/redis.sock",
+      "redis_pid": 1141198,
+      "socket_removed": true,
+      "temporary_directory_removed": true
+    },
+    {
+      "fixture": "browser-3",
+      "redis_socket": "/tmp/qtask-handoff-browser-8f31zfhp/redis.sock",
+      "redis_pid": 1142383,
+      "socket_removed": true,
+      "temporary_directory_removed": true
+    },
+    {
+      "fixture": "browser-auth",
+      "redis_socket": "/tmp/qtask-handoff-browser-9noxxrir/redis.sock",
+      "redis_pid": 1143254,
+      "socket_removed": true,
+      "temporary_directory_removed": true
+    },
+    {
+      "fixture": "browser-final",
+      "redis_socket": "/tmp/qtask-handoff-browser-i01l0mac/redis.sock",
+      "redis_pid": 1146273,
+      "socket_removed": true,
+      "temporary_directory_removed": true
+    }
+  ],
+  "shutdown_regression": {
+    "app_pid": 1147340,
+    "signal": "SIGTERM",
+    "exit_code": 0,
+    "socket_removed": true,
+    "temporary_directory_removed": true
+  },
+  "retained_preexisting_services": "未操作此前交接保留的服务"
+}

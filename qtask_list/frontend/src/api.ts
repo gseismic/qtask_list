@@ -10,7 +10,12 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
     window.location.href = `/login?next=${encodeURIComponent(next)}`;
     throw new Error("未登录");
   }
-  const data = await response.json().catch(() => ({}));
+  let data;
+  try { data = await response.json(); }
+  catch {
+    if (response.ok) throw new Error("服务返回了无法识别的响应，请刷新核对操作结果");
+    data = {};
+  }
   if (!response.ok) {
     const detail = data.detail ?? response.statusText;
     throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
@@ -19,6 +24,8 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
 }
 
 const q = (name: string) => encodeURIComponent(name);
+const queuePath = (name: string, operation: string) => `/api/queues/${operation}?name=${q(name)}`;
+const taskPath = (id: string, operation: string) => `/api/tasks/${operation}?task_id=${q(id)}`;
 
 export interface PushTaskBody {
   payload: Record<string, unknown>;
@@ -37,8 +44,8 @@ export const api = {
   health: () => request<HealthInfo>("/api/health"),
   queues: () => request<QueueInfo[]>("/api/queues"),
   workers: (queue = "") => request<WorkerInfo[]>(`/api/workers${queue ? `?queue=${q(queue)}` : ""}`),
-  diagnose: (queue: string) => request<DiagnoseInfo>(`/api/queue/${q(queue)}/diagnose`),
-  expired: (queue: string, limit = 50) => request(`/api/queue/${q(queue)}/expired?limit=${limit}`),
+  diagnose: (queue: string) => request<DiagnoseInfo>(queuePath(queue, "diagnose")),
+  expired: (queue: string, limit = 50) => request(`${queuePath(queue, "expired")}&limit=${limit}`),
   tasks: (opts: {
     state: string;
     action?: string;
@@ -80,28 +87,28 @@ export const api = {
     if (opts.createdBefore !== undefined) params.set("created_before", String(opts.createdBefore));
     if (opts.completedAfter !== undefined) params.set("completed_after", String(opts.completedAfter));
     if (opts.completedBefore !== undefined) params.set("completed_before", String(opts.completedBefore));
-    return request<TaskPageResult>(`/api/queue/${q(opts.queue)}/tasks?${params.toString()}`);
+    return request<TaskPageResult>(`${queuePath(opts.queue, "tasks")}&${params.toString()}`);
   },
   pushTask: (queue: string, body: PushTaskBody) =>
-    request(`/api/queue/${q(queue)}/tasks`, { method: "POST", body: JSON.stringify(body) }),
-  retryQueue: (queue: string) => request(`/api/queue/${q(queue)}/retry`, { method: "POST" }),
+    request(queuePath(queue, "tasks"), { method: "POST", body: JSON.stringify(body) }),
+  retryQueue: (queue: string) => request(queuePath(queue, "retry"), { method: "POST" }),
   requeueDlq: (queue: string, taskId: string | null = null) =>
-    request(`/api/queue/${q(queue)}/requeue-dlq`, {
+    request(queuePath(queue, "requeue-dlq"), {
       method: "POST",
       body: JSON.stringify({ task_id: taskId, confirm_bulk: taskId === null }),
     }),
   requeueExpired: (queue: string, startDeadlineAt: string, taskId: string | null = null) =>
-    request(`/api/queue/${q(queue)}/requeue-expired`, {
+    request(queuePath(queue, "requeue-expired"), {
       method: "POST",
       body: JSON.stringify({ task_id: taskId, start_deadline_at: startDeadlineAt }),
     }),
   recoverQueue: (queue: string, includeActive = false, workerId?: string) =>
-    request(`/api/queue/${q(queue)}/recover`, {
+    request(queuePath(queue, "recover"), {
       method: "POST",
       body: JSON.stringify({ include_active: includeActive, confirm_active: includeActive, worker_id: workerId }),
     }),
   clearQueue: (queue: string, includeDlq: boolean, includeHistory: boolean, releaseIdentity: boolean) =>
-    request(`/api/queue/${q(queue)}/clear`, {
+    request(queuePath(queue, "clear"), {
       method: "POST",
       body: JSON.stringify({
         include_dlq: includeDlq,
@@ -111,24 +118,24 @@ export const api = {
       }),
     }),
   cleanHistory: (queue: string, ttlDays: number) =>
-    request(`/api/queue/${q(queue)}/clean-history?ttl_days=${ttlDays}`, { method: "POST" }),
+    request(`${queuePath(queue, "clean-history")}&ttl_days=${ttlDays}`, { method: "POST" }),
   deleteQueue: (queue: string) =>
-    request(`/api/queue/${q(queue)}?confirm=true`, { method: "DELETE" }),
-  task: (taskId: string) => request<TaskRow>(`/api/task/${encodeURIComponent(taskId)}`),
+    request(`${queuePath(queue, "detail")}&confirm=true`, { method: "DELETE" }),
+  task: (taskId: string) => request<TaskRow>(taskPath(taskId, "detail")),
   taskPayload: (taskId: string, queue: string, state = "all") =>
-    request(`/api/task/${encodeURIComponent(taskId)}/payload?queue=${q(queue)}&state=${state}`),
+    request(`${taskPath(taskId, "payload")}&queue=${q(queue)}&state=${q(state)}`),
   requeueTask: (taskId: string, queue: string, fromState: string) =>
-    request(`/api/task/${encodeURIComponent(taskId)}/requeue`, {
+    request(taskPath(taskId, "requeue"), {
       method: "POST",
       body: JSON.stringify({ queue, from_state: fromState }),
     }),
   replayTask: (taskId: string, body: Record<string, unknown>) =>
-    request(`/api/task/${encodeURIComponent(taskId)}/replay`, {
+    request(taskPath(taskId, "replay"), {
       method: "POST",
       body: JSON.stringify(body),
     }),
   deleteTask: (taskId: string, queue = "") =>
-    request(`/api/task/${encodeURIComponent(taskId)}${queue ? `?queue=${q(queue)}` : ""}`, {
+    request(`${taskPath(taskId, "detail")}${queue ? `&queue=${q(queue)}` : ""}`, {
       method: "DELETE",
     }),
 };

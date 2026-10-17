@@ -1,0 +1,48 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: Q
+      - generic [ref=e7]:
+        - generic [ref=e8]: qtask_list
+        - generic [ref=e9]: 管理后台
+    - navigation [ref=e10]:
+      - link "📊 总览" [ref=e11] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e12]: 📊
+        - generic [ref=e13]: 总览
+      - link "📋 队列" [ref=e14] [cursor=pointer]:
+        - /url: /queues
+        - generic [ref=e15]: 📋
+        - generic [ref=e16]: 队列
+      - link "🔍 任务" [ref=e17] [cursor=pointer]:
+        - /url: /tasks
+        - generic [ref=e18]: 🔍
+        - generic [ref=e19]: 任务
+      - link "🧑‍🏭 Worker" [ref=e20] [cursor=pointer]:
+        - /url: /workers
+        - generic [ref=e21]: 🧑‍🏭
+        - generic [ref=e22]: Worker
+      - link "🔔 告警" [ref=e23] [cursor=pointer]:
+        - /url: /alerts
+        - generic [ref=e24]: 🔔
+        - generic [ref=e25]: 告警
+      - link "📖 教程" [ref=e26] [cursor=pointer]:
+        - /url: /guide
+        - generic [ref=e27]: 📖
+        - generic [ref=e28]: 教程
+    - generic [ref=e29]: v0.2.0 · Redis 任务队列
+  - generic [ref=e30]:
+    - banner [ref=e31]:
+      - generic "等待数据" [ref=e32]: 等待…
+      - button "刷新" [ref=e34] [cursor=pointer]
+      - generic [ref=e35]:
+        - text: 自动刷新
+        - combobox "自动刷新" [ref=e36]:
+          - option "关"
+          - option "5s" [selected]
+          - option "15s"
+          - option "30s"
+      - button "🌙 黑夜" [ref=e37] [cursor=pointer]
+    - generic [ref=e38]:
+      - heading "总览" [level=1] [ref=e39]
+      - paragraph [ref=e40]: 查看当前待处理量与异常；完成量和速率来自本次访问近一小时的浏览器观测，切换页面会保留采样。

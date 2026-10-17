@@ -46,6 +46,8 @@ export interface HealthInfo {
     used_memory?: number;
     maxmemory?: number;
     status?: string;
+    threshold_bytes?: number | null;
+    threshold_source?: string | null;
   };
 }
 
@@ -96,6 +98,8 @@ export interface DiagnoseInfo {
 
 export interface TaskPageResult {
   tasks: TaskRow[];
+  /** 仅第一页返回服务端确认的精确 ID，与列表筛选独立。 */
+  exact_task_id?: string | null;
   next_cursor?: string | null;
   scan_limited?: boolean;
 }

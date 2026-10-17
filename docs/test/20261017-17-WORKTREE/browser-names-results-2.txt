@@ -1,0 +1,1 @@
+{"passed":3,"checks":[{"name":"review/slash","result":"读取、payload、诊断、投递校验、投递、删任务、清空、删队列均通过"},{"name":"中文/队列","result":"读取、payload、诊断、投递校验、投递、删任务、清空、删队列均通过"},{"name":"review%2Fname","result":"读取、payload、诊断、投递校验、投递、删任务、清空、删队列均通过"}],"failures":[]}

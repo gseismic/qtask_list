@@ -1,0 +1,129 @@
+Building wheel...
+running bdist_wheel
+running build
+running build_py
+creating build/lib/qtask_list
+copying qtask_list/history.py -> build/lib/qtask_list
+copying qtask_list/storage.py -> build/lib/qtask_list
+copying qtask_list/admin.py -> build/lib/qtask_list
+copying qtask_list/clock.py -> build/lib/qtask_list
+copying qtask_list/__init__.py -> build/lib/qtask_list
+copying qtask_list/state.py -> build/lib/qtask_list
+copying qtask_list/queue.py -> build/lib/qtask_list
+copying qtask_list/security.py -> build/lib/qtask_list
+copying qtask_list/models.py -> build/lib/qtask_list
+copying qtask_list/archiver.py -> build/lib/qtask_list
+copying qtask_list/worker.py -> build/lib/qtask_list
+copying qtask_list/errors.py -> build/lib/qtask_list
+copying qtask_list/envelope.py -> build/lib/qtask_list
+creating build/lib/qtask_list/remote_storage
+copying qtask_list/remote_storage/__init__.py -> build/lib/qtask_list/remote_storage
+copying qtask_list/remote_storage/server.py -> build/lib/qtask_list/remote_storage
+creating build/lib/qtask_list/dashboard
+copying qtask_list/dashboard/__init__.py -> build/lib/qtask_list/dashboard
+copying qtask_list/dashboard/auth.py -> build/lib/qtask_list/dashboard
+copying qtask_list/dashboard/main.py -> build/lib/qtask_list/dashboard
+creating build/lib/qtask_list/cli
+copying qtask_list/cli/__main__.py -> build/lib/qtask_list/cli
+copying qtask_list/cli/__init__.py -> build/lib/qtask_list/cli
+running egg_info
+creating qtask_list.egg-info
+writing qtask_list.egg-info/PKG-INFO
+writing dependency_links to qtask_list.egg-info/dependency_links.txt
+writing entry points to qtask_list.egg-info/entry_points.txt
+writing requirements to qtask_list.egg-info/requires.txt
+writing top-level names to qtask_list.egg-info/top_level.txt
+writing manifest file 'qtask_list.egg-info/SOURCES.txt'
+reading manifest file 'qtask_list.egg-info/SOURCES.txt'
+adding license file 'LICENSE'
+writing manifest file 'qtask_list.egg-info/SOURCES.txt'
+creating build/lib/qtask_list/dashboard/templates
+copying qtask_list/dashboard/templates/login.html -> build/lib/qtask_list/dashboard/templates
+creating build/lib/qtask_list/dashboard/static/css
+copying qtask_list/dashboard/static/css/login.css -> build/lib/qtask_list/dashboard/static/css
+creating build/lib/qtask_list/dashboard/static/spa
+copying qtask_list/dashboard/static/spa/index.html -> build/lib/qtask_list/dashboard/static/spa
+creating build/lib/qtask_list/dashboard/static/spa/assets
+copying qtask_list/dashboard/static/spa/assets/index-qXYtZb6q.js -> build/lib/qtask_list/dashboard/static/spa/assets
+copying qtask_list/dashboard/static/spa/assets/index-BvSiRx-B.css -> build/lib/qtask_list/dashboard/static/spa/assets
+copying qtask_list/dashboard/templates/login.html -> build/lib/qtask_list/dashboard/templates
+copying qtask_list/dashboard/static/css/login.css -> build/lib/qtask_list/dashboard/static/css
+copying qtask_list/dashboard/static/spa/index.html -> build/lib/qtask_list/dashboard/static/spa
+copying qtask_list/dashboard/static/spa/assets/index-BvSiRx-B.css -> build/lib/qtask_list/dashboard/static/spa/assets
+copying qtask_list/dashboard/static/spa/assets/index-qXYtZb6q.js -> build/lib/qtask_list/dashboard/static/spa/assets
+installing to build/bdist.linux-x86_64/wheel
+running install
+running install_lib
+creating build/bdist.linux-x86_64/wheel
+creating build/bdist.linux-x86_64/wheel/qtask_list
+copying build/lib/qtask_list/history.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+creating build/bdist.linux-x86_64/wheel/qtask_list/remote_storage
+copying build/lib/qtask_list/remote_storage/__init__.py -> build/bdist.linux-x86_64/wheel/./qtask_list/remote_storage
+copying build/lib/qtask_list/remote_storage/server.py -> build/bdist.linux-x86_64/wheel/./qtask_list/remote_storage
+creating build/bdist.linux-x86_64/wheel/qtask_list/dashboard
+creating build/bdist.linux-x86_64/wheel/qtask_list/dashboard/templates
+copying build/lib/qtask_list/dashboard/templates/login.html -> build/bdist.linux-x86_64/wheel/./qtask_list/dashboard/templates
+copying build/lib/qtask_list/dashboard/__init__.py -> build/bdist.linux-x86_64/wheel/./qtask_list/dashboard
+copying build/lib/qtask_list/dashboard/auth.py -> build/bdist.linux-x86_64/wheel/./qtask_list/dashboard
+creating build/bdist.linux-x86_64/wheel/qtask_list/dashboard/static
+creating build/bdist.linux-x86_64/wheel/qtask_list/dashboard/static/css
+copying build/lib/qtask_list/dashboard/static/css/login.css -> build/bdist.linux-x86_64/wheel/./qtask_list/dashboard/static/css
+creating build/bdist.linux-x86_64/wheel/qtask_list/dashboard/static/spa
+copying build/lib/qtask_list/dashboard/static/spa/index.html -> build/bdist.linux-x86_64/wheel/./qtask_list/dashboard/static/spa
+creating build/bdist.linux-x86_64/wheel/qtask_list/dashboard/static/spa/assets
+copying build/lib/qtask_list/dashboard/static/spa/assets/index-qXYtZb6q.js -> build/bdist.linux-x86_64/wheel/./qtask_list/dashboard/static/spa/assets
+copying build/lib/qtask_list/dashboard/static/spa/assets/index-BvSiRx-B.css -> build/bdist.linux-x86_64/wheel/./qtask_list/dashboard/static/spa/assets
+copying build/lib/qtask_list/dashboard/main.py -> build/bdist.linux-x86_64/wheel/./qtask_list/dashboard
+copying build/lib/qtask_list/storage.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+copying build/lib/qtask_list/admin.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+copying build/lib/qtask_list/clock.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+copying build/lib/qtask_list/__init__.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+copying build/lib/qtask_list/state.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+copying build/lib/qtask_list/queue.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+copying build/lib/qtask_list/security.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+creating build/bdist.linux-x86_64/wheel/qtask_list/cli
+copying build/lib/qtask_list/cli/__main__.py -> build/bdist.linux-x86_64/wheel/./qtask_list/cli
+copying build/lib/qtask_list/cli/__init__.py -> build/bdist.linux-x86_64/wheel/./qtask_list/cli
+copying build/lib/qtask_list/models.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+copying build/lib/qtask_list/archiver.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+copying build/lib/qtask_list/worker.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+copying build/lib/qtask_list/errors.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+copying build/lib/qtask_list/envelope.py -> build/bdist.linux-x86_64/wheel/./qtask_list
+running install_egg_info
+Copying qtask_list.egg-info to build/bdist.linux-x86_64/wheel/./qtask_list-0.2.0-py3.12.egg-info
+running install_scripts
+creating build/bdist.linux-x86_64/wheel/qtask_list-0.2.0.dist-info/WHEEL
+creating '/home/lsl/macbook/pai-studio-fin/projects/stockev.qtask_list/docs/test/20261017-17-WORKTREE/wheel-clean/.tmp-68fo6kcf/qtask_list-0.2.0-py3-none-any.whl' and adding 'build/bdist.linux-x86_64/wheel' to it
+adding 'qtask_list/__init__.py'
+adding 'qtask_list/admin.py'
+adding 'qtask_list/archiver.py'
+adding 'qtask_list/clock.py'
+adding 'qtask_list/envelope.py'
+adding 'qtask_list/errors.py'
+adding 'qtask_list/history.py'
+adding 'qtask_list/models.py'
+adding 'qtask_list/queue.py'
+adding 'qtask_list/security.py'
+adding 'qtask_list/state.py'
+adding 'qtask_list/storage.py'
+adding 'qtask_list/worker.py'
+adding 'qtask_list/cli/__init__.py'
+adding 'qtask_list/cli/__main__.py'
+adding 'qtask_list/dashboard/__init__.py'
+adding 'qtask_list/dashboard/auth.py'
+adding 'qtask_list/dashboard/main.py'
+adding 'qtask_list/dashboard/static/css/login.css'
+adding 'qtask_list/dashboard/static/spa/index.html'
+adding 'qtask_list/dashboard/static/spa/assets/index-BvSiRx-B.css'
+adding 'qtask_list/dashboard/static/spa/assets/index-qXYtZb6q.js'
+adding 'qtask_list/dashboard/templates/login.html'
+adding 'qtask_list/remote_storage/__init__.py'
+adding 'qtask_list/remote_storage/server.py'
+adding 'qtask_list-0.2.0.dist-info/LICENSE'
+adding 'qtask_list-0.2.0.dist-info/METADATA'
+adding 'qtask_list-0.2.0.dist-info/WHEEL'
+adding 'qtask_list-0.2.0.dist-info/entry_points.txt'
+adding 'qtask_list-0.2.0.dist-info/top_level.txt'
+adding 'qtask_list-0.2.0.dist-info/RECORD'
+removing build/bdist.linux-x86_64/wheel
+Successfully built docs/test/20261017-17-WORKTREE/wheel-clean/qtask_list-0.2.0-py3-none-any.whl

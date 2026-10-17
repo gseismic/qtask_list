@@ -7,6 +7,7 @@ import { ConfirmDialog, EmptyState, ErrorBanner, OpsMenu, QueueComposition, Skel
 import { PushTaskDialog } from "../components/PushTaskDialog";
 import type { QueueInfo } from "../types";
 import { useStoredPreference } from "../preferences";
+import { summarizeBulkResult } from "../operations";
 
 type FilterKey = "all" | "active" | "abnormal";
 
@@ -22,6 +23,10 @@ export function QueuesPage() {
   const [busy, setBusy] = useState(false);
   const [opError, setOpError] = useState<string | null>(null);
   const [pushQueue, setPushQueue] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const openConfirm = (choice: NonNullable<typeof confirm>) => {
+    setOpError(null); setNotice(null); setConfirm(choice);
+  };
 
   const namespaces = useMemo(() => {
     const set = new Set<string>();
@@ -60,8 +65,9 @@ export function QueuesPage() {
     setBusy(true);
     setOpError(null);
     try {
-      await fn();
-      setConfirm(null);
+      const summary = summarizeBulkResult(await fn());
+      if (summary?.warning) setOpError(`${confirm?.queue ?? ""}：${summary.message}`);
+      else { setConfirm(null); setNotice(summary?.message ?? null); }
       reload();
     } catch (e) {
       setOpError(e instanceof Error ? e.message : String(e));
@@ -76,6 +82,7 @@ export function QueuesPage() {
       <p className="page-desc">按 namespace 管理队列。色条显示当前排队、执行、延迟与旧重试构成；速率与 ETA 为浏览器观测估计。</p>
       {error && <ErrorBanner error={error} onRetry={reload} />}
       {opError && !confirm && <ErrorBanner error={opError} onRetry={() => setOpError(null)} />}
+      {notice && <div className="success-banner" role="status">{notice}</div>}
 
       {loading && !queues ? (
         <Skeleton lines={6} height={40} />
@@ -132,11 +139,11 @@ export function QueuesPage() {
                     label="操作"
                     items={[
                       { label: "投递任务…", onClick: () => setPushQueue(c.name) },
-                      { label: "重放全部 DLQ", onClick: () => setConfirm({ kind: "requeueDlq", queue: c.name }) },
-                      { label: "恢复失联 processing", onClick: () => setConfirm({ kind: "recover", queue: c.name }) },
-                      { label: "drain 手动重试", onClick: () => setConfirm({ kind: "retry", queue: c.name }) },
-                      { label: "清空队列", danger: true, onClick: () => setConfirm({ kind: "clear", queue: c.name }) },
-                      { label: "删除队列", danger: true, onClick: () => setConfirm({ kind: "delete", queue: c.name }) },
+                      { label: "重放全部 DLQ", onClick: () => openConfirm({ kind: "requeueDlq", queue: c.name }) },
+                      { label: "恢复失联 processing", onClick: () => openConfirm({ kind: "recover", queue: c.name }) },
+                      { label: "drain 手动重试", onClick: () => openConfirm({ kind: "retry", queue: c.name }) },
+                      { label: "清空队列", danger: true, onClick: () => openConfirm({ kind: "clear", queue: c.name }) },
+                      { label: "删除队列", danger: true, onClick: () => openConfirm({ kind: "delete", queue: c.name }) },
                     ]}
                   />
                 </div>
@@ -197,7 +204,7 @@ export function QueuesPage() {
         title={`重放全部 DLQ ${confirm?.queue ?? ""}`}
         confirmText="重放"
         busy={busy}
-        body={<p>DLQ 中所有任务将重置重试计数并回到 ready。</p>}
+        body={<p>将尝试处理全部死信任务。成功时创建新任务或恢复原消息；无法处理的任务保留，并显示原因。</p>}
         onCancel={() => setConfirm(null)}
         onConfirm={() => confirm && runOp(() => api.requeueDlq(confirm.queue, null))}
       />
