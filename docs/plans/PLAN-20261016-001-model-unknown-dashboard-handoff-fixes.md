@@ -61,3 +61,9 @@
 ## 2026-10-16 18:58 后续约束变更
 
 更新者：Codex / model-unknown。用户明确不需要 V1 兼容，队列/Worker 发现已改为注册表唯一来源，删除了本计划中的兼容扫描、缓存及存活校验。此部分由 [PLAN-20261016-002](./PLAN-20261016-002-model-unknown-registry-discovery.md)及其[结果](./PLAN-20261016-002-model-unknown-registry-discovery-OUTCOME.md)替代。原搜索修复继续有效；以上保留为历史方案和验证依据。版本仍为 WORKTREE，基准提交 3ff689706e788264b02839c4e2db9bd8a4644d50。
+
+## 2026-10-17 18:17（Asia/Shanghai）提交记录
+
+- 更新者：Codex / model-unknown（环境声明基于 GPT-6，未提供具体模型 ID）。
+- 当前保留的实现及相关文档已纳入提交 `a1db46ff6de872de5f115d16af85e9b264857329`，状态为已提交、未推送；被后续计划替代的设计仍按文内说明解释。
+- 本文原有 WORKTREE、基准提交及测试记录保留其实际时点含义；最终整体验收见[管理后台修复验证](../test/20261017-17-WORKTREE/管理后台修复验证.md)。原有 AGENTS.md 改动未纳入提交。

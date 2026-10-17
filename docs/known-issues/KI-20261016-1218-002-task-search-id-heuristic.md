@@ -43,3 +43,12 @@
 - 验证：普通 action 关键词、不存在的普通 ID/UUID 均无详情请求；有效 UUID、legacy_order_42、v1、旧任务-42、指定队列及无索引 ID 正常打开。最终真实浏览器搜索脚本 15 项断言通过，0 请求失败、0 页面异常、0 控制台错误；前端 15 项行为测试及构建通过；最终全量 Python 246 passed。
 - 关联计划：[PLAN-20261016-001-model-unknown-dashboard-handoff-fixes](../plans/PLAN-20261016-001-model-unknown-dashboard-handoff-fixes.md)；[结果](../plans/PLAN-20261016-001-model-unknown-dashboard-handoff-fixes-OUTCOME.md)；[测试记录](../test/20261016-13-WORKTREE/测试记录.md)。
 - 交付边界：修复已在工作区验证；原有 8766 Dashboard 未重启，重启后加载 Python 修复。没有自动提交或推送。
+
+## 2026-10-17 18:17（Asia/Shanghai）补记实际修复提交
+
+- 模型：Codex / model-unknown（环境声明基于 GPT-6，未提供具体模型 ID）。
+- 来源：用户明确要求“提交代码”，相关实现及验收记录已提交。
+- 状态保持已解决；最终修复版本：`a1db46ff6de872de5f115d16af85e9b264857329`。引入提交仍未定位。
+- 最终实现由列表确认 exact_task_id，前端不再按格式猜测并预请求详情。
+- 当前整体验收：Python 293 项、前端 20 项、浏览器 41 组通过，ruff/mypy/构建、独立 wheel 启动及产物一致性通过；详见[最终验证](../test/20261017-17-WORKTREE/管理后台修复验证.md)。
+- 本次只补充提交依据，保留历史 WORKTREE 来源与测试时点；未推送。

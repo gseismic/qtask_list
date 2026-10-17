@@ -52,3 +52,12 @@ Dashboard 已扫描过旧版队列并缓存发现结果；在缓存刷新前，�
 - 替代实现：queue_names 仅读取 qtask:queues，list_workers 仅读取相应 Worker 注册表；删除前次兼容扫描、小时缓存及失效校验。未注册状态键或历史不再加入全局列表。心跳原子补齐队列/Worker 登记，退出时保留有残留 processing 的 Worker，失效清理原子保护并发续租。
 - 验证：最终全量 Python 243 passed，前端 15 项、浏览器 18 项通过，ruff/mypy 通过。新测试禁止发现路径执行 SCAN，并覆盖外部注册项增删、残留数据不触发发现、空闲 Worker、孤儿恢复、类型错误与并发 namespace/续租。浏览器同进程外部移除注册项 3→2、重新登记 2→3、注册表清空 3→0 均即时生效，即使消息与历史仍存在。
 - 关联：[计划](../plans/PLAN-20261016-002-model-unknown-registry-discovery.md)、[结果](../plans/PLAN-20261016-002-model-unknown-registry-discovery-OUTCOME.md)、[测试记录](../test/20261016-18-WORKTREE/测试记录.md)。原 13:12 事件保留为历史，当前发现行为以本事件为准。现有 8766 Dashboard 未重启，需重启加载修改；未提交、未推送。
+
+## 2026-10-17 18:17（Asia/Shanghai）补记实际修复提交
+
+- 模型：Codex / model-unknown（环境声明基于 GPT-6，未提供具体模型 ID）。
+- 来源：用户明确要求“提交代码”，相关实现及验收记录已提交。
+- 状态保持已解决；最终修复版本：`a1db46ff6de872de5f115d16af85e9b264857329`。引入提交仍未定位。
+- 最终实现采用注册表唯一发现，早期兼容扫描方案已由 PLAN-20261016-002 替代。
+- 当前整体验收：Python 293 项、前端 20 项、浏览器 41 组通过，ruff/mypy/构建、独立 wheel 启动及产物一致性通过；详见[最终验证](../test/20261017-17-WORKTREE/管理后台修复验证.md)。
+- 本次只补充提交依据，保留历史 WORKTREE 来源与测试时点；未推送。
