@@ -13,13 +13,29 @@ qtask_list 是基于 Redis List 的分布式任务队列，核心机制为 `BRPO
 
 项目为单包结构：核心库与附属模块（CLI/Dashboard/外存服务/前端源码）都在 `qtask_list/` 包内，示例在 `examples/`。
 
+## 文档未覆盖时查看源代码
+
+本 skill 只覆盖常用用法，不可能穷举全部参数与边界行为。遇到本文档未覆盖的参数、返回结构或行为细节时，直接查看源代码，以签名和 docstring 为准：
+
+| 需要了解的内容 | 源码位置 |
+|---|---|
+| SmartQueue 投递/消费/管理方法 | `qtask_list/queue.py` |
+| Worker 参数与执行模型 | `qtask_list/worker.py` |
+| QueueAdmin 全部管理方法与 QueueState | `qtask_list/admin.py` |
+| TaskSpec / EnqueueResult / TaskContext 等模型字段 | `qtask_list/models.py` |
+| CLI 全部命令与选项 | `qtask_list/cli/__main__.py` |
+| Dashboard 路由与 API | `qtask_list/dashboard/main.py` |
+| 外存服务端行为 | `qtask_list/remote_storage/server.py` |
+| 可直接运行的用法示例 | `examples/01_basics/` … `examples/09_admin_ops/` |
+
 ## 安装
 
 ```bash
 pip install -e .                  # 基础安装
 pip install -e ".[dev]"           # 开发依赖 (pytest, ruff, mypy)
-pip install -e ".[dashboard]"     # Dashboard (fastapi, uvicorn)
+pip install -e ".[dashboard]"     # Dashboard (fastapi, uvicorn, jinja2)
 pip install -e ".[storage]"       # RemoteStorage 服务端 (fastapi, uvicorn, python-multipart)
+pip install -e ".[all]"           # 全部可选依赖，包含开发工具
 ```
 
 安装后可用 `qtask` 或 `qtask_list` 命令。
@@ -94,7 +110,7 @@ q.recover()        # Crash recovery: processing → 主队列
 q.move_retry()     # 迁移 V1 retry List；V2 retry_wait 由 move_delay() 到点迁移
 q.move_delay()     # delay 到期 → 主队列 (Lua 原子操作)
 q.requeue_dlq()    # V2 DLQ replay 创建新 task_id
-q.clear()          # 清空所有子队列
+q.clear()          # 清空 ready/retry/delay/dlq；默认保留 processing
 q.get_stats()      # 包含 queue/processing/retry/retry_wait/dlq/delay
 ```
 
@@ -249,6 +265,7 @@ export REDIS_URL=redis://localhost:6379/0
 # 队列状态
 qtask status                             # 所有队列
 qtask status stockev:fetch               # 指定队列
+qtask status --namespace stockev --problems-only --json  # 仅列出需处理的队列，脚本消费
 
 # 投递任务
 qtask push stockev:fetch '{"action":"fetch_stock","symbol":"AAPL"}'
@@ -262,9 +279,10 @@ qtask peek stockev:fetch --state dlq --json
 # 实时监控
 qtask watch stockev:fetch -i 2           # 2 秒刷新
 
-# 清空队列
+# 清空队列（默认保留 processing 与历史）
 qtask clear stockev:fetch --force
-qtask clear stockev:fetch --include-history --force
+qtask clear stockev:fetch --include-processing --force  # 无活跃 Worker 时清理失联 processing
+qtask clear stockev:fetch --include-history --force    # 连带删除已终结历史
 
 # DLQ 重放
 qtask requeue stockev:fetch --force              # 全部
@@ -284,7 +302,11 @@ qtask history -t <task_id>                      # 单任务详情
 # 单任务操作
 qtask task get <task_id>
 qtask task requeue <task_id> --queue stockev:fetch --from dlq --force
+qtask task replay <task_id> --queue stockev:fetch --force   # 以新 task_id 重放终态任务
 qtask task delete <task_id> --queue stockev:fetch --force
+
+# 回填旧队列的截止时间与等待重试索引（维护窗口执行）
+qtask rebuild-observation stockev:fetch
 
 # 清理过期历史
 qtask clean-history stockev:fetch -t 15
@@ -296,19 +318,19 @@ qtask archive stockev:fetch -d 1
 # 内存监控
 qtask monitor
 
-# 启动 RemoteStorage 服务端（大 payload 外存）
-qtask storage --port 8096 --data-dir ~/.qtask-storage --ttl-days 7
+# 启动 RemoteStorage 服务端（大 payload 外存；远程监听需 QTASK_STORAGE_TOKEN）
+qtask storage --port 8096 --data-dir ~/.qtask-storage --gc-redis redis://localhost:6379/0
 
 # 启动 Worker（加载用户模块中已注册 handler 的 worker 实例）
 qtask worker --module myapp.workers:worker
 
-# 启动 Dashboard
+# 启动 Dashboard；远程访问必须设置 --password 或环境变量认证
 qtask dashboard
 ```
 
 ## Dashboard
 
-基于 FastAPI + React，`qtask_list/dashboard/main.py`。
+基于 FastAPI + React SPA（构建产物已随包发布，无需 Node），源码在 `qtask_list/dashboard/main.py`。
 
 ```python
 # Python API
@@ -318,14 +340,14 @@ start_dashboard(port=8765, redis_url="redis://localhost:6379/0")
 
 访问 `http://localhost:8765`，功能：
 - 队列状态一览（ready/processing/retry/retry_wait/dlq/delay/completed/failed/skipped/cancelled/deadline_missed/history）
-- 搜索 task_id、action、payload
-- 按创建时间和完成时间筛选任务
-- 任务详情和原始 JSON
-- 单任务重试、删除
+- 跨队列搜索 task_id、action、payload，按创建时间和完成时间筛选
+- 任务详情抽屉：最新状态、失败原因、payload/result、血缘跳转；终态任务可重放
 - 批量 drain 旧 retry List、重放 DLQ、按新截止时间 replay 错过截止的任务
-- 安全恢复 stale processing
-- 投递测试任务，支持 delay 和 expire_seconds
-- 删除队列及关联历史记录
+- 安全恢复 stale processing；Worker 心跳与失联任务恢复；Redis 内存水位
+- 投递测试任务，支持 delay 和 expire_seconds；诊断、清理历史、清空/删除队列
+- 告警页：DLQ 堆积、ready 无 Worker、stale worker、任务过期等聚合列表
+
+远程访问必须启用认证（设置 `--password` 或 `QTASK_DASHBOARD_PASSWORD`）；CLI 绑定非 loopback 地址且未配置认证时会拒绝启动。
 
 ## 多级流水线模式
 
@@ -335,20 +357,20 @@ start_dashboard(port=8765, redis_url="redis://localhost:6379/0")
 stockev_list:fetch → finance:calculate → stockev_list:store
 ```
 
-**启动顺序（关键！）**：必须先启动下游 Worker，再启动上游，防止任务堆积。
+**启动顺序（关键！）**：必须先启动下游 Worker，再启动上游，防止任务堆积。完整示例在 `examples/06_pipeline/`：
 
 ```bash
-# 终端 1: store worker (下游)
-python examples/stockev/store_worker.py
+# 终端 1: store worker（末级，stockev namespace）
+python examples/06_pipeline/stockev/store_worker.py
 
-# 终端 2: calculate worker (中间)
-python examples/finance/calculate_worker.py
+# 终端 2: calculate worker（中级，finance namespace）
+python examples/06_pipeline/finance/calculate_worker.py
 
-# 终端 3: fetch worker (上游)
-python examples/stockev/fetch_worker.py
+# 终端 3: fetch worker（首级，stockev namespace）
+python examples/06_pipeline/stockev/fetch_worker.py
 
-# 终端 4: 生产任务
-python examples/generator.py
+# 终端 4: 生成首批任务
+python examples/06_pipeline/generator.py
 ```
 
 ### 代码模式
@@ -402,35 +424,39 @@ push() → [主队列] → pop(BRPOPLPUSH) → [processing]
 | `redis_url` | `redis://localhost:6379/0` | Redis 连接 |
 | `namespace` | `""` | 命名空间，多项目隔离 |
 | `max_retry` | `3` | 兼容别名；最大总执行次数（含首次执行） |
+| `retry_backoff_base` | `30` | 重试退避基数（秒），指数退避；0 = 立即重试 |
+| `retry_backoff_max` | `3600` | 单次重试退避上限（秒） |
 | `large_threshold` | `50KB` | 大 payload 阈值 |
 | `ttl_days` | `15` | 历史保留天数 |
 | `history_mode` | `full` | `full` 或 `minimal`；minimal 仍保留状态机正确性字段 |
 | `max_workers` | `1` | Worker 线程池并发数 |
 | `maintenance_interval` | `1800` (30min) | 维护线程间隔 |
+| `stale_recover_interval` | `300` | 维护线程接手失联 Worker 任务的间隔（秒） |
 | `heartbeat_ttl` | `120` (2min) | Worker heartbeat TTL |
+| `archive_dir` | `$QTASK_ARCHIVE_DIR` 或 `./archive_data` | SQLite 归档目录；多 Worker 必须共享同一目录 |
+| `monitor_threshold_mb` | `None` | Redis 内存告警阈值（MB），不设则不检查 |
 
 ## 项目结构
 
 ```
 qtask_list/
-├── qtask_list/           # 核心库
+├── qtask_list/           # 核心库（单包结构）
 │   ├── __init__.py       # 公开 API
 │   ├── queue.py          # SmartQueue
 │   ├── worker.py         # Worker
 │   ├── history.py        # TaskHistory
 │   ├── storage.py        # RemoteStorage
 │   ├── archiver.py       # ArchiveManager + Monitor
-│   └── admin.py          # QueueAdmin + QueueState
+│   ├── admin.py          # QueueAdmin + QueueState
+│   ├── models.py         # TaskSpec / EnqueueResult / TaskContext 等模型
 │   ├── cli/              # Typer CLI（qtask / qtask_list）
 │   │   └── __main__.py
 │   ├── dashboard/        # FastAPI（main.py）+ templates + static（含 SPA 构建产物）
 │   ├── remote_storage/   # RemoteStorage 服务端
 │   │   └── server.py
-│   └── frontend/         # Dashboard 前端源码（Vite + React + pnpm）
-├── examples/
-│   ├── generator.py
-│   ├── stockev/          # fetch_worker.py, store_worker.py
-│   └── finance/          # calculate_worker.py
+│   └── frontend/         # Dashboard 前端源码（Vite + React + TS + pnpm）
+├── examples/             # 按编号递进的分层示例（01_basics … 09_admin_ops）
+├── skills/qtask-list-usage/  # 本 skill
 ├── tests/
 └── pyproject.toml
 ```

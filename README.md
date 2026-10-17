@@ -442,15 +442,16 @@ for symbol in watchlist():
 
 ### 1. 启动顺序 (重要!)
 
-多级流水线场景必须先启动下游 Worker，再启动上游：
+多级流水线场景必须先启动下游 Worker，再启动上游。完整三级流水线示例见 `examples/06_pipeline/`：
 
 ```
-终端 1: python examples/03_store_worker.py   (先启动!)
-终端 2: python examples/02_fetch_worker.py
-终端 3: python examples/01_generator.py       (生产者)
+终端 1: python examples/06_pipeline/stockev/store_worker.py     (末级，先启动!)
+终端 2: python examples/06_pipeline/finance/calculate_worker.py (中级)
+终端 3: python examples/06_pipeline/stockev/fetch_worker.py     (首级)
+终端 4: python examples/06_pipeline/generator.py                (生产者)
 ```
 
-原因：fetch worker 把结果 push 到 `ns:store` 队列，若无 store worker 消费则任务堆积。
+原因：上游 Worker 通过 `TaskResult.emissions` 把结果投递到下游队列，若无下游 Worker 消费则任务堆积。
 
 ### 2. Python SDK 示例
 

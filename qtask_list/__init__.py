@@ -37,7 +37,7 @@ __all__ = [
     "start_dashboard",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 
 def start_dashboard(
