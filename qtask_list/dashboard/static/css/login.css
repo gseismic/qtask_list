@@ -1,11 +1,17 @@
 :root {
     color-scheme: light;
-    --bg: #f6f8fa;
+    --bg: #f4f6fa;
     --panel: #ffffff;
-    --line: #d0d7de;
-    --text: #1f2328;
-    --muted: #57606a;
-    --red: #cf222e;
+    --line: #dde3ea;
+    --text: #1a2433;
+    --muted: #515e70;
+    --faint: #5f6b80;
+    --red: #dc2626;
+    --primary: #2563eb;
+    --primary-strong: #1d4fd8;
+    --primary-dim: rgba(37, 99, 235, 0.1);
+    --r-md: 8px;
+    --r-lg: 12px;
 }
 
 * {
@@ -15,15 +21,20 @@
 body {
     margin: 0;
     background:
-        linear-gradient(135deg, rgba(9, 105, 218, 0.08), rgba(26, 127, 55, 0.06)),
+        radial-gradient(1000px 500px at 85% -10%, rgba(37, 99, 235, 0.08), transparent 60%),
+        radial-gradient(800px 400px at 0% 110%, rgba(79, 70, 229, 0.06), transparent 55%),
         var(--bg);
     color: var(--text);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
 }
 
 button,
 input {
     font: inherit;
+    color: inherit;
 }
 
 button {
@@ -44,78 +55,98 @@ button {
 .login-panel {
     background: var(--panel);
     border: 1px solid var(--line);
-    border-radius: 8px;
-    box-shadow: 0 16px 40px rgba(16, 24, 40, 0.12);
-    padding: 24px;
+    border-radius: var(--r-lg);
+    box-shadow: 0 2px 8px rgba(16, 24, 40, 0.06), 0 16px 40px rgba(16, 24, 40, 0.1);
+    padding: 28px;
 }
 
 .brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
 .login-brand {
-    margin-bottom: 22px;
+    margin-bottom: 24px;
 }
 
 .brand-mark {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: #1f2328;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb 55%, #4f46e5);
     color: #ffffff;
     display: grid;
     place-items: center;
     font-weight: 700;
+    font-size: 18px;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
 }
 
 .brand-title {
     font-weight: 700;
-    line-height: 1;
+    font-size: 15px;
+    line-height: 1.3;
 }
 
 .brand-subtitle {
-    color: var(--muted);
-    font-size: 12px;
-    margin-top: 3px;
+    color: var(--faint);
+    font-size: 12.5px;
+    margin-top: 2px;
 }
 
 .login-form {
     display: grid;
-    gap: 14px;
+    gap: 16px;
 }
 
 .login-form label span {
     display: block;
     color: var(--muted);
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 600;
     margin-bottom: 6px;
 }
 
 .login-form .input {
     width: 100%;
-    padding: 8px 10px;
+    padding: 9px 12px;
     border: 1px solid var(--line);
-    border-radius: 6px;
+    border-radius: var(--r-md);
     background: var(--panel);
     color: var(--text);
+    font-size: 14px;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.login-form .input:hover {
+    border-color: #c6cfd9;
+}
+
+.login-form .input:focus,
+.login-form .input:focus-visible {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-dim);
 }
 
 .login-button {
     width: 100%;
     margin-top: 4px;
-    padding: 8px 12px;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    background: #0969da;
+    padding: 9px 14px;
+    border: 1px solid var(--primary);
+    border-radius: var(--r-md);
+    background: var(--primary);
     color: #ffffff;
+    font-size: 14px;
     font-weight: 600;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.1);
+    transition: background-color 140ms ease, border-color 140ms ease;
 }
 
 .login-button:hover {
-    background: #0757ba;
+    background: var(--primary-strong);
+    border-color: var(--primary-strong);
 }
 
 .login-error {
