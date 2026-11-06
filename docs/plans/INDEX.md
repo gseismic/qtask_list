@@ -21,3 +21,5 @@
 | 2026-10-17 18:26 | [管理后台界面美化与字号优化](./PLAN-20261017-003-glm-5.3-flash-dashboard-ui-polish.md) | 实施中 | 重写前端设计 tokens（正文 13→14px、KPI 值 24→28px、圆角/阴影/过渡体系）并美化组件与登录页。 |
 | 2026-10-17 18:39 | [管理后台界面美化与字号优化](./PLAN-20261017-003-glm-5.3-flash-dashboard-ui-polish.md) | 已完成（WORKTREE） | [结果](./PLAN-20261017-003-glm-5.3-flash-dashboard-ui-polish-OUTCOME.md)：前端 20 项、构建及浏览器浅/深主题、内页、登录页、窄屏实测通过；截图见 `docs/test/20261017-18-WORKTREE/`；未提交、未推送。 |
 | 2026-10-17 18:44 | [管理后台界面美化与字号优化](./PLAN-20261017-003-glm-5.3-flash-dashboard-ui-polish.md) | 已提交（未推送） | [结果](./PLAN-20261017-003-glm-5.3-flash-dashboard-ui-polish-OUTCOME.md)：当前保留的实现及相关文档纳入 `5fff97932c9e771d8887011f28b14a63f46391a8`；用户工作区仅剩 `AGENTS.md` 本地修改未纳入。 |
+| 2026-10-28 17:35 | [Python 全量审查发现核实与修复](./PLAN-20261028-001-model-unknown-python-review-remediation.md) | 实施中 | 逐条核实 14 项发现，修复后循环 Review 和隔离验证。 |
+| 2026-10-28 18:21 | [Python 全量审查发现核实与修复](./PLAN-20261028-001-model-unknown-python-review-remediation.md) | 已完成（WORKTREE） | [结果](./PLAN-20261028-001-model-unknown-python-review-remediation-OUTCOME.md)：14 项逐条核实并修复，追加外存并发和安全修复；Python 343 项、Ruff、mypy 及隔离手工验证通过，未提交、未推送。 |

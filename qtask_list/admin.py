@@ -227,8 +227,9 @@ class QueueAdmin:
             processing = int(self.r.llen(processing_key))
             if raw_seen is None and processing == 0:
                 self.r.eval(
-                    PRUNE_WORKER_LUA, 3,
-                    heartbeat_key, processing_key, f"qtask:workers:{queue}", worker_id,
+                    PRUNE_WORKER_LUA, 4,
+                    heartbeat_key, processing_key, f"qtask:workers:{queue}",
+                    f"qtask:worker-owner:{SmartQueue._hash_key(queue)}:{worker_id}", worker_id,
                 )
                 continue
             workers.append({
@@ -616,6 +617,16 @@ class QueueAdmin:
     def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
         return read_task_record(self.r, task_id)
 
+    @staticmethod
+    def _safe_error_note(exc: Exception) -> str:
+        """返回可操作的错误类型，不暴露连接地址、凭据或异常原文。"""
+        if isinstance(exc, RemoteStorageError):
+            from .security import safe_storage_error_note
+            return safe_storage_error_note(exc.code)
+        if isinstance(exc, redis.RedisError):
+            return "Redis 操作失败，请核对任务状态后重试"
+        return "任务操作失败，请核对输入及服务状态后重试"
+
     def resolve_payload(self, task_id: str, queue_name: str, state: str) -> Dict[str, Any]:
         """从队列中查找任务消息并还原完整 payload（解压 / 拉取外存）。"""
         selected_state = QueueState(state) if state in QueueState._value2member_map_ else QueueState.all
@@ -659,7 +670,7 @@ class QueueAdmin:
                         "task_id": task_id,
                         "payload": descriptor,
                         "action": task.get("action", ""),
-                        "_note": f"payload 还原失败: {exc}",
+                        "_note": self._safe_error_note(exc),
                     }
             history_payload = task.get("payload")
             return {
@@ -749,7 +760,7 @@ class QueueAdmin:
         try:
             data = json.loads(raw_msg)
         except (json.JSONDecodeError, TypeError):
-            note = f"payload 还原失败: {decode_error}" if decode_error else "消息解码失败"
+            note = self._safe_error_note(decode_error) if decode_error else "消息解码失败"
             return {"task_id": task_id, "payload": None, "action": action_hint, "_note": note}
 
         payload_raw = data.get("payload", {})
@@ -769,7 +780,7 @@ class QueueAdmin:
                     return {
                         "task_id": task_id,
                         "payload": legacy_payload,
-                        "_note": f"解压失败: {e}",
+                        "_note": self._safe_error_note(e),
                     }
 
             elif legacy_payload.get("_large"):
@@ -784,7 +795,7 @@ class QueueAdmin:
                         return {
                             "task_id": task_id,
                             "payload": legacy_payload,
-                            "_note": f"外存拉取失败: {e}",
+                            "_note": self._safe_error_note(e),
                         }
                 else:
                     action = ""
@@ -807,7 +818,7 @@ class QueueAdmin:
 
         result: Dict[str, Any] = {"task_id": task_id, "payload": legacy_payload, "action": action}
         if decode_error and not action:
-            result["_note"] = f"payload 还原失败: {decode_error}"
+            result["_note"] = self._safe_error_note(decode_error)
         return result
 
     def diagnose(self, queue_name: str) -> Dict[str, Any]:
@@ -1003,7 +1014,7 @@ class QueueAdmin:
             except RemoteStorageError as exc:
                 skipped += 1
                 if len(errors) < 20:
-                    errors.append({"task_id": identifier, "reason": f"外部存储操作失败（{exc.code}），请核对配置后重试"})
+                    errors.append({"task_id": identifier, "reason": self._safe_error_note(exc)})
             except (ValueError, KeyError, RuntimeError) as exc:
                 skipped += 1
                 if len(errors) < 20:
@@ -1058,10 +1069,15 @@ class QueueAdmin:
                     "reason": replay.get("reason"),
                 }
 
-        for key in self._state_keys(queue_name, state):
-            if state == QueueState.delay:
+        source_state = QueueState.delay if state == QueueState.retry_wait else state
+        for key in self._state_keys(queue_name, source_state):
+            if source_state == QueueState.delay:
                 for raw_msg, _score in self.r.zscan_iter(key):
                     if self._message_task_id(raw_msg) == task_id:
+                        if state == QueueState.retry_wait:
+                            envelope = self._parse_json(raw_msg)
+                            if not isinstance(envelope, dict) or envelope.get("delay_reason") != "retry":
+                                continue
                         moved = self._move_delay_message(key, queue_name, raw_msg)
                         if moved:
                             self._update_history(task_id, {"operational_message": 1})
@@ -1082,11 +1098,16 @@ class QueueAdmin:
                             self._reset_message_retry(raw_msg) if reset_retry and state == QueueState.dlq else raw_msg
                         )
                         heartbeat_key = None
+                        worker_owner_key = None
                         if state == QueueState.processing and ":processing:" in key:
                             worker_id = key.rsplit(":processing:", 1)[1]
                             heartbeat_key = f"{queue_name}:worker:{worker_id}"
+                            worker_owner_key = f"qtask:worker-owner:{SmartQueue._hash_key(queue_name)}:{worker_id}"
                         moved = self._move_list_message(
                             key, queue_name, raw_msg, new_msg, heartbeat_key=heartbeat_key,
+                            worker_owner_key=worker_owner_key,
+                            unmanaged_registry_key=(f"qtask:processing:{queue_name}"
+                                                    if state == QueueState.processing else None),
                         )
                         if moved:
                             self._update_history(task_id, {"operational_message": 1})
@@ -1108,17 +1129,25 @@ class QueueAdmin:
 
         return {"moved": 0, "task_id": task_id, "queue": queue_name, "from_state": state.value}
 
-    def _check_active_processing(self, queue_name: str, task_id: str) -> Optional[Dict[str, Any]]:
+    def _check_active_processing(
+        self, queue_name: str, task_id: str, *, allow_unmanaged: bool = False,
+    ) -> Optional[Dict[str, Any]]:
         """拒绝从活跃 Worker 的 processing 重放，避免与正在执行的 handler 冲突。"""
         heartbeat_prefix = f"{queue_name}:worker:"
-        for key in self.processing_keys(queue_name, include_legacy=False):
+        unmanaged = set(self.r.zrange(f"qtask:processing:{queue_name}", 0, -1))
+        for key in self.processing_keys(queue_name):
             worker_id = key.rsplit(":", 1)[-1]
-            if not self.r.exists(f"{heartbeat_prefix}{worker_id}"):
+            owner_key = f"qtask:worker-owner:{SmartQueue._hash_key(queue_name)}:{worker_id}"
+            unknown_consumer = key == f"{queue_name}:processing" or key in unmanaged
+            active = self.r.exists(f"{heartbeat_prefix}{worker_id}") or self.r.exists(owner_key)
+            if not active and (allow_unmanaged or not unknown_consumer):
                 continue
             for raw_msg in self.r.lrange(key, 0, -1):
                 if self._message_task_id(raw_msg) == task_id:
                     return {
-                        "note": f"任务在活跃 worker {worker_id} 的 processing 中，拒绝重放；如确需强制请先 recover",
+                        "note": (f"任务位于无法确认已停止的自定义 processing {key}"
+                                 if unknown_consumer and not active else
+                                 f"任务在活跃 worker {worker_id} 的 processing 中，拒绝重放；如确需强制请先 recover"),
                     }
         return None
 
@@ -1145,7 +1174,9 @@ class QueueAdmin:
             skipped_legacy = int(self.r.llen(legacy_processing)) if worker_id is None else 0
 
         skipped = 0
+        skipped_unmanaged = 0
         heartbeat_prefix = f"{queue_name}:worker:"
+        unmanaged = set(self.r.zrange(f"qtask:processing:{queue_name}", 0, -1))
 
         keys = (
             [f"{queue_name}:processing:{worker_id}"]
@@ -1153,19 +1184,32 @@ class QueueAdmin:
         )
         for key in keys:
             worker_id = key.rsplit(":", 1)[-1]
-            if not include_active and self.r.exists(f"{heartbeat_prefix}{worker_id}"):
+            if not include_active and key in unmanaged:
+                skipped_unmanaged += int(self.r.llen(key))
+                continue
+            owner_key = f"qtask:worker-owner:{SmartQueue._hash_key(queue_name)}:{worker_id}"
+            if not include_active and (
+                self.r.exists(f"{heartbeat_prefix}{worker_id}") or self.r.exists(owner_key)
+            ):
                 skipped += int(self.r.llen(key))
                 continue
             recovered += self._drain_list_to_ready(
                 key, queue_name,
                 heartbeat_key=None if include_active else f"{heartbeat_prefix}{worker_id}",
+                worker_owner_key=None if include_active else owner_key,
+                unmanaged_registry_key=None if include_active else f"qtask:processing:{queue_name}",
             )
-        return {"recovered": recovered, "skipped_active": skipped, "skipped_legacy": skipped_legacy}
+        result = {"recovered": recovered, "skipped_active": skipped, "skipped_legacy": skipped_legacy}
+        if skipped_unmanaged:
+            result["skipped_unmanaged"] = skipped_unmanaged
+        return result
 
     def delete_task(
         self,
         task_id: str,
         queue_name: Optional[str] = None,
+        *,
+        force_unmanaged: bool = False,
     ) -> Dict[str, int]:
         """原子取消消息后删除审计记录；活跃 handler 必须先完成或停止。"""
         record = self.get_task(task_id)
@@ -1176,8 +1220,9 @@ class QueueAdmin:
 
         # 先检查全部候选队列，避免已删部分消息后才发现活跃 handler。
         for queue in queues:
-            if queue and self._check_active_processing(queue, task_id):
-                raise ValueError(f"task {task_id} is being processed by an active worker")
+            guard = self._check_active_processing(queue, task_id, allow_unmanaged=force_unmanaged) if queue else None
+            if guard:
+                raise ValueError(str(guard["note"]))
 
         queue_removed = 0
         for queue in queues:
@@ -1199,6 +1244,7 @@ class QueueAdmin:
                                 str(raw_msg),
                                 IdentityPolicy.RELEASE,
                                 reason="task deleted by administrator",
+                                force_unmanaged=force_unmanaged,
                             )
             delay_key = f"{queue}:delay"
             for raw_msg, _score in self.r.zscan_iter(delay_key):
@@ -1275,6 +1321,7 @@ class QueueAdmin:
         include_history: bool = False,
         identity_policy: IdentityPolicy | str = IdentityPolicy.KEEP,
         include_processing: bool = False,
+        force_unmanaged: bool = False,
     ) -> Dict[str, int]:
         queue = self._smart_queue(queue_name)
         if include_history and not include_processing and queue.processing_size():
@@ -1285,6 +1332,7 @@ class QueueAdmin:
             include_dlq=include_dlq,
             identity_policy=identity_policy,
             include_processing=include_processing,
+            force_unmanaged=force_unmanaged,
         )
         deleted_keys = int(audit["messages"])
         history_records = 0
@@ -1297,15 +1345,18 @@ class QueueAdmin:
             "identity_released": int(IdentityPolicy(identity_policy) == IdentityPolicy.RELEASE),
         }
 
-    def delete_queue(self, queue_name: str) -> Dict[str, int]:
+    def delete_queue(self, queue_name: str, *, force_unmanaged: bool = False) -> Dict[str, int]:
         """原子复核心跳并删除所属数据；并发投递或登记只能发生在操作前后。"""
         queue = self._smart_queue(queue_name)
         try:
             deleted, records = self.r.eval(
                 DELETE_QUEUE_LUA, 0, queue_name, queue.owner_prefix, queue.storage_gc_key,
+                f"qtask:worker-owner:{queue._hash_key(queue.base)}:",
+                "1" if force_unmanaged else "0",
             )
         except redis.ResponseError as exc:
-            if "active workers" in str(exc) or "ownership conflict" in str(exc):
+            if ("active workers" in str(exc) or "ownership conflict" in str(exc)
+                    or "custom processing" in str(exc)):
                 raise ValueError(str(exc)) from exc
             raise
         return {"deleted_keys": int(deleted), "history_records": int(records)}
@@ -1575,7 +1626,7 @@ class QueueAdmin:
                 "moved": 0,
                 "task_id": task_id,
                 "queue": queue_name,
-                "note": f"旧任务已取消，但 replay 失败: {exc}",
+                "note": f"旧任务已取消，但 replay 失败：{self._safe_error_note(exc)}",
             }
         return {
             "moved": int(replay["accepted"]),
@@ -1704,6 +1755,8 @@ class QueueAdmin:
         update_status: bool = False,
         reset_retry: bool = False,
         heartbeat_key: str | None = None,
+        worker_owner_key: str | None = None,
+        unmanaged_registry_key: str | None = None,
     ) -> int:
         count = 0
         collected_task_ids: List[str] = []
@@ -1712,7 +1765,11 @@ class QueueAdmin:
             if not msg:
                 break
             new_msg = self._reset_message_retry(msg) if reset_retry else msg
-            moved = self._move_list_message(source, queue_name, msg, new_msg, heartbeat_key=heartbeat_key)
+            moved = self._move_list_message(
+                source, queue_name, msg, new_msg, heartbeat_key=heartbeat_key,
+                worker_owner_key=worker_owner_key,
+                unmanaged_registry_key=unmanaged_registry_key,
+            )
             if not moved:
                 break
             count += 1
@@ -1726,7 +1783,8 @@ class QueueAdmin:
 
     def _move_list_message(
         self, source: str, destination: str, raw_msg: str, new_msg: Optional[str] = None,
-        *, heartbeat_key: str | None = None,
+        *, heartbeat_key: str | None = None, worker_owner_key: str | None = None,
+        unmanaged_registry_key: str | None = None,
     ) -> bool:
         lua_script = """
         for _, key in ipairs({KEYS[1], KEYS[2]}) do
@@ -1735,7 +1793,9 @@ class QueueAdmin:
         end
         local deadline_kind = redis.call('TYPE', KEYS[4])['ok']
         if deadline_kind ~= 'none' and deadline_kind ~= 'zset' then error('deadline index type conflict') end
-        if ARGV[3] == '1' and redis.call('EXISTS', KEYS[3]) == 1 then return 0 end
+        if (ARGV[3] == '1' and redis.call('EXISTS', KEYS[3]) == 1) or
+           (ARGV[4] == '1' and redis.call('EXISTS', KEYS[5]) == 1) then return 0 end
+        if ARGV[5] == '1' and redis.call('ZSCORE', KEYS[6], KEYS[1]) then return 0 end
         local removed = redis.call('LREM', KEYS[1], 1, ARGV[1])
         if removed == 0 then
             return 0
@@ -1755,9 +1815,13 @@ class QueueAdmin:
         return removed
         """
         return bool(self.r.eval(
-            lua_script, 4, source, destination, heartbeat_key or f"{destination}:__qtask_dummy__:heartbeat",
+            lua_script, 6, source, destination, heartbeat_key or f"{destination}:__qtask_dummy__:heartbeat",
             f"qtask:deadline:{destination}",
+            worker_owner_key or f"{destination}:__qtask_dummy__:worker-owner",
+            unmanaged_registry_key or f"{destination}:__qtask_dummy__:processing-registry",
             raw_msg, new_msg or raw_msg, "1" if heartbeat_key else "0",
+            "1" if worker_owner_key else "0",
+            "1" if unmanaged_registry_key else "0",
         ))
 
     def _reset_message_retry(self, raw_msg: str) -> str:

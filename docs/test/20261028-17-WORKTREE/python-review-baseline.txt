@@ -1,0 +1,78 @@
+FFFFFFFFFF.                                                              [100%]
+=================================== FAILURES ===================================
+_________ test_worker_auto_recovery_does_not_claim_unmanaged_consumer __________
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:26: in test_worker_auto_recovery_does_not_claim_unmanaged_consumer
+    assert worker.queue.recover_stale_processing(worker._heartbeat_prefix) == 0
+E   AssertionError: assert 1 == 0
+E    +  where 1 = recover_stale_processing('review-custom:worker:')
+E    +    where recover_stale_processing = <qtask_list.queue.SmartQueue object at 0x704e66d246b0>.recover_stale_processing
+E    +      where <qtask_list.queue.SmartQueue object at 0x704e66d246b0> = <qtask_list.worker.Worker object at 0x704e669278f0>.queue
+E    +    and   'review-custom:worker:' = <qtask_list.worker.Worker object at 0x704e669278f0>._heartbeat_prefix
+____________ test_duplicate_worker_id_cannot_acquire_live_identity _____________
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:37: in test_duplicate_worker_id_cannot_acquire_live_identity
+    with pytest.raises(RuntimeError, match="worker.*(identity|id|ID)"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'RuntimeError'>
+____________ test_dashboard_sdk_rejects_unauthenticated_remote_bind ____________
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:48: in test_dashboard_sdk_rejects_unauthenticated_remote_bind
+    with pytest.raises(ValueError, match="认证"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+----------------------------- Captured stdout call -----------------------------
+Starting qtask_list Dashboard on http://localhost:8765
+Redis: redis://localhost:6379
+Auth: disabled
+
+Press Ctrl+C to stop
+
+________________ test_dashboard_rejects_untrusted_origin_writes ________________
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:66: in test_dashboard_rejects_untrusted_origin_writes
+    assert response.status_code == 403
+E   assert 200 == 403
+E    +  where 200 = <Response [200 OK]>.status_code
+________________ test_payload_resolution_redacts_external_error ________________
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:85: in test_payload_resolution_redacts_external_error
+    assert "secret" not in json.dumps(result, ensure_ascii=False)
+E   assert 'secret' not in '{"task_id":...te.example"}'
+E
+E     'secret' is contained here:
+E       ps://user:secret@private.example"}
+E     ?           ++++++
+_________________ test_requeue_retry_wait_uses_delay_container _________________
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:95: in test_requeue_retry_wait_uses_delay_container
+    assert result["moved"] == 1
+E   assert 0 == 1
+____ test_batch_rejects_negative_relative_time_before_writes[delay_seconds] ____
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:103: in test_batch_rejects_negative_relative_time_before_writes
+    with pytest.raises(ValueError, match=">= 0"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+___ test_batch_rejects_negative_relative_time_before_writes[expire_seconds] ____
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:103: in test_batch_rejects_negative_relative_time_before_writes
+    with pytest.raises(ValueError, match=">= 0"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+______ test_batch_rejects_negative_relative_time_before_writes[dedup_ttl] ______
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:103: in test_batch_rejects_negative_relative_time_before_writes
+    with pytest.raises(ValueError, match=">= 0"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE <class 'ValueError'>
+______________ test_archive_preserves_a_concurrent_replay_update _______________
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:133: in test_archive_preserves_a_concurrent_replay_update
+    assert replayed[0] in str((record or archive).get("replayed_by", ""))
+E   AssertionError: assert '0ca5289d-7db6-45b8-bd99-b247c8a6b43d' in ''
+E    +  where '' = str('')
+E    +    where '' = <built-in method get of dict object at 0x704e65dee080>('replayed_by', '')
+E    +      where <built-in method get of dict object at 0x704e65dee080> = (None or {'_queue': 'review-archive', 'action': 'work', 'attempt': 0, 'available_at': 1793180311.766538, ...}).get
+=========================== short test summary info ============================
+FAILED tests/test_python_review_remediation.py::test_worker_auto_recovery_does_not_claim_unmanaged_consumer
+FAILED tests/test_python_review_remediation.py::test_duplicate_worker_id_cannot_acquire_live_identity
+FAILED tests/test_python_review_remediation.py::test_dashboard_sdk_rejects_unauthenticated_remote_bind
+FAILED tests/test_python_review_remediation.py::test_dashboard_rejects_untrusted_origin_writes
+FAILED tests/test_python_review_remediation.py::test_payload_resolution_redacts_external_error
+FAILED tests/test_python_review_remediation.py::test_requeue_retry_wait_uses_delay_container
+FAILED tests/test_python_review_remediation.py::test_batch_rejects_negative_relative_time_before_writes[delay_seconds]
+FAILED tests/test_python_review_remediation.py::test_batch_rejects_negative_relative_time_before_writes[expire_seconds]
+FAILED tests/test_python_review_remediation.py::test_batch_rejects_negative_relative_time_before_writes[dedup_ttl]
+FAILED tests/test_python_review_remediation.py::test_archive_preserves_a_concurrent_replay_update
+10 failed, 1 passed, 3 warnings in 0.46s

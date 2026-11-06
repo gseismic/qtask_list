@@ -29,9 +29,10 @@ python -m qtask_list.cli push stockev_list:news-discover \
   '{"action":"discover_news","urls":["https://example.com/a","https://example.com/b"]}'
 ```
 
-- 两层身份互不干扰：发现任务建议用调度窗口身份（由 scheduler 提供）；
+- 两层身份互不干扰：发现任务建议借鉴 scheduler 的调度窗口身份自行投递；
   条目任务身份 = `news:{sha256(url)}`
-- 演示 `context.stop_requested` 协作式停止：停机时不做 fan-out，下轮重新发现仍被去重
+- 条目去重保留 7 天，永久幂等应由业务存储保证。
+- 演示 `context.stop_requested` 协作式停止：停机时未投递的发现任务进入重试或 DLQ，不会被当作成功确认。
 
 ## 3. Reconciler 幂等补齐（reconciler.py）
 
@@ -43,7 +44,7 @@ python examples/07_advanced/reconciler.py --manifest examples/07_advanced/tasks.
 ```
 
 - **只补齐、不破坏**：不直接操作 Redis key、不删除未知任务
-- 重复执行只会得到 structured duplicate，可放心高频运行
+- 同一身份在示例设定的两天保留期内重复执行会得到 structured duplicate；保留期结束后可重新投递。
 
 ## 学习点
 

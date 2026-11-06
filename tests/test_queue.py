@@ -208,7 +208,9 @@ class TestSmartQueue:
         stale_q.push({"action": "test"})
         stale_q.pop(timeout=1)
 
-        recovered = recovery_q.recover_stale_processing("testns:stale_recovery:worker:")
+        recovered = recovery_q.recover_stale_processing(
+            "testns:stale_recovery:worker:", include_unmanaged=True
+        )
 
         assert recovered == 1
         assert r.llen("testns:stale_recovery") == 1

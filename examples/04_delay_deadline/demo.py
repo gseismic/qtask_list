@@ -69,9 +69,15 @@ def main() -> None:
     if raw_msg:
         print(f"  截止前正常消费: {payload}")
         queue.ack(raw_msg)
+    expired_id = queue.enqueue(TaskSpec(
+        action="price_check",
+        payload={"symbol": "TSLA"},
+        start_deadline_at=datetime.now(timezone.utc) + timedelta(seconds=2),
+    )).task_id
     time.sleep(3)
     payload, raw_msg = queue.pop_no_wait()
-    print(f"  截止后 pop: {'拒绝（正确，队列中已无可执行任务）' if raw_msg is None else '意外取到'}")
+    outcome = queue.history.get(expired_id)["outcome"]
+    print(f"  截止后 pop: {'拒绝（正确，任务已跳过）' if raw_msg is None and outcome == 'skipped' else '结果异常'}")
 
     print("\n== 3. 滞留任务过期 -> deadline_missed 视图 ==")
     # deadline_missed 不是独立存储状态，而是从主队列/重试/延迟容器里

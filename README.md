@@ -17,8 +17,8 @@
 - **多级流水线**：通过 `result_queue` 串联多个 Worker，构建多阶段处理管道
 - **大 payload 外存**：超过阈值自动走 RemoteStorage，避免撑爆 Redis；瞬时拉取失败延后重试不进 DLQ
 - **信号量背压**：线程池 Semaphore 防止任务排队无限增长
-- **批量 Pipeline**：push_batch、历史查询、归档均使用 Redis Pipeline 减少 RTT
-- **历史归档**：仅 terminal 状态（completed/failed/skipped）的任务归档到 SQLite，live 任务历史保留 Redis
+- **批量查询**：历史查询和归档使用 Redis Pipeline；`push_batch` 按任务顺序提交
+- **历史归档**：仅无待处理消息的 terminal 任务（completed/failed/skipped/cancelled）归档到 SQLite，live 任务历史保留 Redis
 
 ## 安装
 
@@ -110,7 +110,7 @@ q = SmartQueue(
     redis_url="redis://localhost:6379/0",
     queue_name="fetch",
     namespace="stockev",
-    max_retry=3,                # 最大重试次数
+    max_attempts=3,             # 此生产者投递的任务最多执行 3 次（包括首次）
     large_threshold=50 * 1024,  # 大 payload 阈值 (50KB)
     ttl_days=15,                # 历史记录保留天数
 )
@@ -133,7 +133,7 @@ task_id = q.push(
 )
 task_id = q.push(..., logical_key="kline:AAPL:1d:2026-09-19", force=True)  # 显式绕过去重
 
-# 批量推送 (Redis Pipeline 优化)；支持 delay/expire/logical_keys，被去重的项返回 None
+# 顺序批量推送；支持 delay/expire/logical_keys，被去重的项返回 None
 task_ids = q.push_batch(
     [
         {"action": "fetch_news", "url": "https://.../a"},
@@ -195,7 +195,7 @@ q.get_stats()      # 返回 queue/processing/retry/retry_wait/dlq/delay 等计�
 
 **关键设计决策：**
 
-- `pop()` 使用 `BRPOPLPUSH`（非 `BLPOP`），取任务的同时推入 `processing` 队列。Worker 使用带 heartbeat 的专属 processing key，只自动恢复已失联 Worker 的任务。直接使用 `SmartQueue(processing_key=...)` 时，领取路径会登记该 key，管理统计与队列级恢复可找到它；这种消费者没有 Worker heartbeat，执行恢复前应先确认消费者已停止。
+- `pop()` 使用 `BRPOPLPUSH`（非 `BLPOP`），取任务的同时推入 `processing` 队列。Worker 使用带 heartbeat 的专属 processing key，只自动恢复已失联 Worker 的任务。直接使用 `SmartQueue` 消费时，自定义 processing key 在领取前登记；默认 processing 单独按 legacy key 处理。这些消费者没有 Worker heartbeat，队列级自动恢复默认跳过它们，须先确认消费者已停止，再显式恢复。
 - Lua 只填充运行元数据，业务 JSON 由 Python 保真序列化；inline、压缩和外存模式均保留空数组、64 位整数与浮点值。
 - 领取阶段 Redis 响应丢失后，Worker 会恢复本地未登记消息；handler 尚未准入的 begin 不占用执行预算。handler 完成后的结算暂时失败会持续重试结算并保留续租，不重复运行 handler。已经发生的 payload 读取失败仍消耗 attempt。
 - 重试退避：`fail()` 未耗尽重试次数时按 `retry_backoff_base * 2^(attempt-1)`（±10% 抖动，上限 `retry_backoff_max`）写入 delay ZSET，到点由 `move_delay()` 迁回主队列。`QueueAdmin.queue_stats()` 从状态转换计数读取 `retry_wait`；该值是 `delay` 的子集。V1 retry List 仅由 `move_retry()` 兼容迁移。
@@ -224,7 +224,7 @@ worker = Worker(
     namespace="stockev",
     result_queue=store_q,    # 处理结果自动推送到下游队列
     max_workers=4,           # 并发数
-    max_retry=3,             # 最大重试
+    max_attempts=3,          # 本 Worker 投递任务及迁移旧消息时的默认执行次数
 )
 
 # 注册 handler — 按 payload["action"] 字段路由
@@ -243,6 +243,7 @@ worker.run()
 
 - **信号量背压**：`Semaphore(max_workers * 2)` 限制线程池排队深度，防止任务无限积压。
 - **启动自动 recovery**：`run()` 只恢复 heartbeat 已过期的 `processing:{worker_id}`，避免抢回其他活跃 Worker 正在处理的任务。
+- **Worker 标识**：同一队列内的 Worker 实例须使用不同的 `worker_id`；重复占用会抛出 `WorkerIdentityConflictError`。身份租约失效后，旧实例停止领取；外部 handler 可能仍在执行，业务副作用仍须幂等。
 - **优雅停止**：`SIGINT/SIGTERM` 信号 → `stop()`；已准入 handler 的任务在 drain 期间继续刷新 heartbeat，尚未准入的已领取任务退回 ready 并恢复 attempt，最后再清理 Worker 状态。
 - **maintenance_interval**：默认 30 分钟执行一次归档和内存检查。
 
@@ -299,6 +300,10 @@ admin.diagnose("stockev:day-kline:fetch")
 `skipped` 表示任务在 begin-attempt 时已过 `start_deadline_at`，被跳过未执行；`cancelled` 表示被 supersede 或管理操作取消。
 
 `QueueAdmin.recover(..., worker_id=...)` 只处理该 Worker 的 processing，仍在迁移时原子复核心跳；其他失联 Worker 和 legacy processing 不在该范围内。省略该参数保持队列级恢复行为。请使用 `list_workers()` 返回的标识；指定标识不得为空、包含冒号、Redis glob 字符或控制字符，最长 256 个 UTF-8 字节。
+
+默认恢复跳过未受 Worker 心跳管理的 processing；返回值在存在此类消息时包含 `skipped_unmanaged`。确认所有相关消费者已停止后，可用 `admin.recover(queue, include_active=True)` 恢复这些消息；此选项也会接管活跃 Worker，调用前必须同时停止相关 Worker。直接消费者的 `q.recover()` 操作当前 processing，由调用方负责确认该消费者已停止。
+
+删除自定义或默认 processing 中的任务、清空其中的消息、删除带自定义消费者登记的队列时，默认拒绝操作。确认消费者已停止后，分别使用 `admin.delete_task(..., force_unmanaged=True)`、`admin.clear_queue(..., include_processing=True, force_unmanaged=True)` 或 `admin.delete_queue(..., force_unmanaged=True)`。活跃 Worker 仍受保护。自定义 processing key 不得占用其他队列的状态路径，登记时会校验冲突。
 
 队列与 Worker 的自动发现统一使用注册表：`queue_names()` 仅读取 `qtask:queues`，`list_workers()` 仅读取相应 `qtask:workers:<queue>`，不扫描 Redis 键空间，也不缓存发现结果。投递任务及 Worker 心跳会登记队列；空闲 Worker 也可立即显示。Worker 退出后如有残留 processing，会保留注册项供诊断和恢复。未登记的旧状态键、心跳或历史不会自动出现在全局列表。
 
@@ -358,6 +363,9 @@ pip install -e ".[storage]"
 
 服务端默认只监听 `127.0.0.1`；远程访问必须设置 `QTASK_STORAGE_TOKEN`，客户端会自动从同名环境变量读取 Bearer token。通过本机反向代理对外发布时也应设置 token。上传上限由 `QTASK_STORAGE_MAX_BYTES` 配置，默认 64 MiB。队列托管的新对象有 24 小时待入队宽限期，成功入队后在 live 和 DLQ 期间持续保留；终态历史保留期结束后，服务端从任务 Redis 的回收日志删除对象。到期回收及手动删除都会先在 Redis 撤销待入队资格，再删除文件；删除失败时由回收日志重试。手动删除需要回收 Redis 可用。存储服务必须连接到任务使用的同一个 Redis。旧内容寻址对象仍可读取，但不会按单任务删除；既有对象的旧 TTL 边界仍适用。
 
+外存服务拒绝携带非同源 `Origin` 的写请求；无 `Origin` 的 SDK 客户端不受影响。数据目录中的 `.qtask-retention.lock` 用于串行化保留期与文件清理，多进程共享目录时文件系统须支持 SQLite 锁。保留期元数据无法读取时 TTL 清理会跳过该对象并记录告警，需要修复元数据后再次清理。
+升级外存服务时应先停止所有旧版进程，再启动新版；旧版不会使用这个锁。
+
 ### ArchiveManager + Monitor — 归档与监控
 
 **ArchiveManager**：将 Redis 历史任务按日期归档到 SQLite：
@@ -366,10 +374,12 @@ pip install -e ".[storage]"
 归档流程:
   1. ZSET 取过期 task_id → 批量读取详情 (Pipeline)
   2. 按 created_at 日期分库 → archive_data/qtask_hist_{YYYYMMDD}.db
-  3. 写入成功后从 Redis 删除
+  3. SQLite 提交后核对 Redis 快照；仅记录未变化时删除 Redis 数据
 ```
 
 SQLite 表结构：`task_history(task_id, queue_name, action, status, payload, result, created_at, updated_at, raw_data)`
+
+多个归档者须共享同一归档目录和 SQLite 锁文件。`ArchiveManager(..., redis_client=client)` 可注入实际 Redis 连接；Worker 自动使用自身的连接。归档和 Redis 不构成跨库事务：记录在归档期间变化时保留在 Redis，后续归档再更新 SQLite。
 
 **Monitor**：`Redis INFO MEMORY` 监控，超阈值告警。
 
@@ -405,6 +415,7 @@ logical_key = 任务类型 : 业务主体 : 数据时间桶
 1. **at-least-once 交付**：crash recovery 会重跑"已执行但未 ack"的任务；handler 先推 result_queue 后 ack 的窗口也会造成下游重复。**落库逻辑必须幂等（upsert / 唯一约束）**。
 2. **handler 必须自带超时**：库没有任务级超时，线程无法强杀。所有外部 HTTP 请求必须设置 timeout，否则线程永久占用并发额度，且 heartbeat 持续刷新导致 stale recovery 不会接管。
 3. **重试语义**：`max_retry=3` 表示**总共执行 3 次**（首次 + 2 次重试），不是首次之外再重试 3 次。
+   `max_attempts` 是推荐名称，预算在生产者投递时写入每个任务；消费该任务的 Worker 配置不会覆盖它。Worker 配置影响通过其内部队列投递的任务和旧消息迁移；下游 `result_queue` 使用该队列自身的配置。
 4. **并发注意**：`logical_key` 只表达身份去重；同一业务对象需要串行时，可使用独立的 `TaskSpec.concurrency_key`。Worker 按 heartbeat 与 lease 两者较短的周期续租；租约配置须为有限数值且至少 1 毫秒，业务应按实际网络与调度延迟留足余量。
 
 ## 定时抓取部署模式（场景示例）
@@ -529,6 +540,8 @@ qtask watch stockev_list:fetch -i 2
 qtask clear stockev_list:fetch --force
 # 无活跃 Worker 时可显式清理失联 processing
 qtask clear stockev_list:fetch --include-processing --force
+# 已确认自定义消费者停止时，额外允许清理其 processing
+qtask clear stockev_list:fetch --include-processing --force-unmanaged --force
 # 需要同时删除已终结历史时显式加 --include-history
 qtask clear stockev_list:fetch --include-history --force
 
@@ -552,6 +565,8 @@ qtask history -t <task_id>
 qtask task get <task_id>
 qtask task requeue <task_id> --queue stockev_list:fetch --from dlq --force
 qtask task delete <task_id> --queue stockev_list:fetch --force
+# 文件重放使用 -f 指定文件，跳过确认使用 -y
+qtask task replay <task_id> --queue stockev_list:fetch -f payload.json -y
 
 # 启动用户代码中已注册 handler 的 Worker
 qtask worker --module myapp.workers:worker
@@ -640,6 +655,9 @@ uvicorn qtask_list.dashboard.main:app --host 0.0.0.0 --port 8765
 
 设置 `QTASK_DASHBOARD_PASSWORD` 后，访问 `/` 会先跳转到 `/login`，所有 `/api/*` 管理接口以及 SPA 客户端路由（如 `/queues`）也会校验登录会话。不设置密码时认证默认关闭，服务可直接访问。公网部署建议放在 HTTPS 反向代理后，并设置 `QTASK_DASHBOARD_SECURE_COOKIE=1` 或 CLI 参数 `--secure-cookie`。
 CLI 绑定非 loopback 地址且未配置认证时会拒绝启动；确需在可信网络无认证运行时，必须显式传 `--allow-unauthenticated`。
+Python 的 `start_dashboard(host=...)` 同样要求远程监听配置密码；确需无认证时须显式设置 `allow_unauthenticated=True`。直接运行 `python -m qtask_list.dashboard.main` 默认监听本机。
+
+Dashboard 默认只接受同源网页的写操作。需要跨域网页访问时，设置 `QTASK_DASHBOARD_ALLOWED_ORIGINS` 为逗号分隔的完整 HTTP(S) 来源，例如 `https://console.example.com,https://ops.example.com`；服务重启后生效。无 `Origin` 的脚本和服务端客户端仍可调用 API。通过反向代理部署时应正确配置转发协议及 Host，使服务识别实际访问来源。
 
 ### 修改前端（仅开发 Dashboard 时需要）
 
@@ -659,7 +677,7 @@ pnpm build       # 构建并输出到 qtask_list/dashboard/static/spa/，随包�
 |------|--------|------|
 | `redis_url` | `redis://localhost:6379/0` | Redis 连接地址 |
 | `namespace` | `""` | 命名空间，多项目隔离 |
-| `max_retry` | `3` | 最大执行次数（总共），超限进入 DLQ |
+| `max_attempts` / 兼容参数 `max_retry` | `3` | 生产者创建任务时写入的最大总执行次数，超限进入 DLQ |
 | `retry_backoff_base` | `30` | 重试退避基数（秒），指数退避；0 = 旧的立即重试 |
 | `retry_backoff_max` | `3600` | 单次重试退避上限（秒） |
 | `large_threshold` | `50KB` | 大 payload 阈值，超限走 RemoteStorage |

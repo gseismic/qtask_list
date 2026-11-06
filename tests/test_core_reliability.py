@@ -702,7 +702,7 @@ def test_recovery_restores_deadline_observation(isolated_redis, use_admin):
     q.pop_claim_no_wait()
     assert isolated_redis.zscore(q.deadline_key, task_id) is None
     if use_admin:
-        assert QueueAdmin(redis_client=isolated_redis).recover(q.base)["recovered"] == 1
+        assert QueueAdmin(redis_client=isolated_redis).recover(q.base, include_active=True)["recovered"] == 1
     else:
         assert q.recover() == 1
     assert isolated_redis.zscore(q.deadline_key, task_id) is not None
@@ -756,7 +756,9 @@ def test_admin_recovers_custom_processing_after_consumer_exit_without_scanning(
     monkeypatch.setattr(isolated_redis, "scan", unexpected_scan)
     assert admin.queue_stats(q.base)["processing"] == 1
     assert admin.processing_keys(q.base, include_legacy=False) == [q.processing]
-    result = admin.recover(q.base)
+    skipped = admin.recover(q.base)
+    assert skipped["recovered"] == 0 and skipped["skipped_unmanaged"] == 1
+    result = admin.recover(q.base, include_active=True)
     assert result["recovered"] == 1
     assert isolated_redis.llen(q.processing) == 0
     assert isolated_redis.llen(q.queue) == 1
@@ -804,7 +806,9 @@ def test_delete_queue_removes_custom_processing_registry(isolated_redis):
     assert q.pop_claim_no_wait() is not None
     assert isolated_redis.exists(q.processing_registry_key) == 1
 
-    QueueAdmin(redis_client=isolated_redis).delete_queue(q.base)
+    with pytest.raises(ValueError, match="custom processing"):
+        QueueAdmin(redis_client=isolated_redis).delete_queue(q.base)
+    QueueAdmin(redis_client=isolated_redis).delete_queue(q.base, force_unmanaged=True)
     assert isolated_redis.exists(q.processing_registry_key) == 0
     assert isolated_redis.exists(q.processing) == 0
 

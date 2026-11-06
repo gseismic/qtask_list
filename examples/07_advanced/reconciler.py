@@ -5,8 +5,8 @@ Reconciler 周期性读取期望任务清单，重复执行也只会得到结构
 
 用法::
 
-    python examples/stockev/reconciler.py                       # 使用内置样例清单
-    python examples/stockev/reconciler.py --manifest tasks.jsonl
+    python examples/07_advanced/reconciler.py                  # 使用内置样例清单
+    python examples/07_advanced/reconciler.py --manifest tasks.jsonl
 
 清单为 JSON Lines，每行至少包含 ``action``、``payload``、``logical_key``，可选
 ``start_deadline_at``（带时区 ISO 8601）与 ``trace_id``；``#`` 开头的行被忽略。
@@ -21,7 +21,7 @@ from pathlib import Path
 import sys
 from typing import Any, Iterable
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -75,8 +75,8 @@ def load_specs(path: Path | None, *, now: datetime) -> list[TaskSpec]:
         logical_key = row.get("logical_key")
         if not isinstance(action, str) or not isinstance(payload, dict):
             raise ValueError(f"manifest line {index} needs action and object payload")
-        if logical_key is not None and not isinstance(logical_key, str):
-            raise ValueError(f"manifest line {index} logical_key must be a string")
+        if not isinstance(logical_key, str) or not logical_key:
+            raise ValueError(f"manifest line {index} logical_key must be a non-empty string")
         specs.append(
             TaskSpec(
                 action=action,

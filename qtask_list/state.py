@@ -224,6 +224,12 @@ end
 
 local raw_message = ARGV[1]
 local task_id = ARGV[2]
+if ARGV[14] ~= '' and redis.call('GET', KEYS[11]) ~= ARGV[14] then
+    if redis.call('LREM', KEYS[1], 1, raw_message) == 1 then
+        redis.call('LPUSH', KEYS[12], raw_message)
+    end
+    return {'worker_identity_lost'}
+end
 if redis.call('EXISTS', KEYS[2]) == 0 then
     return {'missing_task'}
 end
@@ -549,8 +555,15 @@ local raw_message = ARGV[2]
 local task_id = ARGV[3]
 local identity_policy = ARGV[4]
 local has_owner = ARGV[5] == '1'
-if ARGV[10] ~= '1' and redis.call('EXISTS', KEYS[7]) == 1 then
+if ARGV[10] ~= '1' and (redis.call('EXISTS', KEYS[7]) == 1 or redis.call('EXISTS', KEYS[9]) == 1) then
     return {'active_processing'}
+end
+if ARGV[11] == '1' and ARGV[12] ~= '1' and
+   (ARGV[13] == '1' or redis.call('ZSCORE', KEYS[10], KEYS[1])) then
+    return {'unmanaged_processing'}
+end
+if (ARGV[14] == '1') ~= (redis.call('EXISTS', KEYS[2]) == 1) then
+    return {'record_changed'}
 end
 local removed = 0
 if source_type == 'zset' then
@@ -561,6 +574,16 @@ end
 if removed == 0 then return {'not_found'} end
 
 local now = redis_now()
+if ARGV[14] ~= '1' then
+    if source_type == 'zset' then
+        local ok, envelope = pcall(cjson.decode, raw_message)
+        if ok and type(envelope) == 'table' and envelope['delay_reason'] == 'retry' then
+            local current = tonumber(redis.call('HGET', KEYS[5], 'retry_wait.current') or '0')
+            if current > 0 then redis.call('HINCRBY', KEYS[5], 'retry_wait.current', -1) end
+        end
+    end
+    return {'removed_untracked'}
+end
 if key_type(KEYS[2]) == 'string' then
     local old_raw = redis.call('GET', KEYS[2])
     local ok, old_record = pcall(cjson.decode, old_raw)
@@ -986,6 +1009,15 @@ local function assert_queue_namespace(candidate)
                                      state_path_overlaps(candidate, existing)) then
             error('qtask queue namespace conflict: ' .. candidate .. ' and ' .. existing)
         end
+        if existing ~= candidate then
+            local processing = 'qtask:processing:' .. existing
+            assert_key_type(processing, 'zset')
+            for _, key in ipairs(redis.call('ZRANGE', processing, 0, -1)) do
+                if key == candidate or state_path_overlaps(candidate, key) then
+                    error('qtask queue namespace conflict: ' .. candidate .. ' and processing key ' .. key)
+                end
+            end
+        end
     end
 end
 """
@@ -1004,6 +1036,33 @@ REGISTER_PROCESSING_KEY_LUA = (
     + r"""
 assert_key_type(KEYS[1], 'zset')
 assert_queue_namespace(ARGV[1])
+local queue, processing = ARGV[1], ARGV[3]
+assert_key_type(processing, 'list')
+if string.sub(processing, 1, 6) == 'qtask:' or processing == queue or
+   (state_path_overlaps(queue, processing) and
+    string.sub(processing, 1, #(queue .. ':processing:')) ~= queue .. ':processing:') then
+    error('qtask processing key conflict: ' .. processing)
+end
+for _, existing in ipairs(redis.call('ZRANGE', 'qtask:queues', 0, -1)) do
+    if existing ~= queue then
+        if processing == existing or state_path_overlaps(existing, processing) then
+            error('qtask processing key conflict: ' .. processing .. ' and ' .. existing)
+        end
+        local other = 'qtask:processing:' .. existing
+        assert_key_type(other, 'zset')
+        if redis.call('ZSCORE', other, processing) then
+            error('qtask processing key conflict: ' .. processing .. ' is already registered')
+        end
+    end
+end
+local workers = 'qtask:workers:' .. queue
+assert_key_type(workers, 'zset')
+for _, worker in ipairs(redis.call('ZRANGE', workers, 0, -1)) do
+    if processing == queue .. ':processing:' .. worker then
+        error('qtask processing key conflict: ' .. processing .. ' belongs to a Worker')
+    end
+end
+redis.call('ZADD', 'qtask:queues', ARGV[2], queue)
 redis.call('ZADD', KEYS[1], ARGV[2], ARGV[3])
 return 1
 """
@@ -1016,6 +1075,8 @@ REGISTER_WORKER_LUA = (
 assert_key_type(KEYS[1], 'zset')
 assert_key_type(KEYS[2], 'zset')
 assert_key_type(KEYS[3], 'string')
+assert_key_type(KEYS[4], 'string')
+assert_key_type(KEYS[5], 'zset')
 assert_queue_namespace(ARGV[1])
 local now = tonumber(ARGV[2])
 local ttl = tonumber(ARGV[4])
@@ -1025,15 +1086,42 @@ end
 if not ttl or ttl < 1 or ttl > 2147483647 or ttl ~= math.floor(ttl) then
     error('qtask invalid heartbeat ttl')
 end
+local owner = redis.call('GET', KEYS[4])
+if owner and owner ~= ARGV[5] then
+    error('qtask worker identity conflict')
+end
+-- 无令牌的旧版活跃心跳也不能被新实例接管。
+if not owner and redis.call('EXISTS', KEYS[3]) == 1 then
+    error('qtask worker identity conflict')
+end
+if redis.call('ZSCORE', KEYS[5], ARGV[6]) then
+    error('qtask worker processing identity conflict')
+end
 redis.call('ZADD', KEYS[1], ARGV[2], ARGV[1])
 redis.call('ZADD', KEYS[2], ARGV[2], ARGV[3])
 redis.call('SET', KEYS[3], ARGV[2], 'EX', ARGV[4])
+redis.call('SET', KEYS[4], ARGV[5], 'EX', ARGV[4])
 return 1
 """
 )
 
+CLEANUP_WORKER_LUA = _KEY_TYPES_LUA + r"""
+assert_key_type(KEYS[1], 'string')
+assert_key_type(KEYS[2], 'string')
+assert_key_type(KEYS[3], 'list')
+assert_key_type(KEYS[4], 'zset')
+if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
+if redis.call('LLEN', KEYS[3]) == 0 then
+    redis.call('DEL', KEYS[3])
+    redis.call('ZREM', KEYS[4], ARGV[2])
+end
+redis.call('DEL', KEYS[2], KEYS[1])
+return 1
+"""
+
 PRUNE_WORKER_LUA = r"""
-if redis.call('EXISTS', KEYS[1]) == 0 and redis.call('LLEN', KEYS[2]) == 0 then
+if redis.call('EXISTS', KEYS[1]) == 0 and redis.call('EXISTS', KEYS[4]) == 0 and
+   redis.call('LLEN', KEYS[2]) == 0 then
     return redis.call('ZREM', KEYS[3], ARGV[1])
 end
 return 0
@@ -1044,6 +1132,7 @@ DELETE_QUEUE_LUA = _KEY_TYPES_LUA + _QUEUE_NAMESPACE_LUA + r"""
 local queue = ARGV[1]
 local owner_prefix = ARGV[2]
 local gc_prefix = ARGV[3]
+local worker_owner_prefix = ARGV[4]
 assert_key_type('qtask:queues', 'zset')
 assert_queue_namespace(queue)
 local hist = 'qtask:hist:' .. queue
@@ -1052,6 +1141,9 @@ local processing = 'qtask:processing:' .. queue
 assert_key_type(hist, 'zset')
 assert_key_type(workers, 'zset')
 assert_key_type(processing, 'zset')
+if ARGV[5] ~= '1' and redis.call('ZCARD', processing) > 0 then
+    return redis.error_reply('qtask custom processing requires explicit confirmation after consumers stop')
+end
 
 local function glob_literal(value)
     return (string.gsub(value, '[\\*?%[%]]', '\\%0'))
@@ -1071,6 +1163,9 @@ local escaped = glob_literal(queue)
 if next(matching(escaped .. ':worker:*')) ~= nil then
     return redis.error_reply('qtask stop active workers before deleting the queue')
 end
+if next(matching(glob_literal(worker_owner_prefix) .. '*')) ~= nil then
+    return redis.error_reply('qtask stop active workers before deleting the queue')
+end
 local lists = {[queue] = true, [queue .. ':retry'] = true,
                [queue .. ':dlq'] = true, [queue .. ':processing'] = true}
 for _, key in ipairs(redis.call('ZRANGE', processing, 0, -1)) do lists[key] = true end
@@ -1081,6 +1176,9 @@ for key in pairs(matching(escaped .. ':processing:*')) do lists[key] = true end
 local delay = queue .. ':delay'
 assert_key_type(delay, 'zset')
 for key in pairs(lists) do assert_key_type(key, 'list') end
+if ARGV[5] ~= '1' and redis.call('LLEN', queue .. ':processing') > 0 then
+    return redis.error_reply('qtask custom processing requires explicit confirmation after consumers stop')
+end
 
 local ids = {}
 local function remember(raw)
@@ -1226,6 +1324,8 @@ BEGIN_ATTEMPT_LUA = _guard_key_types(
         7: "zset",
         8: "hash",
         10: "zset",
+        11: "string",
+        12: "list",
     },
     gc=(9, 2),
     metrics=(
@@ -1333,6 +1433,8 @@ CANCEL_OR_PURGE_LUA = _guard_key_types(
         5: "hash",
         7: "string",
         8: "zset",
+        9: "string",
+        10: "zset",
     },
     gc=(6, 2),
     metrics=(5, ["'retry_wait.current'", "'admin.purged'", "'outcome.cancelled'"]),

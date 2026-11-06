@@ -1,7 +1,7 @@
 """新闻发现与 fan-out 示例。
 
 ``discover_news`` handler 只负责发现 URL，实际抓取任务通过 ``TaskResult.emissions``
-以带身份的 ``TaskSpec`` 投递到下游。这样同一 URL 在重试或重复发现时仍由队列去重。
+以带身份的 ``TaskSpec`` 投递到下游。保留期内同一 URL 重试或重复发现会被队列去重。
 
 这是「动态增长列表」的标准模式::
 
@@ -20,11 +20,11 @@ from pathlib import Path
 import sys
 from typing import Any
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from qtask_list import SmartQueue, TaskContext, TaskResult, TaskSpec, Worker  # noqa: E402
+from qtask_list import RetryableTaskError, SmartQueue, TaskContext, TaskResult, TaskSpec, Worker  # noqa: E402
 
 
 REDIS_URL = "redis://localhost:6379/0"
@@ -83,10 +83,10 @@ def discover_news(payload: dict[str, Any], context: TaskContext) -> TaskResult:
     specs = _news_specs(urls, context)
     if context.stop_requested:
         # Worker 收到停止信号：协作式退出，不做大批 fan-out。
-        # 这些 URL 会在下一轮发现任务中重新出现，仍由 news:<hash> 身份去重。
-        return TaskResult(value={"discovered": len(specs), "emitted": 0})
+        # 不确认尚未投递的发现结果；预算耗尽时保留在 DLQ 供人工处理。
+        raise RetryableTaskError("worker_stopping", "停止时尚未投递发现结果")
     return TaskResult(
-        value={"discovered": len(specs), "emitted": len(specs)},
+        value={"discovered": len(specs), "planned_emissions": len(specs)},
         emissions=specs,
     )
 

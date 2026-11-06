@@ -1,0 +1,3 @@
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/manual/verify_review_claims.py:44: DeprecationWarning: SmartQueue.push() is a compatibility API; prefer enqueue(TaskSpec)
+  retry.push([{"action": "invalid"}])
+{"live_history_retained": true, "attempts": 3, "replay_uses_new_id": true, "invalid_payload_rejected": true}

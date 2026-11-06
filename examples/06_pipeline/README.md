@@ -34,6 +34,6 @@ python examples/06_pipeline/generator.py
 ## 学习点
 
 - **启动顺序**：必须先启动下游 Worker，否则中间队列堆积
-- **投递先于 ack**：Worker 先把 emissions 投到下游、再 ack 上游；"投递后 ack 前"崩溃会导致重跑重复投递，由下游 `logical_key`（从父 task_id 派生）去重兜底
+- **投递先于 ack**：Worker 先把 emissions 投到下游、再 ack 上游；"投递后 ack 前"崩溃会导致重跑重复投递。下游 `logical_key` 从父 task_id 派生，并用 `dedup_until` 保留两天；超过窗口的重复仍需业务存储的唯一约束或幂等处理。
 - **跨 namespace**：`result_queue` 可以指向任意 namespace 的队列，血缘（`parent_task_id`/`trace_id`）保持不断
 - **生产者只管第一级**：后两级由各阶段 Worker 通过 emissions 自动驱动，pipeline 拓扑分散在 Worker 代码中

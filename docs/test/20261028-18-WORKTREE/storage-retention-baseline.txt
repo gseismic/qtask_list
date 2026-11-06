@@ -1,0 +1,28 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+______________ test_expired_cleanup_preserves_unreadable_metadata ______________
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:572: in test_expired_cleanup_preserves_unreadable_metadata
+    assert path.read_bytes() == b"retained"
+           ^^^^^^^^^^^^^^^^^
+/home/lsl/miniconda3/lib/python3.12/pathlib.py:1019: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+/home/lsl/miniconda3/lib/python3.12/pathlib.py:1013: in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   FileNotFoundError: [Errno 2] No such file or directory: '/tmp/pytest-of-lsl/pytest-513/test_expired_cleanup_preserves0/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+----------------------------- Captured stderr call -----------------------------
+2026-10-28 18:12:52.785 | INFO     | qtask_list.remote_storage.server:_cleanup_expired:236 - TTL 清理完成，删除 1 个过期文件
+____ test_retention_extension_cannot_succeed_before_concurrent_ttl_deletion ____
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:619: in test_retention_extension_cannot_succeed_before_concurrent_ttl_deletion
+    assert result[0] == 404 or (isinstance(result[0], dict) and path.exists())
+E   AssertionError: assert ({'key': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'retain_until': 1793185972.8390734} == 404 or (True and False))
+E    +  where True = isinstance({'key': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'retain_until': 1793185972.8390734}, dict)
+E    +  and   False = exists()
+E    +    where exists = PosixPath('/tmp/pytest-of-lsl/pytest-513/test_retention_extension_canno0/bb/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb').exists
+----------------------------- Captured stderr call -----------------------------
+2026-10-28 18:12:52.839 | INFO     | qtask_list.remote_storage.server:_cleanup_expired:236 - TTL 清理完成，删除 1 个过期文件
+=========================== short test summary info ============================
+FAILED tests/test_python_review_remediation.py::test_expired_cleanup_preserves_unreadable_metadata
+FAILED tests/test_python_review_remediation.py::test_retention_extension_cannot_succeed_before_concurrent_ttl_deletion
+2 failed, 38 deselected, 2 warnings in 0.45s

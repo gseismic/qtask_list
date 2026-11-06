@@ -16,10 +16,10 @@ import redis
 from loguru import logger
 
 from .clock import Clock
-from .errors import PermanentTaskError, RetryableTaskError
+from .errors import PermanentTaskError, RetryableTaskError, WorkerIdentityConflictError
 from .models import HistoryMode, TaskResult
 from .queue import SmartQueue, TaskClaim
-from .state import REGISTER_WORKER_LUA
+from .state import CLEANUP_WORKER_LUA, REGISTER_WORKER_LUA
 from .storage import RemoteStorage
 
 
@@ -90,6 +90,11 @@ class Worker:
         self._heartbeat_prefix = f"{self.queue.base}:worker:"
         self._heartbeat_key = f"{self._heartbeat_prefix}{self.worker_id}"
         self._worker_registry_key = f"qtask:workers:{self.queue.base}"
+        self._worker_owner_key = f"qtask:worker-owner:{self.queue._hash_key(self.queue.base)}:{self.worker_id}"
+        self._worker_owner_token = uuid.uuid4().hex
+        self.queue._worker_registration = self._refresh_heartbeat
+        self.queue._worker_owner_key = self._worker_owner_key
+        self.queue._worker_owner_token = self._worker_owner_token
         self._leader_key = f"{self.queue.base}:maintenance:leader"
         self._leader_token = uuid.uuid4().hex
 
@@ -127,21 +132,28 @@ class Worker:
     def _refresh_heartbeat(self) -> None:
         try:
             self.queue.r.eval(
-                REGISTER_WORKER_LUA, 3,
+                REGISTER_WORKER_LUA, 5,
                 self.queue.registry_key, self._worker_registry_key, self._heartbeat_key,
+                self._worker_owner_key, self.queue.processing_registry_key,
                 self.queue.base, self.queue.clock.now(), self.worker_id, self.heartbeat_ttl,
+                self._worker_owner_token, self.queue.processing,
             )
             self.queue._processing_key_managed_by_worker = True
         except redis.ResponseError as exc:
             if "qtask queue namespace conflict:" in str(exc):
                 raise ValueError(str(exc)) from exc
+            if "qtask worker" in str(exc) and "identity conflict" in str(exc):
+                raise WorkerIdentityConflictError(
+                    f"worker id already in use or reserved by a custom consumer: {self.worker_id}"
+                ) from exc
             raise
 
     def _cleanup_worker_state(self) -> None:
-        if self.queue.r.llen(self.queue.processing) == 0:
-            self.queue.r.delete(self.queue.processing)
-            self.queue.r.zrem(self._worker_registry_key, self.worker_id)
-        self.queue.r.delete(self._heartbeat_key)
+        self.queue.r.eval(
+            CLEANUP_WORKER_LUA, 4, self._worker_owner_key, self._heartbeat_key,
+            self.queue.processing, self._worker_registry_key,
+            self._worker_owner_token, self.worker_id,
+        )
         release_script = r"""
         if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
         return redis.call('DEL', KEYS[1])
@@ -324,6 +336,10 @@ class Worker:
             try:
                 self._refresh_heartbeat()
                 self._renew_active_leases()
+            except WorkerIdentityConflictError as exc:
+                logger.error(f"Worker identity lost: {exc}")
+                self.stop(reason="worker_identity_lost")
+                break
             except Exception as exc:
                 logger.exception(f"Heartbeat renewal failed: {exc}")
             if self._heartbeat_wakeup.wait(self.heartbeat_interval):
@@ -394,7 +410,7 @@ class Worker:
         archiver = None
         monitor = None
         try:
-            archiver = ArchiveManager(self.redis_url, db_dir=self.archive_dir)
+            archiver = ArchiveManager(self.redis_url, db_dir=self.archive_dir, redis_client=self.queue.r)
             monitor = Monitor(self.queue.r, threshold_mb=self.monitor_threshold_mb)
         except Exception as exc:
             logger.error(f"Maintenance init failed, archive/memory check disabled: {exc}")
@@ -458,7 +474,10 @@ class Worker:
             with self._active_claims_lock:
                 protected = {item.raw_message for item in self._active_claims.values()}
                 spent_attempts = set(self._abandoned_attempts)
-            recovered = self.queue.recover_abandoned_claims(protected, spent_attempts=spent_attempts)
+            recovered = self.queue.recover_abandoned_claims(
+                protected, spent_attempts=spent_attempts,
+                worker_owner_key=self._worker_owner_key, worker_owner_token=self._worker_owner_token,
+            )
             with self._active_claims_lock:
                 self._abandoned_attempts.difference_update(spent_attempts)
             if recovered:
@@ -503,6 +522,10 @@ class Worker:
                             f"Worker 空闲中: {self.queue.base} "
                             f"(已空闲 {idle_count * 2}s, 约 {idle_count} 次轮询)"
                         )
+            except WorkerIdentityConflictError as exc:
+                logger.error(f"Worker identity lost: {exc}")
+                self.stop(reason="worker_identity_lost")
+                break
             except Exception as exc:
                 logger.exception(f"Worker loop error: {exc}")
                 time.sleep(1)
@@ -524,10 +547,26 @@ class Worker:
             except ValueError:
                 logger.warning("Failed to register signals (not in main thread?)")
 
-        recovered = self.queue.recover_stale_processing(self._heartbeat_prefix)
-        if recovered:
-            logger.info(f"Recovered {recovered} tasks from stale processing queues")
-        self._refresh_heartbeat()
+        registered = False
+        try:
+            # 先取得身份，再恢复同 ID 的历史 processing；并发实例不能抢走它。
+            self._refresh_heartbeat()
+            registered = True
+            recovered = self.queue.recover_processing_key(
+                self.queue.processing, required_owner_key=self._worker_owner_key,
+                required_owner_token=self._worker_owner_token,
+            )
+            recovered += self.queue.recover_stale_processing(self._heartbeat_prefix)
+            if recovered:
+                logger.info(f"Recovered {recovered} tasks from stale processing queues")
+        except BaseException:
+            self.running = False
+            if registered:
+                try:
+                    self._cleanup_worker_state()
+                except redis.RedisError as exc:
+                    logger.warning(f"Worker startup cleanup failed: {exc}")
+            raise
         heartbeat_thread = threading.Thread(target=self._heartbeat_loop, daemon=True)
         heartbeat_thread.start()
         maintenance_thread = threading.Thread(target=self._maintenance_loop, daemon=True)

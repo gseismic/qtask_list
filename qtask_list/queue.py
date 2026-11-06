@@ -19,7 +19,10 @@ from loguru import logger
 
 from .clock import Clock, SystemClock, datetime_to_epoch, epoch_to_datetime
 from .envelope import EnvelopeCodec, EnvelopeHeader, PreparedPayload, prepared_from_descriptor
-from .errors import BatchEnqueueError, PayloadDecodeError, RemoteStorageError, RemoteStorageTransientError
+from .errors import (
+    BatchEnqueueError, PayloadDecodeError, RemoteStorageError, RemoteStorageTransientError,
+    WorkerIdentityConflictError,
+)
 from .history import TaskHistory
 from .models import (
     DuplicateAction,
@@ -30,6 +33,7 @@ from .models import (
     TaskContext,
     TaskSpec,
 )
+from .security import safe_storage_error_code, safe_storage_error_note
 from .state import (
     ADMIN_MOVE_LUA,
     BEGIN_ATTEMPT_LUA,
@@ -138,6 +142,9 @@ class SmartQueue:
         self.worker_registry_key = f"qtask:workers:{self.base}"
         self.processing_registry_key = f"qtask:processing:{self.base}"
         self._processing_key_managed_by_worker = False
+        self._worker_registration: Callable[[], None] | None = None
+        self._worker_owner_key: str | None = None
+        self._worker_owner_token: str | None = None
         self.metrics_key = f"qtask:metrics:{self.base}"
         self.deadline_key = f"qtask:deadline:{self.base}"
         self.storage_gc_key = STORAGE_GC_KEY
@@ -201,9 +208,10 @@ class SmartQueue:
     def _legacy_dedup_key(self, logical_key: str) -> str:
         return f"{self.dedup_prefix}{logical_key}"
 
-    def _migrate_identity(self, logical_key: str) -> None:
+    def _migrate_identity(self, logical_key: str, *, require_worker_owner: bool = False) -> None:
         """按类型与原身份核验迁移旧 owner，避免哈希名与旧明文名碰撞。"""
         script = r"""
+        if ARGV[2] ~= '' and redis.call('GET', KEYS[4]) ~= ARGV[2] then return -1 end
         if redis.call('EXISTS', KEYS[1]) == 1 then return 0 end
         local kind = redis.call('TYPE', KEYS[2])['ok']
         local source = ''
@@ -247,9 +255,13 @@ class SmartQueue:
         redis.call('DEL', source)
         return 1
         """
-        self.r.eval(script, 3, self._dedup_key(logical_key),
+        result = self.r.eval(script, 4, self._dedup_key(logical_key),
                     f"{self.dedup_prefix}{self._hash_key(logical_key)}",
-                    self._legacy_dedup_key(logical_key), logical_key)
+                    self._legacy_dedup_key(logical_key),
+                    self._worker_owner_key or self._dummy_key("worker-owner", "migration"),
+                    logical_key, (self._worker_owner_token or "") if require_worker_owner else "")
+        if int(result) < 0:
+            raise WorkerIdentityConflictError("worker identity was lost during identity migration")
 
     def _supersede_key(self, supersede_key: str) -> str:
         return f"{self.supersede_prefix}{self._hash_key(supersede_key)}"
@@ -291,6 +303,9 @@ class SmartQueue:
 
     def _register_processing_key(self) -> None:
         """领取前登记自定义 processing key；Worker key 由 Worker 注册表覆盖。"""
+        if self._worker_registration is not None:
+            self._worker_registration()
+            return
         if self.processing == self.default_processing or self._processing_key_managed_by_worker:
             return
         self.r.eval(
@@ -496,6 +511,8 @@ class SmartQueue:
         )
         if logical_keys is not None and len(logical_keys) != len(payloads):
             raise ValueError("logical_keys length must match payloads")
+        if delay_seconds < 0 or expire_seconds < 0 or (dedup_ttl is not None and dedup_ttl < 0):
+            raise ValueError("delay_seconds, expire_seconds and dedup_ttl must be >= 0")
         now = datetime.fromtimestamp(self.clock.now(), tz=timezone.utc)
         specs: list[TaskSpec] = []
         for index, payload in enumerate(payloads):
@@ -687,21 +704,26 @@ class SmartQueue:
         _on_discarded: Callable[[TaskClaim], None] | None = None,
     ) -> TaskClaim | None:
         try:
-            header = self.codec.header(raw_message)
-        except Exception as exc:
-            self._move_poison_to_dlq(raw_message, "invalid_envelope", str(exc))
-            return None
-
-        if header.version == 1:
-            migrated = self._migrate_v1_message(raw_message, header)
-            if migrated is None:
+            self._assert_claim_owner(raw_message)
+            try:
+                header = self.codec.header(raw_message)
+            except Exception as exc:
+                self._move_poison_to_dlq(raw_message, "invalid_envelope", str(exc))
                 return None
-            raw_message = migrated
-            header = self.codec.header(raw_message)
 
-        self._ensure_task_record(header)
-        if header.logical_key:
-            self._migrate_identity(header.logical_key)
+            if header.version == 1:
+                migrated = self._migrate_v1_message(raw_message, header)
+                if migrated is None:
+                    return None
+                raw_message = migrated
+                header = self.codec.header(raw_message)
+
+            self._ensure_task_record(header)
+            if header.logical_key:
+                self._migrate_identity(header.logical_key, require_worker_owner=True)
+        except WorkerIdentityConflictError:
+            self._assert_claim_owner(raw_message)
+            raise
         owner_key = (
             self._dedup_key(header.logical_key)
             if header.logical_key
@@ -729,7 +751,7 @@ class SmartQueue:
 
         result = self.r.eval(
             BEGIN_ATTEMPT_LUA,
-            10,
+            12,
             self.processing,
             f"qtask:task:{header.task_id}",
             self.dlq,
@@ -740,6 +762,8 @@ class SmartQueue:
             self.metrics_key,
             self.storage_gc_key,
             self.deadline_key,
+            self._worker_owner_key or self._dummy_key("worker-owner", header.task_id),
+            self.queue,
             raw_message,
             header.task_id,
             "1" if header.logical_key else "0",
@@ -753,8 +777,11 @@ class SmartQueue:
             self.codec.runtime_tail(started_data, "attempt"),
             self.codec.runtime_tail(deferred_data, "available_at", delay_reason="concurrency"),
             claim_token,
+            self._worker_owner_token or "",
         )
         code = str(result[0])
+        if code == "worker_identity_lost":
+            raise WorkerIdentityConflictError("worker identity was lost before claim")
         if code != "started":
             if code not in {"skipped", "cancelled", "deferred", "failed_budget", "not_found"}:
                 logger.warning(f"begin_attempt ignored task={header.task_id} result={result!r}")
@@ -819,8 +846,8 @@ class SmartQueue:
             try:
                 self.fail(
                     started_message,
-                    str(exc),
-                    code=exc.code,
+                    safe_storage_error_note(exc.code),
+                    code=safe_storage_error_code(exc.code),
                     retry_after=exc.retry_after,
                 )
                 settled = True
@@ -831,19 +858,20 @@ class SmartQueue:
         except RemoteStorageError as exc:
             settled = False
             try:
-                self.fail(started_message, str(exc), code=exc.code, permanent=True)
+                self.fail(started_message, safe_storage_error_note(exc.code),
+                          code=safe_storage_error_code(exc.code), permanent=True)
                 settled = True
             finally:
                 if _on_discarded:
                     _on_discarded(replace(provisional, settlement_pending=not settled))
             return None
-        except Exception as exc:
+        except Exception:
             settled = False
             try:
                 self.fail(
                     started_message,
-                    str(exc),
-                    code=str(getattr(exc, "code", "payload_decode")),
+                    "payload 解析失败，请核对任务数据及存储配置",
+                    code="payload_decode",
                     permanent=True,
                 )
                 settled = True
@@ -853,14 +881,32 @@ class SmartQueue:
             return None
         return replace(provisional, payload=payload)
 
+    def _assert_claim_owner(self, raw_message: str) -> None:
+        """失权时退回本次阻塞领取的消息，并停止旧 Worker。"""
+        if not self._worker_owner_token:
+            return
+        script = r"""
+        if redis.call('GET', KEYS[1]) == ARGV[1] then return 1 end
+        local ready_kind = redis.call('TYPE', KEYS[3])['ok']
+        if ready_kind ~= 'none' and ready_kind ~= 'list' then error('ready key type conflict') end
+        if redis.call('LREM', KEYS[2], 1, ARGV[2]) == 1 then
+            redis.call('LPUSH', KEYS[3], ARGV[2])
+        end
+        return 0
+        """
+        if not self.r.eval(script, 3, self._worker_owner_key, self.processing, self.queue,
+                           self._worker_owner_token, raw_message):
+            raise WorkerIdentityConflictError("worker identity was lost before claim")
+
     def _ensure_task_record(self, header: EnvelopeHeader) -> None:
         key = f"qtask:task:{header.task_id}"
         if self.r.exists(key):
-            self.history.ensure_hash(header.task_id)
+            self.history.ensure_hash(header.task_id, worker_owner_key=self._worker_owner_key,
+                                     worker_owner_token=self._worker_owner_token)
             return
         descriptor = header.raw.get("payload", {})
         now = float(header.raw.get("created_at") or self.clock.now())
-        self.history.record(
+        self.history.record_if_absent(
             header.task_id,
             {
                 "_queue": self.base,
@@ -874,8 +920,10 @@ class SmartQueue:
                 "payload_descriptor": descriptor,
                 "payload_kind": descriptor.get("kind", "") if isinstance(descriptor, dict) else "",
                 "history_mode": self.history_mode.value,
-            },
+            }, worker_owner_key=self._worker_owner_key, worker_owner_token=self._worker_owner_token,
         )
+        self.history.ensure_hash(header.task_id, worker_owner_key=self._worker_owner_key,
+                                 worker_owner_token=self._worker_owner_token)
 
     def _migrate_v1_message(
         self,
@@ -883,7 +931,8 @@ class SmartQueue:
         header: EnvelopeHeader,
     ) -> str | None:
         """读取外存前将旧引用迁入 V2，复用 deadline、attempt 与终态脚本。"""
-        self.history.ensure_hash(header.task_id)
+        self.history.ensure_hash(header.task_id, worker_owner_key=self._worker_owner_key,
+                                 worker_owner_token=self._worker_owner_token)
         existing = self.history.get(header.task_id) or {}
         try:
             payload_raw = header.raw.get("payload", {})
@@ -907,7 +956,7 @@ class SmartQueue:
 
         logical_key = self._optional_str(existing.get("logical_key"))
         if logical_key:
-            self._migrate_identity(logical_key)
+            self._migrate_identity(logical_key, require_worker_owner=True)
         try:
             spec = TaskSpec(action=action, payload={}, logical_key=logical_key,
                             start_deadline_at=epoch_to_datetime(header.start_deadline_at))
@@ -929,6 +978,7 @@ class SmartQueue:
         record.update(attempt=str(previous_attempt), location="processing", legacy_payload="1")
         # 消息与必要记录同一脚本转换，中断不会留下半迁移任务。
         script = r"""
+        if ARGV[8] ~= '' and redis.call('GET', KEYS[5]) ~= ARGV[8] then return -1 end
         for index, expected in ipairs({'list', 'hash', 'zset', 'zset'}) do
             local kind = redis.call('TYPE', KEYS[index])['ok']
             if kind ~= 'none' and kind ~= expected then error('legacy migration key type conflict') end
@@ -944,10 +994,14 @@ class SmartQueue:
         redis.call('ZADD', KEYS[4], ARGV[6], ARGV[7])
         return 1
         """
-        moved = self.r.eval(script, 4, self.processing, f"qtask:task:{header.task_id}",
-                            self.history.idx_key, self.registry_key, raw_message, migrated,
+        moved = self.r.eval(script, 5, self.processing, f"qtask:task:{header.task_id}",
+                            self.history.idx_key, self.registry_key,
+                            self._worker_owner_key or self._dummy_key("worker-owner", header.task_id),
+                            raw_message, migrated,
                             orjson.dumps(record).decode(), created_at, header.task_id,
-                            available_at, self.base)
+                            available_at, self.base, self._worker_owner_token or "")
+        if int(moved) < 0:
+            raise WorkerIdentityConflictError("worker identity was lost during message migration")
         return migrated if moved else None
 
     # ==================== Complete / fail ====================
@@ -1130,12 +1184,19 @@ class SmartQueue:
     def _move_poison_to_dlq(self, raw_msg: str, code: str, reason: str) -> None:
         """把无法进入 V2 状态机的 poison message 原子移入 DLQ。"""
         move_script = r"""
+        if ARGV[2] ~= '' and redis.call('GET', KEYS[3]) ~= ARGV[2] then return -1 end
+        local kind = redis.call('TYPE', KEYS[2])['ok']
+        if kind ~= 'none' and kind ~= 'list' then error('dead letter key type conflict') end
         local removed = redis.call('LREM', KEYS[1], 1, ARGV[1])
         if removed == 0 then return 0 end
         redis.call('LPUSH', KEYS[2], ARGV[1])
         return 1
         """
-        moved = self.r.eval(move_script, 2, self.processing, self.dlq, raw_msg)
+        moved = self.r.eval(move_script, 3, self.processing, self.dlq,
+                            self._worker_owner_key or self._dummy_key("worker-owner", "poison"),
+                            raw_msg, self._worker_owner_token or "")
+        if int(moved) < 0:
+            raise WorkerIdentityConflictError("worker identity was lost before poison handling")
         if not moved:
             return
         task_id = self._message_task_id(raw_msg)
@@ -1192,12 +1253,19 @@ class SmartQueue:
         """恢复当前 processing key；不改变 task_id、attempt 或 outcome。"""
         return self.recover_processing_key(self.processing)
 
-    def recover_processing_key(self, processing_key: str, *, heartbeat_key: str | None = None) -> int:
+    def recover_processing_key(
+        self, processing_key: str, *, heartbeat_key: str | None = None,
+        worker_owner_key: str | None = None, protect_unmanaged: bool = False,
+        required_owner_key: str | None = None, required_owner_token: str | None = None,
+    ) -> int:
         self._assert_queue_namespace()
         script = r"""
+        if ARGV[4] ~= '' and redis.call('GET', KEYS[7]) ~= ARGV[4] then return -1 end
         local deadline_kind = redis.call('TYPE', KEYS[3])['ok']
         if deadline_kind ~= 'none' and deadline_kind ~= 'zset' then error('deadline index type conflict') end
-        if ARGV[1] == '1' and redis.call('EXISTS', KEYS[4]) == 1 then return false end
+        if (ARGV[1] == '1' and redis.call('EXISTS', KEYS[4]) == 1) or
+           (ARGV[2] == '1' and redis.call('EXISTS', KEYS[5]) == 1) then return false end
+        if ARGV[3] == '1' and redis.call('ZSCORE', KEYS[6], KEYS[1]) then return false end
         local message = redis.call('RPOPLPUSH', KEYS[1], KEYS[2])
         if not message then return false end
         local ok, envelope = pcall(cjson.decode, message)
@@ -1215,9 +1283,16 @@ class SmartQueue:
         """
         count = 0
         while True:
-            message = self.r.eval(script, 4, processing_key, self.queue, self.deadline_key,
+            message = self.r.eval(script, 7, processing_key, self.queue, self.deadline_key,
                                   heartbeat_key or self._dummy_key("heartbeat", "recovery"),
-                                  "1" if heartbeat_key else "0")
+                                  worker_owner_key or self._dummy_key("worker-owner", "recovery"),
+                                  self.processing_registry_key,
+                                  required_owner_key or self._dummy_key("required-owner", "recovery"),
+                                  "1" if heartbeat_key else "0",
+                                  "1" if worker_owner_key else "0",
+                                  "1" if protect_unmanaged else "0", required_owner_token or "")
+            if message == -1:
+                raise WorkerIdentityConflictError("worker identity was lost during startup recovery")
             if not message:
                 break
             count += 1
@@ -1227,6 +1302,7 @@ class SmartQueue:
 
     def recover_abandoned_claims(
         self, protected_messages: set[str], *, spent_attempts: set[str] | None = None,
+        worker_owner_key: str | None = None, worker_owner_token: str | None = None,
     ) -> int:
         """恢复当前 Worker 未登记的消息；调用方须保证没有并发领取过程。"""
         count = 0
@@ -1242,6 +1318,7 @@ class SmartQueue:
             lease_key = (self._lease_key(header.concurrency_key) if header.concurrency_key
                          else self._dummy_key("lease", header.task_id))
             script = r"""
+            if ARGV[7] ~= '' and redis.call('GET', KEYS[7]) ~= ARGV[7] then return -1 end
             for index, expected in ipairs({'list', 'list', 'hash,string', 'zset', 'string', 'list'}) do
                 local kind = redis.call('TYPE', KEYS[index])['ok']
                 if kind ~= 'none' and not string.find(expected, kind, 1, true) then
@@ -1277,12 +1354,17 @@ class SmartQueue:
             end
             return 1
             """
-            count += int(self.r.eval(script, 6, self.processing, self.queue,
-                                     f"qtask:task:{header.task_id}", self.deadline_key,
-                                     lease_key, self.dlq, raw_message, header.task_id,
-                                     header.lease_token or "",
-                                     "0" if header.task_id in spent_attempts else "1",
-                                     header.attempt, header.raw.get("claim_token") or "") or 0)
+            moved = int(self.r.eval(script, 7, self.processing, self.queue,
+                                    f"qtask:task:{header.task_id}", self.deadline_key,
+                                    lease_key, self.dlq,
+                                    worker_owner_key or self._dummy_key("worker-owner", header.task_id),
+                                    raw_message, header.task_id, header.lease_token or "",
+                                    "0" if header.task_id in spent_attempts else "1",
+                                    header.attempt, header.raw.get("claim_token") or "",
+                                    worker_owner_token or "") or 0)
+            if moved < 0:
+                raise WorkerIdentityConflictError("worker identity was lost during recovery")
+            count += moved
         return count
 
     def processing_keys(self, include_legacy: bool = True) -> List[str]:
@@ -1297,13 +1379,30 @@ class SmartQueue:
             keys.add(self.default_processing)
         return sorted(str(key) for key in keys)
 
-    def recover_stale_processing(self, heartbeat_prefix: str) -> int:
+    def recover_stale_processing(
+        self, heartbeat_prefix: str, *, include_unmanaged: bool = False
+    ) -> int:
+        """恢复失联 Worker；无心跳的自定义消费者需显式确认后才能包含。"""
         count = 0
-        for key in self.processing_keys(include_legacy=False):
+        unmanaged = {str(key) for key in self.r.zrange(self.processing_registry_key, 0, -1)}
+        keys = {
+            f"{self.base}:processing:{worker_id}"
+            for worker_id in self.r.zrange(self.worker_registry_key, 0, -1)
+        }
+        if include_unmanaged:
+            keys.update(unmanaged)
+        else:
+            keys.difference_update(unmanaged)
+        for key in sorted(keys):
             worker_id = key.rsplit(":", 1)[-1]
-            if self.r.exists(f"{heartbeat_prefix}{worker_id}"):
+            heartbeat_key = f"{heartbeat_prefix}{worker_id}"
+            worker_owner_key = f"qtask:worker-owner:{self._hash_key(self.base)}:{worker_id}"
+            if self.r.exists(heartbeat_key) or self.r.exists(worker_owner_key):
                 continue
-            count += self.recover_processing_key(key, heartbeat_key=f"{heartbeat_prefix}{worker_id}")
+            count += self.recover_processing_key(
+                key, heartbeat_key=heartbeat_key, worker_owner_key=worker_owner_key,
+                protect_unmanaged=not include_unmanaged,
+            )
         return count
 
     # ==================== Replay ====================
@@ -1805,14 +1904,24 @@ class SmartQueue:
         identity_policy: IdentityPolicy | str = IdentityPolicy.KEEP,
         include_processing: bool = False,
         force_active: bool = False,
+        force_unmanaged: bool = False,
     ) -> dict[str, int]:
         """取消待执行消息；processing 需显式选择，活跃 Worker 默认受保护。"""
         self._assert_queue_namespace()
         policy = IdentityPolicy(identity_policy)
-        if include_processing and not force_active:
-            for key in self.processing_keys(include_legacy=False):
+        if include_processing:
+            unmanaged = set(self.r.zrange(self.processing_registry_key, 0, -1))
+            for key in self.processing_keys():
+                if not self.r.llen(key):
+                    continue
+                if (not force_unmanaged and not force_active and
+                        (key == self.default_processing or key in unmanaged)):
+                    raise ValueError(f"custom processing requires explicit confirmation: {key}")
                 worker_id = key.rsplit(":", 1)[-1]
-                if self.r.llen(key) and self.r.exists(f"{self.base}:worker:{worker_id}"):
+                owner_key = f"qtask:worker-owner:{self._hash_key(self.base)}:{worker_id}"
+                if not force_active and (
+                    self.r.exists(f"{self.base}:worker:{worker_id}") or self.r.exists(owner_key)
+                ):
                     raise ValueError(f"active processing cannot be cleared: {worker_id}")
         removed = 0
         keys = [(self.queue, "list"), (self.retry, "list")]
@@ -1836,6 +1945,7 @@ class SmartQueue:
                     policy,
                     reason="queue cleared by administrator",
                     force_active=force_active,
+                    force_unmanaged=force_unmanaged,
                 )
         return {"messages": removed, "identity_released": int(policy == IdentityPolicy.RELEASE)}
 
@@ -1848,26 +1958,17 @@ class SmartQueue:
         *,
         reason: str,
         force_active: bool = False,
+        force_unmanaged: bool = False,
     ) -> int:
         task_id = self._message_task_id(raw_message)
-        if not task_id:
-            return int(
-                self.r.zrem(source_key, raw_message)
-                if source_type == "zset"
-                else self.r.lrem(source_key, 1, raw_message)
-            )
-        record = self.history.get(task_id)
-        if not record:
-            return int(
-                self.r.zrem(source_key, raw_message)
-                if source_type == "zset"
-                else self.r.lrem(source_key, 1, raw_message)
-            )
-        self.history.ensure_hash(task_id)
-        logical_key = self._optional_str(record.get("logical_key"))
+        record = self.history.get(task_id) if task_id else None
+        reference = task_id or self._hash_key(raw_message)
+        if record and task_id:
+            self.history.ensure_hash(task_id)
+        logical_key = self._optional_str(record.get("logical_key")) if record else None
         if logical_key:
             self._migrate_identity(logical_key)
-        concurrency_key = self._optional_str(record.get("concurrency_key"))
+        concurrency_key = self._optional_str(record.get("concurrency_key")) if record else None
         lease_token = ""
         try:
             lease_token = self.codec.header(raw_message).lease_token or ""
@@ -1881,22 +1982,29 @@ class SmartQueue:
         heartbeat_key = (
             f"{self.base}:worker:{worker_id}"
             if worker_id
-            else self._dummy_key("heartbeat", task_id)
+            else self._dummy_key("heartbeat", reference)
         )
+        worker_owner_key = (
+            f"qtask:worker-owner:{self._hash_key(self.base)}:{worker_id}"
+            if worker_id else self._dummy_key("worker-owner", reference)
+        )
+        is_processing = source_key not in {self.queue, self.retry, self.dlq, self.delay}
         response = self.r.eval(
             CANCEL_OR_PURGE_LUA,
-            8,
+            10,
             source_key,
-            f"qtask:task:{task_id}",
-            self._dedup_key(logical_key) if logical_key else self._dummy_key("owner", task_id),
-            self._lease_key(concurrency_key) if concurrency_key else self._dummy_key("lease", task_id),
+            f"qtask:task:{task_id}" if task_id else self._dummy_key("untracked", reference),
+            self._dedup_key(logical_key) if logical_key else self._dummy_key("owner", reference),
+            self._lease_key(concurrency_key) if concurrency_key else self._dummy_key("lease", reference),
             self.metrics_key,
             self.storage_gc_key,
             heartbeat_key,
             self.deadline_key,
+            worker_owner_key,
+            self.processing_registry_key,
             source_type,
             raw_message,
-            task_id,
+            task_id or "",
             policy.value,
             "1" if logical_key else "0",
             self.ttl_seconds,
@@ -1904,10 +2012,16 @@ class SmartQueue:
             reason,
             lease_token,
             "1" if force_active else "0",
+            "1" if is_processing else "0",
+            "1" if force_unmanaged or force_active else "0",
+            "1" if source_key == self.default_processing else "0",
+            "1" if record else "0",
         )
         if str(response[0]) == "active_processing":
             raise ValueError(f"active processing cannot be deleted: {task_id}")
-        return int(str(response[0]) == "removed")
+        if str(response[0]) == "unmanaged_processing":
+            raise ValueError(f"custom processing requires explicit confirmation: {source_key}")
+        return int(str(response[0]) in {"removed", "removed_untracked"})
 
     # ==================== Internal helpers ====================
 

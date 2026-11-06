@@ -20,11 +20,14 @@ import ipaddress
 import json
 import math
 import os
+import sqlite3
+import tempfile
 import threading
 import time
 import uuid
+from contextlib import closing, contextmanager
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Iterator
 
 import uvicorn
 import redis
@@ -33,12 +36,20 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 from pydantic import BaseModel
 
+from qtask_list.security import origin_tuple
+
 app = FastAPI(title="qtask RemoteStorage")
 
 
 @app.middleware("http")
 async def storage_access_control(request: Request, call_next):
     """本机可免 token；远程访问必须配置并提交 Bearer token。"""
+    origin = request.headers.get("origin")
+    if origin and request.method not in {"GET", "HEAD", "OPTIONS"}:
+        actual = origin_tuple(origin)
+        current = origin_tuple(f"{request.url.scheme}://{request.url.netloc}")
+        if actual is None or actual != current:
+            return JSONResponse({"detail": "不允许此来源执行写操作"}, status_code=403)
     token = os.environ.get("QTASK_STORAGE_TOKEN", "")
     if token:
         provided = request.headers.get("Authorization", "")
@@ -73,6 +84,25 @@ def _meta_path(key: str) -> Path:
     return _key_path(key).with_name(f"{key}.meta.json")
 
 
+@contextmanager
+def _retention_guard() -> Iterator[None]:
+    """在共享目录内串行化文件保留期与删除；锁不可用时不执行文件操作。"""
+    lock_path = DATA_DIR / ".qtask-retention.lock"
+    with closing(sqlite3.connect(lock_path, timeout=30)) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        try:
+            yield
+        finally:
+            connection.rollback()
+
+
+def _is_storage_file(path: Path) -> bool:
+    """只识别服务的对象文件，忽略锁、临时文件及目录中的其他文件。"""
+    name = path.name
+    return (len(name) == 32 and all(char in "0123456789abcdef" for char in name)
+            and path.parent == DATA_DIR / name[:2] and path.is_file())
+
+
 def _generate_key(data: bytes) -> str:
     """新任务使用独占对象键；旧内容寻址键仍可照常读取。"""
     return uuid.uuid4().hex
@@ -80,7 +110,6 @@ def _generate_key(data: bytes) -> str:
 
 _ttl_seconds: float = float(os.environ.get("QTASK_STORAGE_TTL", 7 * 86400))
 _cleanup_interval: float = 60
-_metadata_lock = threading.Lock()
 MAX_UPLOAD_BYTES = int(os.environ.get("QTASK_STORAGE_MAX_BYTES", str(64 * 1024 * 1024)))
 STORAGE_GC_KEY = "qtask:storage:gc"
 STORAGE_PENDING_KEY = "qtask:storage:pending"
@@ -175,24 +204,23 @@ def _cleanup_storage_gc(batch_size: int = 1000) -> int:
         due_keys = client.zrangebyscore(gc_key, "-inf", due_at, start=0, num=batch_size)
         for key in due_keys:
             try:
-                path = _key_path(key)
-                meta_path = _meta_path(key)
-                if not path.exists():
-                    meta_path.unlink(missing_ok=True)
-                    client.zrem(gc_key, key)
-                    removed += 1
-                    continue
-                metadata = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
-                if not isinstance(metadata, dict):
-                    raise ValueError("storage metadata must be an object")
-                if not metadata.get("dedicated"):
-                    logger.warning(f"跳过非独占外存对象的自动删除 key={key}")
-                    client.zrem(gc_key, key)
-                    continue
-                path.unlink(missing_ok=True)
-                meta_path.unlink(missing_ok=True)
+                with _retention_guard():
+                    path = _key_path(key)
+                    meta_path = _meta_path(key)
+                    if not path.exists():
+                        meta_path.unlink(missing_ok=True)
+                        removed += 1
+                    else:
+                        metadata = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+                        if not isinstance(metadata, dict):
+                            raise ValueError("storage metadata must be an object")
+                        if not metadata.get("dedicated"):
+                            logger.warning(f"跳过非独占外存对象的自动删除 key={key}")
+                        else:
+                            path.unlink(missing_ok=True)
+                            meta_path.unlink(missing_ok=True)
+                            removed += 1
                 client.zrem(gc_key, key)
-                removed += 1
             except (OSError, ValueError, TypeError) as exc:
                 logger.warning(f"外存回收失败 key={key}: {exc}")
     finally:
@@ -207,29 +235,33 @@ def _cleanup_expired():
     now = time.time()
     removed = 0
     for path in DATA_DIR.rglob("*"):
-        if not path.is_file() or path.name.endswith(".meta.json") or path.name == ".storage-id":
+        if not _is_storage_file(path):
             continue
         try:
-            meta_path = path.with_name(f"{path.name}.meta.json")
-            retain_until = None
-            if meta_path.exists():
-                try:
-                    retain_until = json.loads(meta_path.read_text(encoding="utf-8")).get(
-                        "retain_until"
-                    )
-                except (OSError, ValueError, TypeError):
-                    retain_until = None
-            # 0 表示显式持久保留；未来绝对时刻优先于全局 TTL。
-            try:
-                retain_value = float(retain_until) if retain_until is not None else None
-            except (TypeError, ValueError):
+            with _retention_guard():
+                if not path.exists():
+                    continue
+                meta_path = path.with_name(f"{path.name}.meta.json")
                 retain_value = None
-            if retain_value == 0 or (retain_value and retain_value > now):
-                continue
-            if retain_value or now - path.stat().st_mtime > _ttl_seconds:
-                path.unlink()
-                meta_path.unlink(missing_ok=True)
-                removed += 1
+                if meta_path.exists():
+                    try:
+                        metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+                        if not isinstance(metadata, dict):
+                            raise ValueError("storage metadata must be an object")
+                        raw = metadata.get("retain_until")
+                        retain_value = float(raw) if raw is not None else None
+                        if retain_value is not None and (not math.isfinite(retain_value) or retain_value < 0):
+                            raise ValueError("invalid retention")
+                    except (OSError, ValueError, TypeError) as exc:
+                        logger.warning(f"跳过保留期元数据不可读的外存对象 key={path.name}: {exc}")
+                        continue
+                # 0 表示显式持久保留；未来绝对时刻优先于全局 TTL。
+                if retain_value == 0 or (retain_value and retain_value > now):
+                    continue
+                if retain_value or now - path.stat().st_mtime > _ttl_seconds:
+                    path.unlink()
+                    meta_path.unlink(missing_ok=True)
+                    removed += 1
         except OSError:
             pass
     if removed:
@@ -298,17 +330,18 @@ async def upload(
     key = _generate_key(data)
     path = _key_path(key)
     path.parent.mkdir(parents=True, exist_ok=True)
-    created = not path.exists()
-    if created:
-        size = path.write_bytes(data)
-    else:
-        size = path.stat().st_size
+    with _retention_guard():
+        created = not path.exists()
+        if created:
+            size = path.write_bytes(data)
+        else:
+            size = path.stat().st_size
 
-    # 托管对象先设置有限保留期，避免待入队日志写入前崩溃造成永久孤儿。
-    provisional_until = time.time() + PENDING_GRACE_SECONDS + 3600
-    effective_retain = _extend_retention(
-        key, provisional_until if managed == "1" else requested_retain, dedicated=True
-    )
+        # 托管对象先设置有限保留期，避免待入队日志写入前崩溃造成永久孤儿。
+        provisional_until = time.time() + PENDING_GRACE_SECONDS + 3600
+        effective_retain = _extend_retention_locked(
+            key, provisional_until if managed == "1" else requested_retain, dedicated=True
+        )
     storage_id = _storage_id()
     if managed == "1":
         client = None
@@ -320,8 +353,9 @@ async def upload(
                 {key: seconds + microseconds / 1_000_000 + PENDING_GRACE_SECONDS},
             )
         except (redis.RedisError, ValueError) as exc:
-            path.unlink(missing_ok=True)
-            _meta_path(key).unlink(missing_ok=True)
+            with _retention_guard():
+                path.unlink(missing_ok=True)
+                _meta_path(key).unlink(missing_ok=True)
             raise HTTPException(503, "storage GC Redis unavailable") from exc
         finally:
             if client is not None:
@@ -345,9 +379,13 @@ async def download(key: str):
         path = _key_path(key)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    if not path.exists():
-        raise HTTPException(404, f"key not found: {key}")
-    data = path.read_bytes()
+    with _retention_guard():
+        try:
+            handle = path.open("rb")
+        except FileNotFoundError as exc:
+            raise HTTPException(404, f"key not found: {key}") from exc
+    with handle:
+        data = handle.read()
     logger.debug(f"download: key={key} size={len(data)}")
     return Response(content=data, media_type="application/octet-stream")
 
@@ -365,16 +403,20 @@ async def delete(key: str):
         _promote_pending_gc(
             client, storage_id, key, seconds + microseconds / 1_000_000, force=True
         )
-        if not path.exists():
-            _meta_path(key).unlink(missing_ok=True)
-            client.zrem(f"{STORAGE_GC_KEY}:{storage_id}", key)
-            raise HTTPException(404, f"key not found: {key}")
-        path.unlink()
-        _meta_path(key).unlink(missing_ok=True)
+        with _retention_guard():
+            if not path.exists():
+                _meta_path(key).unlink(missing_ok=True)
+                missing = True
+            else:
+                path.unlink()
+                _meta_path(key).unlink(missing_ok=True)
+                missing = False
         pipe = client.pipeline(transaction=True)
         pipe.zrem(f"{STORAGE_GC_KEY}:{storage_id}", key)
         pipe.delete(f"{STORAGE_CLAIM_KEY}:{storage_id}:{key}")
         pipe.execute()
+        if missing:
+            raise HTTPException(404, f"key not found: {key}")
     except redis.RedisError as exc:
         raise HTTPException(503, "storage GC Redis unavailable") from exc
     finally:
@@ -396,37 +438,50 @@ def _extend_retention(
     dedicated: bool | None = None,
 ) -> float | None:
     """单调延长 retain_until；0 表示持久保留，None 表示沿用服务端 TTL。"""
+    with _retention_guard():
+        return _extend_retention_locked(key, requested, dedicated=dedicated)
+
+
+def _extend_retention_locked(
+    key: str, requested: float | None, *, dedicated: bool | None = None,
+) -> float | None:
+    """调用方持有保留期锁；元数据不可读时禁止猜测和覆盖。"""
     meta_path = _meta_path(key)
-    with _metadata_lock:
-        existing: float | None = None
-        metadata: dict[str, object] = {}
-        if meta_path.exists():
-            try:
-                parsed = json.loads(meta_path.read_text(encoding="utf-8"))
-                if not isinstance(parsed, dict):
-                    raise ValueError("storage metadata must be an object")
-                metadata = parsed
-                raw_existing = metadata.get("retain_until")
-                existing = float(str(raw_existing)) if raw_existing is not None else None
-            except (OSError, ValueError, TypeError):
-                existing = None
-        if existing == 0 or requested == 0:
-            effective: float | None = 0
-        elif existing is None:
-            effective = requested
-        elif requested is None:
-            effective = existing
-        else:
-            effective = max(existing, requested)
-        if dedicated is not None:
-            metadata["dedicated"] = dedicated
-        if effective is not None or dedicated is not None:
-            metadata["retain_until"] = effective
-            meta_path.write_text(
-                json.dumps(metadata),
-                encoding="utf-8",
-            )
-        return effective
+    existing: float | None = None
+    metadata: dict[str, object] = {}
+    if meta_path.exists():
+        parsed = json.loads(meta_path.read_text(encoding="utf-8"))
+        if not isinstance(parsed, dict):
+            raise ValueError("storage metadata must be an object")
+        metadata = parsed
+        raw_existing = metadata.get("retain_until")
+        existing = float(str(raw_existing)) if raw_existing is not None else None
+        if existing is not None and (not math.isfinite(existing) or existing < 0):
+            raise ValueError("invalid storage retention")
+    if existing == 0 or requested == 0:
+        effective: float | None = 0
+    elif existing is None:
+        effective = requested
+    elif requested is None:
+        effective = existing
+    else:
+        effective = max(existing, requested)
+    if dedicated is not None:
+        metadata["dedicated"] = dedicated
+    if effective is not None or dedicated is not None:
+        metadata["retain_until"] = effective
+        temporary: str | None = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=meta_path.parent,
+                                             prefix=f".{key}.", suffix=".tmp", delete=False) as handle:
+                temporary = handle.name
+                json.dump(metadata, handle)
+            os.replace(temporary, meta_path)
+            temporary = None
+        finally:
+            if temporary is not None:
+                Path(temporary).unlink(missing_ok=True)
+    return effective
 
 
 @app.post("/api/storage/retain/{key}")
@@ -439,22 +494,26 @@ async def retain(key: str, request: RetentionRequest):
         path = _key_path(key)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    if not path.exists():
-        raise HTTPException(404, f"key not found: {key}")
-    return {"key": key, "retain_until": _extend_retention(key, request.retain_until or 0)}
+    with _retention_guard():
+        if not path.exists():
+            raise HTTPException(404, f"key not found: {key}")
+        return {"key": key, "retain_until": _extend_retention_locked(key, request.retain_until or 0)}
 
 
 @app.get("/api/storage/health")
 async def health():
-    files = [
-        path
-        for path in DATA_DIR.rglob("*")
-        if path.is_file() and not path.name.endswith(".meta.json") and path.name != ".storage-id"
-    ]
-    total_size = sum(p.stat().st_size for p in files)
+    count = 0
+    total_size = 0
+    for path in DATA_DIR.rglob("*"):
+        try:
+            if _is_storage_file(path):
+                total_size += path.stat().st_size
+                count += 1
+        except FileNotFoundError:
+            continue
     return {
         "status": "ok",
-        "files": len(files),
+        "files": count,
         "total_size": total_size,
         "ttl_days": _ttl_seconds / 86400 if _ttl_seconds > 0 else None,
         "data_dir": str(DATA_DIR),

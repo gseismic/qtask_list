@@ -1,0 +1,35 @@
+.................F....FF................................................ [ 97%]
+..                                                                       [100%]
+=================================== FAILURES ===================================
+____ test_dashboard_origin_policy_accepts_same_origin_and_configured_origin ____
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:274: in test_dashboard_origin_policy_accepts_same_origin_and_configured_origin
+    assert (same.status_code, trusted.status_code, no_origin.status_code) == (404, 404, 404)
+E   assert (405, 405, 405) == (404, 404, 404)
+E
+E     At index 0 diff: 405 != 404
+E     Use -v to get more diff
+_ test_worker_payload_failure_does_not_persist_storage_secrets[storage_timeout] _
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:352: in test_worker_payload_failure_does_not_persist_storage_secrets
+    assert "secret" not in json.dumps(record, ensure_ascii=False)
+E   assert 'secret' not in '{"last_erro...eration": 1}'
+E
+E     'secret' is contained here:
+E     ?           ^^
+E       w-worker-secrets", "payload_checksum": "8a167d866cef7f10b570eeb96d1fe2867eb6258a33e1bc4620bcbf1083f3226f", "max_attempts": 1, "outcome": "failed", "supersede_value": "", "last_error_at": 1793182059.0174, "last_error": "payload 或外部存储操作失败（storage_timeout），请核对配置及任务状态后重试", "attempt": 1, "task_id": "4228608f-5f37-495e-9c56-cb9fad8a8096", "parent_task_id": "", "expires_at": "", "started_at": 1793182059.0172, "payload_descriptor": {"kind": "external", "key": "payload-ref", "size": 17, "sha256": "8a167d866cef7f10b570eeb96d1fe2867eb6258a33e1bc4620bcbf1083f...
+E
+E     ...Full output truncated (2 lines hidden), use '-vv' to show
+_ test_worker_payload_failure_does_not_persist_storage_secrets[https://user:secret@private.example] _
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:352: in test_worker_payload_failure_does_not_persist_storage_secrets
+    assert "secret" not in json.dumps(record, ensure_ascii=False)
+E   assert 'secret' not in '{"last_erro...eration": 1}'
+E
+E     'secret' is contained here:
+E     ?           ^^
+E       w-worker-secrets", "payload_checksum": "8a167d866cef7f10b570eeb96d1fe2867eb6258a33e1bc4620bcbf1083f3226f", "max_attempts": 1, "outcome": "failed", "supersede_value": "", "last_error_at": 1793182059.027, "last_error": "payload 或外部存储操作失败（storage_error），请核对配置及任务状态后重试", "attempt": 1, "task_id": "f0b7b970-2288-4a67-b844-140eb5e8b238", "parent_task_id": "", "expires_at": "", "started_at": 1793182059.0268, "payload_descriptor": {"kind": "external", "key": "payload-ref", "size": 17, "sha256": "8a167d866cef7f10b570eeb96d1fe2867eb6258a33e1bc4620bcbf1083f322...
+E
+E     ...Full output truncated (2 lines hidden), use '-vv' to show
+=========================== short test summary info ============================
+FAILED tests/test_python_review_remediation.py::test_dashboard_origin_policy_accepts_same_origin_and_configured_origin
+FAILED tests/test_python_review_remediation.py::test_worker_payload_failure_does_not_persist_storage_secrets[storage_timeout]
+FAILED tests/test_python_review_remediation.py::test_worker_payload_failure_does_not_persist_storage_secrets[https://user:secret@private.example]
+3 failed, 71 passed, 3 warnings in 2.17s

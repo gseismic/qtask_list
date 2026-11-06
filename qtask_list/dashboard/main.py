@@ -25,7 +25,8 @@ from qtask_list.archiver import Monitor
 from qtask_list.models import DuplicateAction, IdentityPolicy
 from qtask_list.errors import RemoteStorageError
 from qtask_list.storage import RemoteStorage
-from qtask_list.security import redis_endpoint_label
+from qtask_list.security import canonical_origin, origin_tuple as _origin_tuple
+from qtask_list.security import redis_endpoint_label, safe_storage_error_note
 
 
 app = FastAPI(title="qtask_list Dashboard")
@@ -39,7 +40,7 @@ async def redis_failure(_request: Request, _error: redis.RedisError):
 @app.exception_handler(RemoteStorageError)
 async def storage_failure(_request: Request, error: RemoteStorageError):
     return JSONResponse(status_code=503 if error.retryable else 502,
-                        content={"detail": f"外部存储操作失败（{error.code}），请核对配置及任务状态后重试"})
+                        content={"detail": safe_storage_error_note(error.code)})
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 STORAGE_URL = os.environ.get("QTASK_STORAGE_URL", "")
@@ -75,12 +76,33 @@ if os.path.isdir(os.path.join(SPA_DIR, "assets")):
         name="spa_assets",
     )
 
+_configured_origins = [item.strip() for item in
+                       os.environ.get("QTASK_DASHBOARD_ALLOWED_ORIGINS", "").split(",")
+                       if item.strip()]
+_normalized_origins = [canonical_origin(origin) for origin in _configured_origins]
+if any(origin is None for origin in _normalized_origins):
+    raise ValueError("QTASK_DASHBOARD_ALLOWED_ORIGINS 必须是逗号分隔的完整 HTTP(S) 来源")
+_allowed_origins = [origin for origin in _normalized_origins if origin is not None]
+_allowed_origin_tuples = {_origin_tuple(origin) for origin in _allowed_origins}
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
+
+
+@app.middleware("http")
+async def validate_write_origin(request: Request, call_next):
+    """禁止未授权网页发起写请求，包括无需 CORS 预检的请求。"""
+    origin = request.headers.get("origin")
+    if origin and request.method not in {"GET", "HEAD", "OPTIONS"}:
+        actual = _origin_tuple(origin)
+        current = _origin_tuple(f"{request.url.scheme}://{request.url.netloc}")
+        if actual is None or (actual != current and actual not in _allowed_origin_tuples):
+            return JSONResponse(status_code=403, content={"detail": "不允许此来源执行写操作"})
+    return await call_next(request)
 
 
 class PushTaskRequest(BaseModel):
@@ -113,6 +135,8 @@ class ClearQueueRequest(BaseModel):
     include_history: bool = False
     include_processing: bool = False
     confirm_processing: bool = False
+    force_unmanaged: bool = False
+    confirm_unmanaged: bool = False
     identity_policy: IdentityPolicy = IdentityPolicy.KEEP
     confirm_identity_release: bool = False
 
@@ -401,6 +425,8 @@ def api_clear_queue(
         )
     if request.include_processing and not request.confirm_processing:
         raise HTTPException(status_code=400, detail="清理 processing 需要 confirm_processing=true")
+    if request.force_unmanaged and (not request.include_processing or not request.confirm_unmanaged):
+        raise HTTPException(status_code=400, detail="清理自定义 processing 需要先停止消费者并确认")
     try:
         return admin.clear_queue(
             name,
@@ -408,6 +434,7 @@ def api_clear_queue(
             include_history=request.include_history,
             identity_policy=request.identity_policy,
             include_processing=request.include_processing,
+            force_unmanaged=request.force_unmanaged,
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -506,10 +533,11 @@ def api_task_replay(
 def api_task_delete(
     task_id: str,
     queue: Optional[str] = Query(None, description="Limit deletion to one queue"),
+    force_unmanaged: bool = Query(False, description="确认自定义消费者已停止"),
     _auth: None = Depends(require_auth),
 ):
     try:
-        return admin.delete_task(task_id, queue_name=queue)
+        return admin.delete_task(task_id, queue_name=queue, force_unmanaged=force_unmanaged)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -519,12 +547,13 @@ def api_task_delete(
 def api_delete_queue(
     name: str,
     confirm: bool = Query(False, description="Confirm destructive queue deletion"),
+    force_unmanaged: bool = Query(False, description="确认自定义消费者已停止"),
     _auth: None = Depends(require_auth),
 ):
     if not confirm:
         raise HTTPException(status_code=400, detail="删除队列需要 confirm=true")
     try:
-        return admin.delete_queue(name)
+        return admin.delete_queue(name, force_unmanaged=force_unmanaged)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -566,4 +595,4 @@ if __name__ == "__main__":
     import uvicorn
 
     port = int(os.environ.get("PORT", 8765))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="127.0.0.1", port=port)

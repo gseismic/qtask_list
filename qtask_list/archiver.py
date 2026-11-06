@@ -11,6 +11,35 @@ from loguru import logger
 
 from .history import READ_TASK_RECORD_LUA, decode_task_record
 
+DELETE_ARCHIVED_SNAPSHOT_LUA = r"""
+local kind = redis.call('TYPE', KEYS[1])['ok']
+if kind ~= ARGV[2] then return 0 end
+if kind == 'hash' then
+    if redis.call('HLEN', KEYS[1]) ~= (#ARGV - 2) / 2 then return 0 end
+    for index = 3, #ARGV, 2 do
+        if redis.call('HGET', KEYS[1], ARGV[index]) ~= ARGV[index + 1] then return 0 end
+    end
+elseif kind == 'string' then
+    if redis.call('GET', KEYS[1]) ~= ARGV[3] then return 0 end
+else
+    return 0
+end
+local index_kind = redis.call('TYPE', KEYS[2])['ok']
+if index_kind ~= 'none' and index_kind ~= 'zset' then
+    return redis.error_reply('history index key type conflict')
+end
+redis.call('DEL', KEYS[1])
+redis.call('ZREM', KEYS[2], ARGV[1])
+return 1
+"""
+
+REMOVE_STALE_INDEX_LUA = r"""
+if redis.call('EXISTS', KEYS[1]) == 0 then
+    return redis.call('ZREM', KEYS[2], ARGV[1])
+end
+return 0
+"""
+
 
 class Monitor:
     """Redis 内存监控器"""
@@ -74,9 +103,14 @@ class ArchiveManager:
     # 历史必须保留在 Redis，否则任务完成后 ack/fail 的历史更新会静默丢失
     TERMINAL_STATUSES = ("completed", "failed", "skipped", "cancelled")
 
-    def __init__(self, redis_url: str, db_dir: str = "archive_data", prefix: str = "qtask_hist"):
+    def __init__(
+        self, redis_url: str, db_dir: str = "archive_data", prefix: str = "qtask_hist",
+        *, redis_client: Any | None = None,
+    ):
         self.redis_url = redis_url
-        self.r: Any = redis.from_url(redis_url, decode_responses=True)
+        self.r: Any = redis_client if redis_client is not None else redis.from_url(
+            redis_url, decode_responses=True
+        )
         self.db_dir = db_dir
         self.prefix = prefix
 
@@ -109,7 +143,15 @@ class ArchiveManager:
     def archive_to_sqlite(
         self, queue_full_name: str, days_ago: int = 1, batch_size: int = 500
     ) -> int:
-        """将过期任务归档到 SQLite"""
+        """将过期任务归档到 SQLite，并在快照未变化时删除 Redis 记录。"""
+        # 锁文件与归档目录一起共享。它独立于实际归档数据库，使 SQLite 提交后、
+        # Redis 条件删除前没有其他归档者覆盖较新的快照。
+        lock_path = os.path.join(self.db_dir, f".{self.prefix}.archive-lock")
+        with sqlite3.connect(lock_path, timeout=30) as lock:
+            lock.execute("BEGIN IMMEDIATE")
+            return self._archive_locked(queue_full_name, days_ago, batch_size)
+
+    def _archive_locked(self, queue_full_name: str, days_ago: int, batch_size: int) -> int:
         cutoff = time.time() - (days_ago * 86400)
         idx_key = f"qtask:hist:{queue_full_name}"
         task_key_prefix = "qtask:task:"
@@ -134,6 +176,7 @@ class ArchiveManager:
             snapshots = pipe.execute()
             raw_tasks: List[Optional[Dict[str, Any]]] = []
             stale_task_ids = []
+            removed_this_batch = 0
 
             for j, snapshot in enumerate(snapshots):
                 data = decode_task_record(str(task_ids[j]), snapshot)
@@ -175,7 +218,7 @@ class ArchiveManager:
                     db_sessions[date_str] = []
 
                 db_sessions[date_str].append(
-                    (
+                    ((
                         tid,
                         queue_full_name,
                         raw.get("action", ""),
@@ -185,7 +228,7 @@ class ArchiveManager:
                         created_at,
                         float(raw.get("updated_at", created_at)),
                         json.dumps(raw),
-                    )
+                    ), snapshots[i])
                 )
 
             # 执行写入 SQLite 并从 Redis 删除
@@ -200,28 +243,36 @@ class ArchiveManager:
                         (task_id, queue_name, action, status, payload, result, created_at, updated_at, raw_data)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                        rows,
+                        [row for row, _snapshot in rows],
                     )
 
-                # 写入成功后，从 Redis 删除
+                # SQLite 先持久化；仅在 Redis 记录仍是同一快照时删除。
                 delete_pipe = self.r.pipeline()
-                delete_pipe.zrem(idx_key, *[row[0] for row in rows])
-                for row in rows:
-                    delete_pipe.delete(f"{task_key_prefix}{row[0]}")
-                delete_pipe.execute()
-
-                total_archived += len(rows)
+                for row, snapshot in rows:
+                    kind, content = snapshot
+                    values = content if kind == "hash" else [content]
+                    delete_pipe.eval(DELETE_ARCHIVED_SNAPSHOT_LUA, 2,
+                                     f"{task_key_prefix}{row[0]}", idx_key,
+                                     row[0], kind, *values)
+                deleted = delete_pipe.execute()
+                archived = sum(int(item or 0) for item in deleted)
+                total_archived += archived
+                removed_this_batch += archived
 
             if stale_task_ids:
-                self.r.zrem(idx_key, *stale_task_ids)
+                pipe = self.r.pipeline()
+                for task_id in stale_task_ids:
+                    pipe.eval(REMOVE_STALE_INDEX_LUA, 2, f"{task_key_prefix}{task_id}", idx_key, task_id)
+                stale_removed = sum(int(item or 0) for item in pipe.execute())
+                removed_this_batch += stale_removed
                 logger.info(
-                    f"Removed {len(stale_task_ids)} stale history index entries for "
+                    f"Removed {stale_removed} stale history index entries for "
                     f"{queue_full_name}"
                 )
 
             # 本批有删除（归档或 stale）时剩余条目会前移，从头继续扫描；
             # 全部是 live 任务时跳过该窗口，避免同一批反复扫描
-            if db_sessions or stale_task_ids:
+            if removed_this_batch:
                 offset = 0
             else:
                 offset += len(task_ids)
@@ -245,6 +296,7 @@ class ArchiveManager:
             f"{queue_name}:retry",
             f"{queue_name}:dlq",
             f"{queue_name}:processing",
+            *self.r.zrange(f"qtask:processing:{queue_name}", 0, -1),
             *self.r.scan_iter(f"{queue_name}:processing:*"),
         ]
         for key in list_keys:

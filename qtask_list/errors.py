@@ -16,6 +16,10 @@ class BatchEnqueueError(Exception):
         self.results = list(results)
 
 
+class WorkerIdentityConflictError(RuntimeError):
+    """另一个活动实例持有该队列中的 Worker 标识。"""
+
+
 class TaskError(Exception):
     """任务处理错误基类，稳定的 code 供 Worker 决定状态转换。"""
 

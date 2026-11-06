@@ -17,8 +17,8 @@
   kind=external 的引用（key/size/sha256，不含数据本体）；
 - pop 时检测到 external 引用 → 自动 GET 下载并校验 SHA256，还原完整 payload，
   消费方无感知；
-- 服务端按 retain_until 自动清理过期对象（默认 TTL 见服务端 --ttl-days），
-  任务重试会自动延长保留期。
+- 队列托管对象在任务仍可执行或重放期间保留；终态后按 Redis 回收日志清理。
+  独立上传的非托管对象按 retain_until 或服务端 TTL 清理。
 """
 
 from pathlib import Path

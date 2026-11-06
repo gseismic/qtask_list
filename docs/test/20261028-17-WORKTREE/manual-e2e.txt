@@ -1,0 +1,111 @@
+2026-10-28 17:58:16.004 | INFO     | qtask_list.worker:_worker_loop:506 - Worker started, listening on e2e:news as 3966734-1be461ac0b3d4aecb18f45e44aaafac7
+2026-10-28 17:58:16.005 | INFO     | qtask_list.worker:_worker_loop:506 - Worker started, listening on e2e:quote as 3966734-2d9a181da34f445bbca52d5fa77ea05d
+2026-10-28 17:58:16.022 | INFO     | qtask_list.worker:_maintenance_loop:416 - Maintenance thread started
+2026-10-28 17:58:16.022 | INFO     | qtask_list.worker:_maintenance_loop:416 - Maintenance thread started
+2026-10-28 17:58:16.009 | ERROR    | qtask_list.worker:_process_task:287 - Handler error for fetch_quote: 模拟数据源故障
+Traceback (most recent call last):
+
+  File "/home/lsl/miniconda3/lib/python3.12/threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+    │    └ <function Thread._bootstrap_inner at 0x75608710b2e0>
+    └ <Thread(ThreadPoolExecutor-0_0, started daemon 129057217840704)>
+  File "/home/lsl/miniconda3/lib/python3.12/threading.py", line 1075, in _bootstrap_inner
+    self.run()
+    │    └ <function Thread.run at 0x75608710afc0>
+    └ <Thread(ThreadPoolExecutor-0_0, started daemon 129057217840704)>
+  File "/home/lsl/miniconda3/lib/python3.12/threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+    │    │        │    │        │    └ {}
+    │    │        │    │        └ <Thread(ThreadPoolExecutor-0_0, started daemon 129057217840704)>
+    │    │        │    └ (<weakref at 0x75608534f920; to 'ThreadPoolExecutor' at 0x756085f6bef0>, <_queue.SimpleQueue object at 0x756085317740>, None,...
+    │    │        └ <Thread(ThreadPoolExecutor-0_0, started daemon 129057217840704)>
+    │    └ <function _worker at 0x7560852ee700>
+    └ <Thread(ThreadPoolExecutor-0_0, started daemon 129057217840704)>
+  File "/home/lsl/miniconda3/lib/python3.12/concurrent/futures/thread.py", line 93, in _worker
+    work_item.run()
+    │         └ <function _WorkItem.run at 0x7560852ee840>
+    └ <concurrent.futures.thread._WorkItem object at 0x7560864a7cb0>
+  File "/home/lsl/miniconda3/lib/python3.12/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+             │    │   │    │       │    └ {}
+             │    │   │    │       └ <concurrent.futures.thread._WorkItem object at 0x7560864a7cb0>
+             │    │   │    └ (TaskClaim(payload={'symbol': 'AAPL'}, raw_message='{"attempt":1,"version":2,"task_id":"b4419181-31e0-4567-aec5-e5092e24d09f"...
+             │    │   └ <concurrent.futures.thread._WorkItem object at 0x7560864a7cb0>
+             │    └ <bound method Worker._process_task_with_semaphore of <qtask_list.worker.Worker object at 0x7560858e9970>>
+             └ <concurrent.futures.thread._WorkItem object at 0x7560864a7cb0>
+
+  File "/home/lsl/macbook/pai-studio-fin/library/qtask_list/qtask_list/worker.py", line 205, in _process_task_with_semaphore
+    self._process_task(claim)
+    │    │             └ TaskClaim(payload={'symbol': 'AAPL'}, raw_message='{"attempt":1,"version":2,"task_id":"b4419181-31e0-4567-aec5-e5092e24d09f",...
+    │    └ <function Worker._process_task at 0x7560852ef060>
+    └ <qtask_list.worker.Worker object at 0x7560858e9970>
+
+> File "/home/lsl/macbook/pai-studio-fin/library/qtask_list/qtask_list/worker.py", line 239, in _process_task
+    result = handler(claim.payload, claim.context)
+             │       │     │        │     └ TaskContext(task_id='b4419181-31e0-4567-aec5-e5092e24d09f', action='fetch_quote', logical_key='AAPL', attempt=1, max_attempts...
+             │       │     │        └ TaskClaim(payload={'symbol': 'AAPL'}, raw_message='{"attempt":1,"version":2,"task_id":"b4419181-31e0-4567-aec5-e5092e24d09f",...
+             │       │     └ {'symbol': 'AAPL'}
+             │       └ TaskClaim(payload={'symbol': 'AAPL'}, raw_message='{"attempt":1,"version":2,"task_id":"b4419181-31e0-4567-aec5-e5092e24d09f",...
+             └ <function main.<locals>.fetch_quote at 0x75608530f1a0>
+
+  File "/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/manual/e2e_plan014.py", line 32, in fetch_quote
+    raise ConnectionError("模拟数据源故障")
+
+ConnectionError: 模拟数据源故障
+2026-10-28 17:58:18.053 | ERROR    | qtask_list.worker:_process_task:287 - Handler error for fetch_quote: 模拟数据源故障
+Traceback (most recent call last):
+
+  File "/home/lsl/miniconda3/lib/python3.12/threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+    │    └ <function Thread._bootstrap_inner at 0x75608710b2e0>
+    └ <Thread(ThreadPoolExecutor-0_1, started daemon 129057054262848)>
+  File "/home/lsl/miniconda3/lib/python3.12/threading.py", line 1075, in _bootstrap_inner
+    self.run()
+    │    └ <function Thread.run at 0x75608710afc0>
+    └ <Thread(ThreadPoolExecutor-0_1, started daemon 129057054262848)>
+  File "/home/lsl/miniconda3/lib/python3.12/threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+    │    │        │    │        │    └ {}
+    │    │        │    │        └ <Thread(ThreadPoolExecutor-0_1, started daemon 129057054262848)>
+    │    │        │    └ (<weakref at 0x7560853632e0; to 'ThreadPoolExecutor' at 0x756085f6bef0>, <_queue.SimpleQueue object at 0x756085317740>, None,...
+    │    │        └ <Thread(ThreadPoolExecutor-0_1, started daemon 129057054262848)>
+    │    └ <function _worker at 0x7560852ee700>
+    └ <Thread(ThreadPoolExecutor-0_1, started daemon 129057054262848)>
+  File "/home/lsl/miniconda3/lib/python3.12/concurrent/futures/thread.py", line 93, in _worker
+    work_item.run()
+    │         └ <function _WorkItem.run at 0x7560852ee840>
+    └ <concurrent.futures.thread._WorkItem object at 0x756085337bc0>
+  File "/home/lsl/miniconda3/lib/python3.12/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+             │    │   │    │       │    └ {}
+             │    │   │    │       └ <concurrent.futures.thread._WorkItem object at 0x756085337bc0>
+             │    │   │    └ (TaskClaim(payload={'symbol': 'AAPL'}, raw_message='{"attempt":2,"version":2,"task_id":"b4419181-31e0-4567-aec5-e5092e24d09f"...
+             │    │   └ <concurrent.futures.thread._WorkItem object at 0x756085337bc0>
+             │    └ <bound method Worker._process_task_with_semaphore of <qtask_list.worker.Worker object at 0x7560858e9970>>
+             └ <concurrent.futures.thread._WorkItem object at 0x756085337bc0>
+
+  File "/home/lsl/macbook/pai-studio-fin/library/qtask_list/qtask_list/worker.py", line 205, in _process_task_with_semaphore
+    self._process_task(claim)
+    │    │             └ TaskClaim(payload={'symbol': 'AAPL'}, raw_message='{"attempt":2,"version":2,"task_id":"b4419181-31e0-4567-aec5-e5092e24d09f",...
+    │    └ <function Worker._process_task at 0x7560852ef060>
+    └ <qtask_list.worker.Worker object at 0x7560858e9970>
+
+> File "/home/lsl/macbook/pai-studio-fin/library/qtask_list/qtask_list/worker.py", line 239, in _process_task
+    result = handler(claim.payload, claim.context)
+             │       │     │        │     └ TaskContext(task_id='b4419181-31e0-4567-aec5-e5092e24d09f', action='fetch_quote', logical_key='AAPL', attempt=2, max_attempts...
+             │       │     │        └ TaskClaim(payload={'symbol': 'AAPL'}, raw_message='{"attempt":2,"version":2,"task_id":"b4419181-31e0-4567-aec5-e5092e24d09f",...
+             │       │     └ {'symbol': 'AAPL'}
+             │       └ TaskClaim(payload={'symbol': 'AAPL'}, raw_message='{"attempt":2,"version":2,"task_id":"b4419181-31e0-4567-aec5-e5092e24d09f",...
+             └ <function main.<locals>.fetch_quote at 0x75608530f1a0>
+
+  File "/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/manual/e2e_plan014.py", line 32, in fetch_quote
+    raise ConnectionError("模拟数据源故障")
+
+ConnectionError: 模拟数据源故障
+2026-10-28 17:58:20.142 | INFO     | qtask_list.worker:stop:593 - Worker 正在停止: 3966734-2d9a181da34f445bbca52d5fa77ea05d reason=manual_verification
+2026-10-28 17:58:20.142 | INFO     | qtask_list.worker:stop:593 - Worker 正在停止: 3966734-1be461ac0b3d4aecb18f45e44aaafac7 reason=manual_verification
+2026-10-28 17:58:22.108 | INFO     | qtask_list.worker:_worker_loop:527 - Worker stopped
+2026-10-28 17:58:22.109 | INFO     | qtask_list.worker:_worker_loop:527 - Worker stopped
+2026-10-28 17:58:22.110 | INFO     | qtask_list.worker:_maintenance_loop:456 - Maintenance thread stopped
+2026-10-28 17:58:22.111 | INFO     | qtask_list.worker:_maintenance_loop:456 - Maintenance thread stopped
+端到端验证通过：quote=[('TSLA', 1), ('AAPL', 3)] news=['https://x/a', 'https://x/b']

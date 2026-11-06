@@ -13,6 +13,7 @@ import redis
 from loguru import logger
 
 from .clock import Clock, SystemClock
+from .errors import WorkerIdentityConflictError
 
 TERMINAL_OUTCOMES = {"completed", "failed", "skipped", "cancelled"}
 
@@ -140,7 +141,10 @@ class TaskHistory:
         self.ttl_seconds = ttl_days * 86400
         self.clock = clock or SystemClock()
 
-    def ensure_hash(self, task_id: str) -> bool:
+    def ensure_hash(
+        self, task_id: str, *, worker_owner_key: str | None = None,
+        worker_owner_token: str | None = None,
+    ) -> bool:
         """CAS 转换旧 String 历史，保留 TTL 和完整 JSON，避免覆盖并发更新。"""
         key = f"{self.task_key_prefix}{task_id}"
         for _ in range(8):
@@ -162,18 +166,55 @@ class TaskHistory:
             for field, value in parsed.items():
                 flat.extend([field, _serialize_field(field, value)])
             script = r"""
+            if ARGV[2] ~= '' and redis.call('GET', KEYS[2]) ~= ARGV[2] then return -1 end
             local kind = redis.call('TYPE', KEYS[1])['ok']
             if kind == 'hash' then return 1 end
             if kind ~= 'string' or redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
             local ttl = redis.call('PTTL', KEYS[1])
             redis.call('DEL', KEYS[1])
-            redis.call('HSET', KEYS[1], unpack(ARGV, 2))
+            redis.call('HSET', KEYS[1], unpack(ARGV, 3))
             if ttl >= 0 then redis.call('PEXPIRE', KEYS[1], math.max(ttl, 1)) end
             return 1
             """
-            if self.r.eval(script, 1, key, raw, *flat):
+            converted = int(self.r.eval(script, 2, key, worker_owner_key or key,
+                                        raw, worker_owner_token or '', *flat))
+            if converted < 0:
+                raise WorkerIdentityConflictError("worker identity was lost during history migration")
+            if converted:
                 return True
         raise RuntimeError("legacy task record changed repeatedly during conversion")
+
+    def record_if_absent(
+        self, task_id: str, data: dict[str, Any], *, worker_owner_key: str | None = None,
+        worker_owner_token: str | None = None,
+    ) -> None:
+        """仅在记录不存在且 Worker 仍持有身份时，原子补建旧消息记录。"""
+        now = self.clock.now()
+        record = dict(data)
+        record.setdefault("task_id", task_id)
+        record.setdefault("_queue", self.queue_name)
+        record.setdefault("created_at", now)
+        record.setdefault("updated_at", now)
+        record.setdefault("outcome", "")
+        record.setdefault("status", "pending")
+        record.setdefault("operational_message", 1)
+        fields: list[Any] = []
+        for field, value in record.items():
+            fields.extend((field, _serialize_field(field, value)))
+        task_key = f"{self.task_key_prefix}{task_id}"
+        script = r"""
+        if ARGV[1] ~= '' and redis.call('GET', KEYS[3]) ~= ARGV[1] then return -1 end
+        if redis.call('EXISTS', KEYS[1]) == 1 then return 0 end
+        local kind = redis.call('TYPE', KEYS[2])['ok']
+        if kind ~= 'none' and kind ~= 'zset' then error('history index key type conflict') end
+        redis.call('HSET', KEYS[1], unpack(ARGV, 4))
+        redis.call('ZADD', KEYS[2], 'NX', ARGV[2], ARGV[3])
+        return 1
+        """
+        result = int(self.r.eval(script, 3, task_key, self.idx_key, worker_owner_key or task_key,
+                                 worker_owner_token or '', float(record['created_at']), task_id, *fields))
+        if result < 0:
+            raise WorkerIdentityConflictError("worker identity was lost before history creation")
 
     def record(self, task_id: str, data: dict[str, Any]) -> None:
         """记录新任务；新记录默认视为仍有 operational message。"""
@@ -281,6 +322,8 @@ class TaskHistory:
     def clear_terminal(self) -> int:
         """仅删除无 operational message 的终态记录，保留并发新投递的审计。"""
         script = r"""
+        local index_kind = redis.call('TYPE', KEYS[2])['ok']
+        if index_kind ~= 'none' and index_kind ~= 'zset' then error('history index key type conflict') end
         local kind = redis.call('TYPE', KEYS[1])
         if type(kind) == 'table' then kind = kind['ok'] end
         if kind == 'none' then return redis.call('ZREM', KEYS[2], ARGV[1]) end
@@ -354,7 +397,11 @@ class TaskHistory:
                 task_id = str(raw_task_id)
                 record = self.get(task_id)
                 if record is None:
-                    removed_this_batch += int(self.r.zrem(self.idx_key, task_id) or 0)
+                    removed_this_batch += int(self.r.eval(
+                        "if redis.call('EXISTS', KEYS[1]) == 0 then "
+                        "return redis.call('ZREM', KEYS[2], ARGV[1]) end return 0",
+                        2, f"{self.task_key_prefix}{task_id}", self.idx_key, task_id,
+                    ) or 0)
                     continue
                 outcome = str(record.get("outcome") or record.get("status") or "")
                 if outcome not in TERMINAL_OUTCOMES:
@@ -388,6 +435,8 @@ class TaskHistory:
         """再次在 Redis 内检查终态与 operational 标记，避免 moved=0 后误删。"""
         self.ensure_hash(task_id)
         script = r"""
+        local index_kind = redis.call('TYPE', KEYS[2])['ok']
+        if index_kind ~= 'none' and index_kind ~= 'zset' then error('history index key type conflict') end
         if redis.call('EXISTS', KEYS[1]) == 0 then
             return redis.call('ZREM', KEYS[2], ARGV[1])
         end
@@ -423,6 +472,7 @@ class TaskHistory:
             f"{self.queue_name}:retry",
             f"{self.queue_name}:dlq",
             f"{self.queue_name}:processing",
+            *self.r.zrange(f"qtask:processing:{self.queue_name}", 0, -1),
             *self.r.scan_iter(f"{self.queue_name}:processing:*"),
         ]
         for key in list_keys:

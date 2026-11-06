@@ -5,6 +5,7 @@ Pipeline 第 2 级：消费 ``finance:calculate``（由 fetch_worker 投递）�
 """
 
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
 import random
 import sys
 import time
@@ -66,8 +67,9 @@ def calculate_ma(task: dict, context: TaskContext) -> TaskResult:
                     "ma20": ma20,
                     "timestamp": task["timestamp"],
                 },
-                # 父任务 id 派生身份：本任务重跑不会重复生成下游存库任务
+                # 父任务 id 派生身份：保留期内重跑不会重复生成下游存库任务
                 logical_key=f"store:{context.task_id}",
+                dedup_until=datetime.now(timezone.utc) + timedelta(days=2),
                 parent_task_id=context.task_id,
                 trace_id=context.trace_id,
             ),

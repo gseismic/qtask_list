@@ -85,3 +85,10 @@ assert QueueAdmin(redis_client=r).queue_stats("review")["processing"] == 0
 - 状态保持：已解决。将登记、统计、查看、恢复与删除清理修复提交；修复版本完整 commit：`054f12c25d4a248a5adf80a3c1c8e18add818458`。
 - 验证依据：提交内容与隔离提交候选一致；Python 224 passed、80 warnings，Ruff 和 mypy（20 个源文件）通过。完整工作区另有 Python 250 passed、前端 15 passed 的记录，详见[测试记录](../test/20261017-00-WORKTREE/自定义-processing-修复测试.md)。
 - 推送状态：未推送。
+
+## 2026-10-28 18:21（Asia/Shanghai）恢复安全边界补充事件
+
+- 模型：Codex / model-unknown（环境声明基于 GPT-6，未提供具体模型 ID）。
+- 状态保持：已解决。登记和统计仍覆盖自定义 processing；本次发现没有心跳的消费者不能自动判断是否停止，因此队列级恢复默认跳过其消息，确认相关消费者已停止后可显式使用 `include_active=True` 恢复。该参数也允许接管活跃 Worker，须先确认全部受影响消费者停止。
+- 实施版本：WORKTREE，基准提交 `4eb01e0907233de19f2a1508babd8ef7f1b7d746`；相关 `qtask_list/queue.py`、`qtask_list/admin.py`、`qtask_list/state.py` 和回归测试尚未提交。
+- 依据：本次隔离 Redis 回归及 `docs/test/20261028-18-WORKTREE/Python审查修复测试.md`；设计与关联计划分别见 `docs/design/python-review-remediation-20261028-overview.md` 和 `docs/plans/PLAN-20261028-001-model-unknown-python-review-remediation.md`。

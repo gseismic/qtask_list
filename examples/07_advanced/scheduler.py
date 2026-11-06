@@ -17,7 +17,7 @@ from pathlib import Path
 import sys
 from typing import Iterable
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -33,8 +33,11 @@ def floor_to_slot(now: datetime, minutes: int = 5) -> datetime:
     """把带时区时间规整到固定分钟 slot，避免调度进程启动秒数影响身份键。"""
 
     # 身份里不允许出现本地时间：跨时区部署时必须显式带时区
-    if now.tzinfo is None:
+    if now.tzinfo is None or now.utcoffset() is None:
         raise ValueError("now must be timezone-aware")
+    if isinstance(minutes, bool) or not isinstance(minutes, int) or minutes <= 0 or 60 % minutes:
+        raise ValueError("minutes must be a positive integer divisor of 60")
+    now = now.astimezone(timezone.utc)
     return now.replace(
         minute=(now.minute // minutes) * minutes,  # 向下取整到 5 分钟边界
         second=0,

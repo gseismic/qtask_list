@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import inspect
 import json
 import threading
 from dataclasses import dataclass
@@ -16,7 +17,9 @@ from .clock import datetime_to_epoch
 from .errors import (
     PayloadChecksumError,
     PayloadDecodeError,
+    RemoteStorageError,
     RemoteStorageConfigurationError,
+    RemoteStorageTransientError,
 )
 from .models import JsonValue, TaskSpec
 from .storage import RemoteStorage, StoredObject
@@ -111,20 +114,36 @@ class EnvelopeCodec:
         digest = hashlib.sha256(data).hexdigest()
 
         if self.storage is not None and len(data) > self.large_threshold:
-            if hasattr(self.storage, "save"):
-                save_managed = getattr(self.storage, "save_managed", None)
-                stored = (
-                    save_managed(data, retain_until=retain_until)
-                    if save_managed is not None
-                    else self.storage.save(data, retain_until=retain_until)
-                )
-            else:
-                # 兼容只实现旧 save_bytes/load 契约的自定义 storage。
-                try:
-                    key = self.storage.save_bytes(data, retain_until=retain_until)
-                except TypeError:
-                    key = self.storage.save_bytes(data)
-                stored = StoredObject(key=str(key), created=False, retain_until=retain_until)
+            try:
+                if hasattr(self.storage, "save"):
+                    save_managed = getattr(self.storage, "save_managed", None)
+                    stored = (
+                        save_managed(data, retain_until=retain_until)
+                        if save_managed is not None
+                        else self.storage.save(data, retain_until=retain_until)
+                    )
+                else:
+                    # 调用前判断旧签名；不能捕获适配器内部 TypeError 后再上传一次。
+                    save_bytes = self.storage.save_bytes
+                    try:
+                        signature = inspect.signature(save_bytes)
+                    except (ValueError, TypeError):
+                        signature = None
+                    supports_retention = True
+                    if signature is not None:
+                        try:
+                            signature.bind(data, retain_until=retain_until)
+                        except TypeError:
+                            supports_retention = False
+                    key = (save_bytes(data, retain_until=retain_until) if supports_retention
+                           else save_bytes(data))
+                    stored = StoredObject(key=str(key), created=False, retain_until=retain_until)
+            except RemoteStorageError:
+                raise
+            except (ConnectionError, TimeoutError, OSError) as exc:
+                raise RemoteStorageTransientError("storage_connection", "外存适配器连接失败") from exc
+            except Exception as exc:
+                raise RemoteStorageConfigurationError("storage_protocol", "外存适配器保存失败") from exc
             return PreparedPayload(
                 descriptor={
                     "kind": "external",
@@ -314,15 +333,15 @@ class EnvelopeCodec:
                 raise PayloadDecodeError("invalid_payload_ref", "external payload key is required")
             try:
                 raw = self.storage.load(key)
-            except RemoteStorageConfigurationError:
+            except RemoteStorageError:
                 raise
             except (ConnectionError, TimeoutError, OSError) as exc:
-                from .errors import RemoteStorageTransientError
-
                 raise RemoteStorageTransientError(
                     "storage_connection",
                     f"RemoteStorage 连接失败: {exc}",
                 ) from exc
+            except Exception as exc:
+                raise PayloadDecodeError("payload_decode", "外存适配器读取失败") from exc
             self._verify_payload(raw, descriptor)
             return self._business_payload(self._decode_json_object(raw), descriptor)
 
@@ -348,15 +367,15 @@ class EnvelopeCodec:
                 )
             try:
                 raw = self.storage.load(str(payload.get("key", "")))
-            except RemoteStorageConfigurationError:
+            except RemoteStorageError:
                 raise
             except (ConnectionError, TimeoutError, OSError) as exc:
-                from .errors import RemoteStorageTransientError
-
                 raise RemoteStorageTransientError(
                     "storage_connection",
                     f"RemoteStorage 连接失败: {exc}",
                 ) from exc
+            except Exception as exc:
+                raise PayloadDecodeError("payload_decode", "外存适配器读取失败") from exc
             return self._decode_json_object(raw)
         if payload.get("_compressed"):
             try:

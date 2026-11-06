@@ -1,0 +1,12 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________ test_storage_rejects_cross_origin_multipart_upload ______________
+/home/lsl/macbook/pai-studio-fin/library/qtask_list/tests/test_python_review_remediation.py:416: in test_storage_rejects_cross_origin_multipart_upload
+    assert response.status_code == 403
+E   assert 200 == 403
+E    +  where 200 = <Response [200 OK]>.status_code
+----------------------------- Captured stderr call -----------------------------
+2026-10-28 18:16:16.543 | INFO     | qtask_list.remote_storage.server:upload:356 - upload: key=ca9d5f2ffd374947a7d780763e074b23 size=7
+=========================== short test summary info ============================
+FAILED tests/test_python_review_remediation.py::test_storage_rejects_cross_origin_multipart_upload
+1 failed, 43 deselected, 2 warnings in 0.56s

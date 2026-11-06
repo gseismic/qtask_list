@@ -19,7 +19,7 @@ connection = redis.Redis(unix_socket_path=runtime["redis_socket"], decode_respon
 admin = QueueAdmin(redis_client=connection)
 for name in admin.queue_names():
     if name.startswith("review") or name == "中文/队列":
-        admin.delete_queue(name)
+        admin.delete_queue(name, force_unmanaged=True)
 now = time.time()
 ids = {}
 
@@ -71,7 +71,7 @@ for worker_id in ("review-stale-a", "review-stale-b"):
     ids[worker_id] = worker.queue.enqueue(TaskSpec("review_action", {})).task_id
     worker._refresh_heartbeat()
     assert worker.queue.pop_claim_no_wait()
-    connection.delete(worker._heartbeat_key)
+    connection.delete(worker._heartbeat_key, worker._worker_owner_key)
 time.sleep(0.9)
 (folder / "review-seed.json").write_text(json.dumps(ids, ensure_ascii=False, indent=2) + "\n")
 connection.close()

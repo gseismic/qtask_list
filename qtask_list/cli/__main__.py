@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib
-import ipaddress
 import json
 import os
 import threading
@@ -17,7 +16,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from qtask_list.security import redis_endpoint_label
+from qtask_list.security import is_loopback_host, redis_endpoint_label
 from qtask_list.storage import RemoteStorage
 
 if TYPE_CHECKING:
@@ -99,15 +98,6 @@ def queue_has_problem(stats: Dict[str, Any]) -> bool:
     return any(int(stats.get(key, 0)) > 0 for key in ("dlq", "deadline_missed", "stale_workers")) or (
         int(stats.get("queue", 0)) > 0 and int(stats.get("active_workers", 0)) == 0
     )
-
-
-def is_loopback_host(host: str) -> bool:
-    if host.lower() == "localhost":
-        return True
-    try:
-        return ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        return False
 
 
 def print_message_rows(rows: List[Dict[str, Any]], title: str):
@@ -369,6 +359,9 @@ def clear(
     include_processing: bool = typer.Option(
         False, "--include-processing", help="同时清理失联 Worker 的 processing；活跃 Worker 受保护"
     ),
+    force_unmanaged: bool = typer.Option(
+        False, "--force-unmanaged", help="确认自定义消费者已停止并清理其 processing"
+    ),
     release_identity: bool = typer.Option(
         False,
         "--release-identity",
@@ -380,6 +373,8 @@ def clear(
 ):
     """清空队列"""
     queue_name = normalize_queue_name(queue_name, namespace)
+    if force_unmanaged and not include_processing:
+        raise typer.BadParameter("--force-unmanaged 需要 --include-processing")
     if not force:
         console.print(f"[red]WARNING: This will clear queue {queue_name}[/red]")
         if include_history:
@@ -388,6 +383,8 @@ def clear(
             console.print("[red]Logical identity owners will be released[/red]")
         if include_processing:
             console.print("[red]Stale processing messages will also be removed[/red]")
+        if force_unmanaged:
+            console.print("[red]Custom consumers must be stopped before their processing is removed[/red]")
         if not typer.confirm("Continue?"):
             raise typer.Abort()
 
@@ -398,6 +395,7 @@ def clear(
             include_history=include_history,
             identity_policy="release" if release_identity else "keep",
             include_processing=include_processing,
+            force_unmanaged=force_unmanaged,
         )
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
@@ -488,6 +486,7 @@ def recover(
     count = result["recovered"]
     skipped = result["skipped_active"]
     skipped_legacy = result.get("skipped_legacy", 0)
+    skipped_unmanaged = result.get("skipped_unmanaged", 0)
 
     if force_active:
         console.print(f"[green]Recovered {count} tasks from all processing queues[/green]")
@@ -500,6 +499,11 @@ def recover(
         console.print(
             "[yellow]Skipped legacy processing tasks; use --force-active only after "
             "confirming no direct SmartQueue consumer is still working[/yellow]"
+        )
+    if skipped_unmanaged:
+        console.print(
+            f"[yellow]Skipped {skipped_unmanaged} custom processing tasks; "
+            "stop the consumers before explicitly forcing recovery[/yellow]"
         )
 
 
@@ -793,6 +797,7 @@ def task_delete(
     namespace: Optional[str] = typer.Option(None, "--namespace", "-n", help="命名空间"),
     redis_url: str = typer.Option(DEFAULT_REDIS_URL, "--redis", help="Redis URL"),
     force: bool = typer.Option(False, "--force", "-f", help="强制执行"),
+    force_unmanaged: bool = typer.Option(False, "--force-unmanaged", help="确认自定义消费者已停止"),
     json_output: bool = typer.Option(False, "--json", help="输出 JSON"),
 ):
     """删除一个任务的队列消息和历史记录"""
@@ -804,7 +809,9 @@ def task_delete(
             raise typer.Abort()
 
     try:
-        result = admin_from_url(redis_url).delete_task(task_id, normalized_queue)
+        result = admin_from_url(redis_url).delete_task(
+            task_id, normalized_queue, force_unmanaged=force_unmanaged
+        )
     except ValueError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
@@ -834,7 +841,7 @@ def task_replay(
     action: Optional[str] = typer.Option(None, "--action", help="替换 action"),
     namespace: Optional[str] = typer.Option(None, "--namespace", "-n", help="命名空间"),
     redis_url: str = typer.Option(DEFAULT_REDIS_URL, "--redis", help="Redis URL"),
-    force: bool = typer.Option(False, "--force", "-f", help="确认创建新执行实例"),
+    force: bool = typer.Option(False, "--force", "-y", help="确认创建新执行实例"),
     json_output: bool = typer.Option(False, "--json", help="输出 JSON"),
 ):
     """以新 task_id 重放终态任务，原记录保持不变。"""

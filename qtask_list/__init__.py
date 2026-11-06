@@ -3,7 +3,7 @@ from .worker import Worker
 from .storage import RemoteStorage
 from .admin import QueueAdmin, QueueState
 from .clock import Clock, FrozenClock, SystemClock
-from .errors import BatchEnqueueError, PermanentTaskError, RetryableTaskError
+from .errors import BatchEnqueueError, PermanentTaskError, RetryableTaskError, WorkerIdentityConflictError
 from .models import (
     DuplicateAction,
     EnqueueResult,
@@ -13,7 +13,7 @@ from .models import (
     TaskResult,
     TaskSpec,
 )
-from .security import redis_endpoint_label
+from .security import is_loopback_host, redis_endpoint_label
 
 __all__ = [
     "BatchEnqueueError",
@@ -34,6 +34,7 @@ __all__ = [
     "TaskResult",
     "TaskSpec",
     "Worker",
+    "WorkerIdentityConflictError",
     "start_dashboard",
 ]
 
@@ -48,6 +49,8 @@ def start_dashboard(
     password: str | None = None,
     session_ttl: int = 86400,
     secure_cookie: bool = False,
+    *,
+    allow_unauthenticated: bool = False,
 ):
     """
     启动 Dashboard
@@ -60,6 +63,7 @@ def start_dashboard(
         password: 登录密码，设置后启用登录
         session_ttl: 登录会话有效期，秒
         secure_cookie: HTTPS 部署时启用 Secure Cookie
+        allow_unauthenticated: 显式允许无认证的远程监听
     
     Example:
         >>> from qtask_list import start_dashboard
@@ -83,12 +87,16 @@ def start_dashboard(
         env["QTASK_DASHBOARD_PASSWORD"] = password
     if secure_cookie:
         env["QTASK_DASHBOARD_SECURE_COOKIE"] = "1"
+
+    auth_enabled = bool(env.get("QTASK_DASHBOARD_PASSWORD"))
+    if not is_loopback_host(host) and not auth_enabled and not allow_unauthenticated:
+        raise ValueError("远程 Dashboard 需要认证，或显式设置 allow_unauthenticated=True")
     
     # 启动 dashboard
     display_host = "localhost" if host in {"0.0.0.0", "::", "127.0.0.1"} else host
     print(f"Starting qtask_list Dashboard on http://{display_host}:{port}")
     print(f"Redis: {redis_endpoint_label(redis_url)}")
-    print(f"Auth: {'enabled' if password else 'disabled'}")
+    print(f"Auth: {'enabled' if auth_enabled else 'disabled'}")
     print("\nPress Ctrl+C to stop\n")
     
     subprocess.run(

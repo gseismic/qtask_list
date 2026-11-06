@@ -2,10 +2,10 @@
 
 Pipeline 第 1 级：消费 ``stockev_list:fetch``，把结果 fan-out 到 ``finance:calculate``。
 Worker 先投递 ``TaskResult.emissions`` 再 ack 上游任务；若投递后 ack 前崩溃，重跑会
-再次投递下游，下游 ``logical_key`` 负责把重复兜底掉。
+再次投递下游；下游 ``logical_key`` 在设定的保留期内抑制重复。
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import random
 import sys
@@ -55,7 +55,7 @@ def fetch_stock(task: dict, context: TaskContext) -> TaskResult:
         value={"symbol": symbol, "price": price, "volume": volume},
         # emissions 先投递成功、再 ack 本任务（Worker 内固定顺序）。
         # 若"投递后 ack 前"崩溃，任务仍在 processing，recover 后重跑会再次
-        # 投递下游 —— at-least-once 语义，重复由下游 logical_key 兜底。
+        # 投递下游 —— at-least-once 语义，保留期内由下游 logical_key 抑制重复。
         # 投递时下游拒收（非重复类）会抛 RetryableTaskError，本任务自动重试。
         emissions=(
             TaskSpec(
@@ -68,6 +68,8 @@ def fetch_stock(task: dict, context: TaskContext) -> TaskResult:
                 },
                 # 身份由父 task_id 派生：本任务重跑时下游重复投递会被去重
                 logical_key=f"calculate:{context.task_id}",
+                # 覆盖预期的重跑窗口；永久幂等仍由业务存储保证。
+                dedup_until=datetime.now(timezone.utc) + timedelta(days=2),
                 # 血缘与追踪：下游可回溯到本任务
                 parent_task_id=context.task_id,
                 trace_id=context.trace_id,
